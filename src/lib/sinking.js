@@ -1,3 +1,5 @@
+import { genId } from "./runtime.js";
+import { daysInMonth, localDateStr, parseDate } from "./dates.js";
   // Goals that come round again.
   //
   // A savings goal is a one-shot: a target, a date, and a monthly figure that
@@ -23,7 +25,7 @@
   // Advance a YYYY-MM-DD by N months, clamping into short months so 31 August
   // plus six months is the last day of February rather than spilling into
   // March.
-  function addMonthsClamped(dateStr, months) {
+  export function addMonthsClamped(dateStr, months) {
     const d = parseDate(dateStr);
     if (!d || !Number.isFinite(months)) return "";
     const y = d.getFullYear(), m = d.getMonth(), day = d.getDate();
@@ -34,7 +36,7 @@
 
   // A goal repeats when it says how often. Zero, missing or nonsense means the
   // old behaviour — it happens once.
-  const goalRepeatMonths = (g) => {
+  export const goalRepeatMonths = (g) => {
     const n = Number(g && g.repeatMonths);
     return Number.isFinite(n) && n > 0 ? Math.round(n) : 0;
   };
@@ -45,7 +47,7 @@
   // rather than a single step: an app left unopened for fourteen months owes
   // two rolls of a yearly fund, and landing on the correct date matters more
   // than the number of hops it took to get there.
-  function planGoalRollover(goal, today) {
+  export function planGoalRollover(goal, today) {
     const every = goalRepeatMonths(goal);
     if (!every || !goal || !goal.targetDate || !today) return null;
     if (goal.targetDate > today) return null;
@@ -82,7 +84,7 @@
   // The old payout is left where it is. It is a record of a thing that
   // happened on a date that has passed, and rewriting history to point at the
   // next cycle would take that month's spending with it.
-  function planGoalRollovers(goals, entries, today) {
+  export function planGoalRollovers(goals, entries, today) {
     const rolls = [];
     (Array.isArray(goals) ? goals : []).forEach((g) => {
       const roll = planGoalRollover(g, today);
@@ -124,7 +126,7 @@
 
   // Apply a plan to plain arrays. The caller hands in setters so this works
   // against React state and against a test's objects alike.
-  function applyGoalRollovers(plan, { setGoals, setEntries, newId = genId } = {}) {
+  export function applyGoalRollovers(plan, { setGoals, setEntries, newId = genId } = {}) {
     if (!plan || !plan.changed) return;
     const payoutIds = new Map();
     if (setEntries) {

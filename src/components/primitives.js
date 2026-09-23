@@ -1,10 +1,16 @@
-  function getCatColor(category, categories, categoryColors = {}) {
+import { __spreadProps, __spreadValues, useContext, useEffect, useLayoutEffect, useRef, useState } from "../lib/runtime.js";
+import { depositShiftNote, isInflowEvent, signedAmount } from "../lib/dates.js";
+import { fmt, fmtDate } from "../lib/format.js";
+import { CAT_PALETTE, CategoriesContext, DEFAULT_ALERT_THRESHOLD, MONTHS, chipDot, haptic, prefersReducedMotion, railTone, useIsCoarsePointer, useRovingTabs, varianceTitle } from "../lib/app-data.js";
+import { ContextMenu } from "./forms.js";
+import { Icon } from "./misc-ui.js";
+  export function getCatColor(category, categories, categoryColors = {}) {
     if (categoryColors && categoryColors[category]) return categoryColors[category];
     const sorted = [...categories].sort((a, b) => a.localeCompare(b));
     const idx = sorted.indexOf(category);
     return CAT_PALETTE[(idx < 0 ? 0 : idx) % CAT_PALETTE.length];
   }
-  const CatChip = ({ category, categories, categoryColors, style = {}, className = "" }) => {
+  export const CatChip = ({ category, categories, categoryColors, style = {}, className = "" }) => {
     const ctxCats = useContext(CategoriesContext);
     const cats = categories || ctxCats.categories;
     const catColors = categoryColors || ctxCats.categoryColors;
@@ -29,7 +35,7 @@
   // The tick does double duty where the caller asks it to: on the budget grid
   // an unpaid row selects for bulk actions and a paid one un-pays, which is
   // what onToggleSelect expresses. Without it the tick just marks paid.
-  const LedgerRow = ({
+  export const LedgerRow = ({
     ev, alertThreshold = DEFAULT_ALERT_THRESHOLD, paid = false, selected = false, past = false,
     dateLabel = null, onTogglePaid, onToggleSelect = null, onOpen = null, onMenu = null, onSwipeLeft = null,
     showBalance = true, categories, categoryColors
@@ -188,7 +194,7 @@
   // thumbnail beside a figure. The end dot is dropped there — a circle in a
   // box scaled on one axis is an ellipse — and the stroke is pinned so the
   // line keeps its weight however far it stretches.
-  const Sparkline = ({ data, color = "var(--textMid)", height = 32, width = 80, responsive = false, area = false }) => {
+  export const Sparkline = ({ data, color = "var(--textMid)", height = 32, width = 80, responsive = false, area = false }) => {
     if (!data || data.length < 2) return null;
     const min = Math.min(...data);
     const max = Math.max(...data);
@@ -214,8 +220,8 @@
   // returned `rows`. `page` is clamped into range here so callers never need
   // a separate "reset page on filter change" effect — a page that no longer
   // exists just clamps back into range on the next render.
-  const PAGE_SIZE_OPTIONS = [10, 20, 50, "all"];
-  function paginateRows(rows, page, pageSize) {
+  export const PAGE_SIZE_OPTIONS = [10, 20, 50, "all"];
+  export function paginateRows(rows, page, pageSize) {
     const total = rows.length;
     const totalPages = pageSize === "all" ? 1 : Math.max(1, Math.ceil(total / pageSize));
     const safePage = Math.min(Math.max(0, page), totalPages - 1);
@@ -227,7 +233,7 @@
   // shows everything loaded so far (page 1..loadedPages worth), so scrolling
   // to the bottom can just load the next batch on top of what's visible
   // rather than replacing it.
-  function cumulativeRows(rows, loadedPages, pageSize) {
+  export function cumulativeRows(rows, loadedPages, pageSize) {
     const total = rows.length;
     const totalPages = pageSize === "all" ? 1 : Math.max(1, Math.ceil(total / pageSize));
     const safeLoaded = Math.min(Math.max(1, loadedPages), totalPages);
@@ -241,7 +247,7 @@
   // animates the bottom nav), so this checks both — whichever one is
   // actually the scrolling context reports real overflow, the other reports
   // none and is a harmless no-op.
-  function useInfiniteScroll(active, onLoadMore) {
+  export function useInfiniteScroll(active, onLoadMore) {
     const cbRef = useRef(onLoadMore);
     cbRef.current = onLoadMore;
     useEffect(() => {
@@ -261,7 +267,7 @@
       };
     }, [active]);
   }
-  const GridPagination = ({ pageInfo, setPage, pageSize, setPageSize, label = "rows", isMobile = false }) => {
+  export const GridPagination = ({ pageInfo, setPage, pageSize, setPageSize, label = "rows", isMobile = false }) => {
     const { total, totalPages, safePage, start, end } = pageInfo;
     if (total === 0) return null;
     return /* @__PURE__ */ React.createElement("div", { className: "grid-pagination" + (isMobile ? " grid-pagination--mobile" : ""), "data-noprint": true }, /* @__PURE__ */ React.createElement("div", { className: "grid-pagination-info" }, `${start + 1}–${end} of ${total} ${label}`), /* @__PURE__ */ React.createElement("div", { className: "grid-pagination-controls" }, /* @__PURE__ */ React.createElement("label", { className: "grid-pagination-size" }, "Show", /* @__PURE__ */ React.createElement(
@@ -295,7 +301,7 @@
       "›"
     ))));
   };
-  function TemplatePicker({ templates = [], onSelect }) {
+  export function TemplatePicker({ templates = [], onSelect }) {
     const [open, setOpen] = useState(false);
     if (!templates.length) return null;
     return /* @__PURE__ */ React.createElement("div", { className: "relative inline-block" }, /* @__PURE__ */ React.createElement(
@@ -337,7 +343,7 @@
   // setPointerCapture keeps the drag alive if the finger leaves the handle.
   // The card follows the finger so the gesture reads as direct manipulation,
   // and snaps back below the dismiss threshold.
-  const SheetHandle = ({ onDismiss }) => {
+  export const SheetHandle = ({ onDismiss }) => {
     const ref = useRef(null);
     const drag = useRef(null);
     // Every sheet trapped focus correctly but none of them took it, so a sheet
@@ -410,13 +416,13 @@
       /* @__PURE__ */ React.createElement("div", { className: "sheet-handle-bar" })
     );
   };
-  const Card = ({ children, style = {}, className = "", id }) => /* @__PURE__ */ React.createElement("div", { id, className: `cf-card ${className}`.trim(), style }, children);
+  export const Card = ({ children, style = {}, className = "", id }) => /* @__PURE__ */ React.createElement("div", { id, className: `cf-card ${className}`.trim(), style }, children);
   // className replaces the default bottom margin (e.g. "mb-0" for flush headers).
   // `help` puts a HelpTip beside the heading — the section's explanatory
   // paragraph without the paragraph. (Defined below this line but hoisted, as
   // everything in this bundle's shared scope is.)
-  const SectionTitle = ({ children, action, className, help }) => /* @__PURE__ */ React.createElement("div", { className: "cf-row-between " + (className || "mb-12") }, /* @__PURE__ */ React.createElement("div", { className: "section-title-wrap" }, /* @__PURE__ */ React.createElement("h2", { className: "cf-section-title-text" }, children), help && /* @__PURE__ */ React.createElement(HelpTip, { label: typeof children === "string" ? children : "", text: help })), action);
-  const EmptyState = ({ icon, message, actionLabel, onAction }) => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "empty-state-icon" }, icon), /* @__PURE__ */ React.createElement("div", { className: "mb-14" }, message), actionLabel && /* @__PURE__ */ React.createElement(
+  export const SectionTitle = ({ children, action, className, help }) => /* @__PURE__ */ React.createElement("div", { className: "cf-row-between " + (className || "mb-12") }, /* @__PURE__ */ React.createElement("div", { className: "section-title-wrap" }, /* @__PURE__ */ React.createElement("h2", { className: "cf-section-title-text" }, children), help && /* @__PURE__ */ React.createElement(HelpTip, { label: typeof children === "string" ? children : "", text: help })), action);
+  export const EmptyState = ({ icon, message, actionLabel, onAction }) => /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "empty-state-icon" }, icon), /* @__PURE__ */ React.createElement("div", { className: "mb-14" }, message), actionLabel && /* @__PURE__ */ React.createElement(
     "button",
     {
       onClick: onAction,
@@ -424,7 +430,7 @@
     },
     actionLabel
   ));
-  const KpiCard = ({ label, value, color, sub }) => /* @__PURE__ */ React.createElement("div", { className: "kpi-card" }, /* @__PURE__ */ React.createElement("div", { className: "kpi-label" }, label), /* @__PURE__ */ React.createElement("div", { className: "kpi-value", style: color ? { color } : void 0 }, value), sub && /* @__PURE__ */ React.createElement("div", { className: "kpi-sub" }, sub));
+  export const KpiCard = ({ label, value, color, sub }) => /* @__PURE__ */ React.createElement("div", { className: "kpi-card" }, /* @__PURE__ */ React.createElement("div", { className: "kpi-label" }, label), /* @__PURE__ */ React.createElement("div", { className: "kpi-value", style: color ? { color } : void 0 }, value), sub && /* @__PURE__ */ React.createElement("div", { className: "kpi-sub" }, sub));
   // Mobile-only "which year am I on" indicator — desktop already shows the
   // year pills in the header, which are hidden on mobile to save space.
   // Tapping it opens the same year switcher the header pills provide.
@@ -432,7 +438,7 @@
   // it lives on mobile: below 768px the year pills and the search are both
   // hidden, so the header had ~195px of empty navy while this cost a whole
   // row of content underneath it.
-  const MobileYearBadge = ({ year, years = [], inHeader = false, onSelect = () => {
+  export const MobileYearBadge = ({ year, years = [], inHeader = false, onSelect = () => {
   } }) => {
     const [ctx, setCtx] = useState(null);
     const cls = "mobile-year-badge" + (inHeader ? " mobile-year-badge--header" : "");
@@ -463,7 +469,7 @@
       }
     ));
   };
-  const MonthPicker = ({ value, onChange, noMargin = false, matchingMonths = null, onAddNextYear = null, nextYear = null, monthCloses = null, alertThreshold = DEFAULT_ALERT_THRESHOLD }) => {
+  export const MonthPicker = ({ value, onChange, noMargin = false, matchingMonths = null, onAddNextYear = null, nextYear = null, monthCloses = null, alertThreshold = DEFAULT_ALERT_THRESHOLD }) => {
     const stripRef = useRef(null);
     const roving = useRovingTabs(".month-pill");
     // Edge-scroll fade: on mobile the strip scrolls horizontally with no
@@ -567,7 +573,7 @@
   // a screen reader hears "Line, button" over and over with no idea which
   // chart it would change. Naming the group is what a role="group" is for: it
   // is announced on entry, and it leaves the button names alone.
-  const ChartToggle = ({ options, value, onChange, label }) => /* @__PURE__ */ React.createElement("div", { role: "group", "aria-label": label ? label + " view" : void 0, className: "chart-toggle-group" }, options.map((o) => /* @__PURE__ */ React.createElement(
+  export const ChartToggle = ({ options, value, onChange, label }) => /* @__PURE__ */ React.createElement("div", { role: "group", "aria-label": label ? label + " view" : void 0, className: "chart-toggle-group" }, options.map((o) => /* @__PURE__ */ React.createElement(
     "button",
     {
       key: o.id,
@@ -584,7 +590,7 @@
   // size="sm" applies the .cf-pill--sm modifier — used where the toggle docks
   // into a tight card header (YoY metric, shared-view) instead of one-off
   // fontSize/padding/borderRadius overrides per call site.
-  const PillToggle = ({ options, value, onChange, size }) => {
+  export const PillToggle = ({ options, value, onChange, size }) => {
     return /* @__PURE__ */ React.createElement("div", { role: "group", className: "cf-row cf-gap-6 cf-wrap" }, options.map((o) => /* @__PURE__ */ React.createElement(
       "button",
       {
@@ -596,7 +602,7 @@
       o.label
     )));
   };
-  const ChartTip = ({ active, payload, label }) => {
+  export const ChartTip = ({ active, payload, label }) => {
     if (!active || !(payload == null ? void 0 : payload.length)) return null;
     const total = payload.reduce((s, p) => s + Math.abs(p.value || 0), 0);
     return /* @__PURE__ */ React.createElement("div", { className: "chart-tip" }, label && /* @__PURE__ */ React.createElement("div", { className: "chart-tip-label" }, label), payload.map((p) => {
@@ -609,8 +615,8 @@
       } }, fmt(val), pct && /* @__PURE__ */ React.createElement("span", { className: "chart-tip-pct" }, " ", pct, "%")));
     }));
   };
-  const FieldError = ({ msg }) => msg ? /* @__PURE__ */ React.createElement("div", { className: "field-error-text" }, msg) : null;
-  function ConfirmDialog({ title, message, onConfirm, onCancel, confirmLabel = "Delete", confirmVariant = "danger" }) {
+  export const FieldError = ({ msg }) => msg ? /* @__PURE__ */ React.createElement("div", { className: "field-error-text" }, msg) : null;
+  export function ConfirmDialog({ title, message, onConfirm, onCancel, confirmLabel = "Delete", confirmVariant = "danger" }) {
     useEffect(() => {
       const h = (e) => {
         if (e.key === "Escape") onCancel();
@@ -651,8 +657,8 @@
   // marker (↤) works: it is the same object — an icon that explains itself on
   // hover, focus or tap — and a row indicator with no way to ask what it means
   // is just a mystery character.
-  let HELPTIP_SEQ = 0;
-  function HelpTip({ text, label = "", align = "start", icon = "?", variant = "" }) {
+  export let HELPTIP_SEQ = 0;
+  export function HelpTip({ text, label = "", align = "start", icon = "?", variant = "" }) {
     const [open, setOpen] = useState(false);
     const [tipId] = useState(() => `helptip-${++HELPTIP_SEQ}`);
     const wrapRef = useRef(null);
@@ -771,13 +777,13 @@
   // accessible name, so a help button in there makes the input announce itself
   // as "Actual Amount Paid Help: Actual Amount Paid" — noise a screen-reader
   // user can't skip. The row keeps the two on one line anyway.
-  const FieldLabel = ({ htmlFor, children, help, helpLabel = "", helpAlign, className = "field-label" }) => /* @__PURE__ */ React.createElement(
+  export const FieldLabel = ({ htmlFor, children, help, helpLabel = "", helpAlign, className = "field-label" }) => /* @__PURE__ */ React.createElement(
     "div",
     { className: "field-label-row" },
     /* @__PURE__ */ React.createElement("label", { className, htmlFor }, children),
     help && /* @__PURE__ */ React.createElement(HelpTip, { label: helpLabel, text: help, align: helpAlign })
   );
-  const Toggle = ({ value, onChange, label }) => /* @__PURE__ */ React.createElement("div", { className: "toggle-row" }, /* @__PURE__ */ React.createElement("button", {
+  export const Toggle = ({ value, onChange, label }) => /* @__PURE__ */ React.createElement("div", { className: "toggle-row" }, /* @__PURE__ */ React.createElement("button", {
     type: "button",
     role: "switch",
     "aria-checked": value,
@@ -801,7 +807,7 @@
   // appears in two sentences and neither reads well assembled from parts.
   // The caller also owns which rows are expanded, so opening a category on
   // one page does not leave a drawer open on the other.
-  const CategoryDetailSheet = ({ detail, openRows, onToggleRow, onClose, scope, year }) => {
+  export const CategoryDetailSheet = ({ detail, openRows, onToggleRow, onClose, scope, year }) => {
     if (!detail) return null;
     return /* @__PURE__ */ React.createElement(
       "div",

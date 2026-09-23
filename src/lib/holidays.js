@@ -1,3 +1,4 @@
+import { localDateStr } from "./dates.js";
   // British Columbia statutory holidays, used to work out the day a direct
   // deposit actually lands (see priorBankingDay in dates.js). Banks don't
   // process on a holiday any more than they do on a Sunday, so a payday that
@@ -20,16 +21,16 @@
   // budget year opened for the first time, and if that site ever moves. The
   // fetch earns its place where rules can't reach — a proclaimed one-off, or a
   // change like BC moving Family Day to the third Monday in 2019.
-  const HOLIDAY_API_URL = (year, region) => `https://canada-holidays.ca/api/v1/provinces/${holidayRegion(region).code}?year=${year}&optional=true`;
+  export const HOLIDAY_API_URL = (year, region) => `https://canada-holidays.ca/api/v1/provinces/${holidayRegion(region).code}?year=${year}&optional=true`;
 
-  const nthWeekdayOfMonth = (year, month, weekday, n) => {
+  export const nthWeekdayOfMonth = (year, month, weekday, n) => {
     const first = new Date(year, month, 1);
     const offset = (weekday - first.getDay() + 7) % 7;
     return new Date(year, month, 1 + offset + (n - 1) * 7);
   };
   // Anonymous Gregorian computus. Easter anchors Good Friday (statutory) and
   // Easter Monday (optional in BC).
-  const easterSunday = (year) => {
+  export const easterSunday = (year) => {
     const a = year % 19, b = Math.floor(year / 100), c = year % 100;
     const d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25);
     const g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30;
@@ -40,7 +41,7 @@
     const day = (h + l - 7 * m + 114) % 31 + 1;
     return new Date(year, month - 1, day);
   };
-  const addDays = (d, n) => {
+  export const addDays = (d, n) => {
     const out = new Date(d);
     out.setDate(out.getDate() + n);
     return out;
@@ -55,7 +56,7 @@
   // `taken` is what makes Christmas week come out right. When Christmas is a
   // Saturday, it is observed on the Monday and Boxing Day moves past it to the
   // Tuesday rather than doubling up — two closed days, not one.
-  const observedFor = (d, taken) => {
+  export const observedFor = (d, taken) => {
     let obs = d;
     while (obs.getDay() === 0 || obs.getDay() === 6 || taken.has(localDateStr(obs))) obs = addDays(obs, 1);
     return obs;
@@ -74,7 +75,7 @@
   // hand; that is what the feature is for. `optional` here marks the days a
   // region commonly treats as discretionary, matching how BC has always
   // treated Easter Monday and Boxing Day.
-  const HOLIDAY_REGIONS = [
+  export const HOLIDAY_REGIONS = [
     { code: "BC", name: "British Columbia", feb: "Family Day", aug: "British Columbia Day", victoria: true, truth: true, remembrance: true, boxingOptional: true },
     { code: "AB", name: "Alberta", feb: "Family Day", aug: "Heritage Day", augOptional: true, victoria: true, truth: false, remembrance: true },
     { code: "SK", name: "Saskatchewan", feb: "Family Day", aug: "Saskatchewan Day", victoria: true, truth: false, remembrance: true },
@@ -89,9 +90,9 @@
     { code: "NT", name: "Northwest Territories", feb: null, aug: "Civic Holiday", augOptional: true, victoria: true, truth: true, remembrance: true },
     { code: "NU", name: "Nunavut", feb: null, aug: "Civic Holiday", augOptional: true, victoria: true, truth: true, remembrance: true, nunavutDay: true }
   ];
-  const DEFAULT_HOLIDAY_REGION = "BC";
-  const holidayRegion = (code) => HOLIDAY_REGIONS.find((r) => r.code === code) || HOLIDAY_REGIONS[0];
-  function computeRegionHolidays(year, regionCode) {
+  export const DEFAULT_HOLIDAY_REGION = "BC";
+  export const holidayRegion = (code) => HOLIDAY_REGIONS.find((r) => r.code === code) || HOLIDAY_REGIONS[0];
+  export function computeRegionHolidays(year, regionCode) {
     const r = holidayRegion(regionCode);
     const may25 = new Date(year, 4, 25);
     // Victoria Day is the Monday *preceding* May 25 — on a May 25 Monday the
@@ -135,7 +136,7 @@
   // party's shape, the payload is not something the app controls, and a
   // surprise in it must degrade to the computed list rather than throw inside
   // a render.
-  function parseHolidayPayload(payload, year) {
+  export function parseHolidayPayload(payload, year) {
     var _a;
     const list = Array.isArray(payload == null ? void 0 : payload.holidays) ? payload.holidays : Array.isArray((_a = payload == null ? void 0 : payload.province) == null ? void 0 : _a.holidays) ? payload.province.holidays : null;
     if (!list || !list.length) return null;
@@ -158,17 +159,17 @@
   // here so the synchronous readers below can see them. expandEntries runs
   // inside render-time useMemos and can't await or subscribe to anything, so
   // App.js pushes the current state in before it recomputes (see yearFlows).
-  let storedHolidays = {};
+  export let storedHolidays = {};
   // Computed years are worked out once and kept — the rules for a given year
   // can't change, and this is read once per occurrence during expansion.
-  const computedCache = {};
-  function setStoredHolidays(stored) {
+  export const computedCache = {};
+  export function setStoredHolidays(stored) {
     storedHolidays = stored && typeof stored === "object" ? stored : {};
   }
   // Only for callers that have to put the registry back exactly as they found
   // it — the in-app self-tests run against the same module state the live
   // budget is using, and must not leave a fixture behind in it.
-  function getStoredHolidays() {
+  export function getStoredHolidays() {
     return storedHolidays;
   }
   // Which region the computed list is worked out for. Pushed in from App the
@@ -176,14 +177,14 @@
   // dozen synchronous places with no access to React state. Changing it clears
   // the cache, so the next lookup recomputes rather than serving the previous
   // region's dates.
-  let computedRegion = DEFAULT_HOLIDAY_REGION;
-  function setHolidayRegion(code) {
+  export let computedRegion = DEFAULT_HOLIDAY_REGION;
+  export function setHolidayRegion(code) {
     const next = holidayRegion(code).code;
     if (next === computedRegion) return;
     computedRegion = next;
     Object.keys(computedCache).forEach((k) => delete computedCache[k]);
   }
-  function computedHolidaysForYear(year) {
+  export function computedHolidaysForYear(year) {
     if (!computedCache[year]) computedCache[year] = computeRegionHolidays(year, computedRegion);
     return computedCache[year];
   }
@@ -191,13 +192,13 @@
   // it. Merging would make a deleted holiday impossible to express: the rules
   // would keep putting it back, and "remove" in the UI would silently do
   // nothing. Storing a year means the household owns that year's list.
-  const isHolidayDateKey = (k) => /^\d{4}-\d{2}-\d{2}$/.test(k);
+  export const isHolidayDateKey = (k) => /^\d{4}-\d{2}-\d{2}$/.test(k);
   // Every reader takes an optional store. Rendering a component must not have
   // to push state into the module registry to read from it — a Settings panel
   // rendered with a fixture (the in-app self-tests do exactly that) would leave
   // the fixture behind for the live budget to use.
-  const resolveStore = (store) => (store && typeof store === "object" ? store : storedHolidays);
-  const yearIn = (store, year) => {
+  export const resolveStore = (store) => (store && typeof store === "object" ? store : storedHolidays);
+  export const yearIn = (store, year) => {
     const s = resolveStore(store);
     return s[year] || s[String(year)];
   };
@@ -206,15 +207,15 @@
   // back from the database (a holiday_years row with no holidays rows), and it
   // has to stay distinct from "nobody has touched 2027", which falls back to
   // the rules.
-  function isYearStored(year, store) {
+  export function isYearStored(year, store) {
     const y = yearIn(store, year);
     return !!y && typeof y === "object";
   }
-  function holidaysForYear(year, store) {
+  export function holidaysForYear(year, store) {
     const y = yearIn(store, year);
     return y && typeof y === "object" ? y : computedHolidaysForYear(year);
   }
-  function holidayOn(dateStr) {
+  export function holidayOn(dateStr) {
     const year = Number(String(dateStr).slice(0, 4));
     if (!year) return null;
     return holidaysForYear(year)[dateStr] || null;
@@ -222,7 +223,7 @@
   // What Settings shows: one row per date, sorted, carrying where it came from.
   // `source` is "manual" for a hand-added or hand-edited date, "published" for
   // one that came from a fetch, and "computed" for the rules-based fallback.
-  function holidayRowsForYear(year, store) {
+  export function holidayRowsForYear(year, store) {
     const days = holidaysForYear(year, store);
     const stored = isYearStored(year, store);
     return Object.keys(days).filter(isHolidayDateKey).sort().map((date) => {
@@ -239,7 +240,7 @@
   // Throws with a message meant to be shown as-is: this is only ever called
   // from a button the user pressed, so a failure has to say what happened
   // rather than fall back silently the way an automatic refresh would.
-  async function fetchHolidayYear(year, region) {
+  export async function fetchHolidayYear(year, region) {
     let res;
     try {
       res = await fetch(HOLIDAY_API_URL(year, region), { headers: { accept: "application/json" } });
@@ -265,7 +266,7 @@
   //
   // A published date the user deleted does come back on a re-fetch. That's the
   // honest reading of "fetch the published list", and the confirm text says so.
-  function mergeFetchedHolidays(existing, fetched) {
+  export function mergeFetchedHolidays(existing, fetched) {
     const out = {};
     const before = existing && typeof existing === "object" ? existing : {};
     const manualDates = Object.keys(before).filter((d) => (before[d] || {}).source === "manual");
@@ -293,7 +294,7 @@
   // the computed rules first, because the alternative — starting from an empty
   // list — would silently drop every real holiday the moment someone added one
   // date of their own.
-  function holidayYearForEditing(year, store) {
+  export function holidayYearForEditing(year, store) {
     const days = holidaysForYear(year, store);
     const out = {};
     Object.keys(days).filter(isHolidayDateKey).forEach((date) => {

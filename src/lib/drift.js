@@ -19,7 +19,7 @@
   // date was not the entry's amount", so both count as evidence — a bill the
   // user keeps hand-editing upward has drifted just as surely as one they keep
   // reconciling upward.
-  const driftActualOf = (ov) => {
+  export const driftActualOf = (ov) => {
     if (!ov || ov.skipped) return void 0;
     if (ov.actualAmount !== void 0) return ov.actualAmount;
     if (ov.amount !== void 0) return ov.amount;
@@ -28,8 +28,8 @@
   // Override keys are `${entryId}-${year}-${month}-${day}`, and an entry id can
   // itself contain a dash, so the tail is matched rather than the whole key
   // split on "-".
-  const DRIFT_KEY_TAIL = /^(\d{4})-(\d{1,2})-(\d{1,2})$/;
-  function driftSamplesFor(entry, overridesByYr) {
+  export const DRIFT_KEY_TAIL = /^(\d{4})-(\d{1,2})-(\d{1,2})$/;
+  export function driftSamplesFor(entry, overridesByYr) {
     const out = [];
     const prefix = entry.id + "-";
     Object.keys(overridesByYr || {}).forEach((year) => {
@@ -49,13 +49,13 @@
   // The middle figure, not the average: one forgotten annual top-up or a
   // double payment should not drag the suggestion with it. An even-length run
   // takes the mean of the middle two, rounded to the cent.
-  function driftMedian(values) {
+  export function driftMedian(values) {
     if (!values.length) return 0;
     const v = [...values].sort((a, b) => a - b);
     const mid = v.length >> 1;
     return v.length % 2 ? v[mid] : Math.round((v[mid - 1] + v[mid]) / 2);
   }
-  const DRIFT_DEFAULTS = {
+  export const DRIFT_DEFAULTS = {
     // Three payments is the fewest that can show a pattern rather than a
     // coincidence.
     minSamples: 3,
@@ -74,7 +74,7 @@
   };
   // One entry's finding, or null when it has not drifted. Exposed separately
   // so the reasoning is testable a case at a time.
-  function driftForEntry(entry, overridesByYr, opts = {}) {
+  export function driftForEntry(entry, overridesByYr, opts = {}) {
     const o = { ...DRIFT_DEFAULTS, ...opts };
     // A one-time entry has no plan to drift from, and a zero amount has no
     // percentage to be off by.
@@ -129,7 +129,7 @@
   // rather than the percentage: a mortgage $90 out matters more than a
   // subscription 40% out at $4, and the list exists to be acted on from the
   // top.
-  function findAmountDrift(entries, overridesByYr, opts = {}) {
+  export function findAmountDrift(entries, overridesByYr, opts = {}) {
     return (entries || [])
       .map((e) => driftForEntry(e, overridesByYr, opts))
       .filter(Boolean)

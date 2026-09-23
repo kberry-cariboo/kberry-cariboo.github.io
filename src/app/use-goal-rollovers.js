@@ -1,6 +1,10 @@
+import { useEffect } from "../lib/runtime.js";
+import { todayStr } from "../lib/dates.js";
+import { applyGoalRollovers, planGoalRollovers } from "../lib/sinking.js";
+import { logDesc } from "./use-budget-actions.js";
   // Rolls repeating goals (sinking funds) into their next cycle when their date
   // arrives. Moved out of App as is.
-  function useGoalRollovers({ goals, entries, setGoals, setEntries, logActivity }) {
+  export function useGoalRollovers({ goals, entries, setGoals, setEntries, logActivity }) {
     // A repeating goal is a sinking fund: when its date arrives the money is
     // spent and the next cycle begins. Nothing else moves it along, so it is
     // rolled here, on load and whenever goals or entries change.

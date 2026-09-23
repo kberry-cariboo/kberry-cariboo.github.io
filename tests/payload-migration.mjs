@@ -25,6 +25,7 @@
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { loadSrc } from './load-src.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const src = readFileSync(join(ROOT, 'src/lib/migrate.js'), 'utf8');
@@ -36,13 +37,9 @@ const runtime = readFileSync(join(ROOT, 'src/lib/runtime.js'), 'utf8');
 // back what the test asserts against. Deliberately the real source rather than a
 // copy: a migration step added to migrate.js and not to BY_VERSION below should
 // fail here, not pass against a stale duplicate.
-const load = new Function('React', 'localStorage', `
-  ${runtime}
-  const localDateStr = () => '2026-01-01';
-  const moveEntryAttachmentsToOverrides = (e, o) => ({ entries: e, overridesByYr: o, moved: false });
-  ${src}
-  return { migrateHouseholdPayload, SCHEMA_VERSION };
-`);
+// The source is ES modules; loadSrc bundles these (and what they import) and
+// runs them against the stand-ins passed here.
+const load = (_React, localStorage) => loadSrc(['src/lib/migrate.js'], { localStorage });
 const noHook = () => { throw new Error('payload migration must not need React'); };
 // migrate.js runs migrateData() at module scope. It has nothing to do here, but
 // it needs somewhere to look: an empty store makes it take the fresh-install

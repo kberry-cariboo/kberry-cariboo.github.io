@@ -16,6 +16,7 @@
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { loadSrc } from './load-src.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (p) => readFileSync(join(ROOT, p), 'utf8');
@@ -26,19 +27,9 @@ const read = (p) => readFileSync(join(ROOT, p), 'utf8');
 // MONTH_DAYS/WEEKDAYS/MONTHS live in app-data.js, which pulls React; they are
 // plain tables, so they are restated rather than dragging the UI in.
 const noHook = () => { throw new Error('the schedule engine must not need React'); };
-const load = new Function('React', 'localStorage', 'window', `
-  ${read('src/lib/runtime.js')}
-  ${read('src/lib/migrate.js')}
-  ${read('src/lib/holidays.js')}
-  const MONTH_DAYS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-  const WEEKDAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-  const MONTHS = ["January","February","March","April","May","June","July",
-                  "August","September","October","November","December"];
-  ${read('src/lib/format.js')}
-  ${read('src/lib/dates.js')}
-  return { expandEntries, nthWeekdayInMonth, priorBankingDay, isPayrollDeposit,
-           isLeapYear, daysInMonth, localDateStr, computeFlow, getMonthSummaries, monthlyEquivalent, buildYearFlows };
-`);
+// The source is ES modules; loadSrc bundles these (and what they import) and
+// runs them against the stand-ins passed here.
+const load = (React, localStorage, window) => loadSrc(['src/lib/dates.js'], { React, localStorage, window });
 const store = new Map();
 const localStorage = {
   getItem: (k) => (store.has(k) ? store.get(k) : null),

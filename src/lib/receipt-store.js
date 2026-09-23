@@ -14,10 +14,10 @@
   // Everything here is best-effort and never throws: a browser without
   // IndexedDB (or a private window that refuses it) keeps working, with images
   // held in memory for the session and fetched from the server again next time.
-  const RECEIPT_DB = "cf-receipts";
-  const RECEIPT_STORE = "receipts";
-  let _receiptDb = null;
-  function receiptDb() {
+  export const RECEIPT_DB = "cf-receipts";
+  export const RECEIPT_STORE = "receipts";
+  export let _receiptDb = null;
+  export function receiptDb() {
     if (_receiptDb) return _receiptDb;
     _receiptDb = new Promise((resolve, reject) => {
       try {
@@ -37,7 +37,7 @@
   }
   // One transaction, as a promise of `fn`'s request result (or null on any
   // failure along the way).
-  async function receiptTx(mode, fn) {
+  export async function receiptTx(mode, fn) {
     const db = await receiptDb();
     if (!db) return null;
     return new Promise((resolve) => {
@@ -52,7 +52,7 @@
     });
   }
   // { ownerKey: { dataUrl, sig } } for everything held here.
-  async function receiptStoreAll() {
+  export async function receiptStoreAll() {
     const db = await receiptDb();
     if (!db) return {};
     return new Promise((resolve) => {
@@ -73,13 +73,13 @@
       }
     });
   }
-  const receiptStorePut = (key, rec) => receiptTx("readwrite", (s) => s.put(rec, key));
-  const receiptStoreDelete = (key) => receiptTx("readwrite", (s) => s.delete(key));
-  const receiptStoreClear = () => receiptTx("readwrite", (s) => s.clear());
+  export const receiptStorePut = (key, rec) => receiptTx("readwrite", (s) => s.put(rec, key));
+  export const receiptStoreDelete = (key) => receiptTx("readwrite", (s) => s.delete(key));
+  export const receiptStoreClear = () => receiptTx("readwrite", (s) => s.clear());
   // Hex SHA-256 of a data URL's bytes — the same digest the server stores
   // (encode(sha256(data), 'hex')). Null where SubtleCrypto is unavailable
   // (a plain-http origin), which only costs a re-fetch.
-  async function receiptSig(dataUrl) {
+  export async function receiptSig(dataUrl) {
     try {
       const m = /^data:[^;,]+;base64,(.+)$/.exec(dataUrl || "");
       if (!m || !(crypto && crypto.subtle)) return null;

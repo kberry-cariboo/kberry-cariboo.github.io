@@ -1,12 +1,15 @@
+import { __spreadProps, __spreadValues, genId } from "./runtime.js";
+import { localDateStr } from "./dates.js";
+import { moveEntryAttachmentsToOverrides } from "./app-data.js";
   // Extracted from app-data.js (round-9 AR4 remainder) — pure code motion.
   // Defined here (not format.js) because the schema v8 migration below needs
   // them at module-load time — migrate.js runs before format.js in the
   // concatenation order, and a `const` in a later file isn't hoisted.
-  const dollarsToCents = (x) => {
+  export const dollarsToCents = (x) => {
     const n = Number(x);
     return isFinite(n) ? Math.round(n * 100) : 0;
   };
-  const centsToDollars = (c) => {
+  export const centsToDollars = (c) => {
     const n = Number(c);
     return isFinite(n) ? n / 100 : 0;
   };
@@ -31,9 +34,9 @@
   // step below is what creates it, and because this file has to be readable on
   // its own by tests/payload-migration.mjs, which evaluates it without the
   // rest of the bundle around it.
-  const DEFAULT_ACCOUNT_ID = "acct-main";
-  const DEFAULT_ACCOUNT_NAME = "Chequing";
-  function migrateHouseholdPayload(d, from) {
+  export const DEFAULT_ACCOUNT_ID = "acct-main";
+  export const DEFAULT_ACCOUNT_NAME = "Chequing";
+  export function migrateHouseholdPayload(d, from) {
     if (!d) return d;
     const at = Number(from) || 0;
     const toCents = (v) => typeof v === "number" && isFinite(v) ? dollarsToCents(v) : v;
@@ -121,8 +124,8 @@
     // to hold on to.
     return out;
   }
-  const SCHEMA_VERSION = 10;
-  function migrateData() {
+  export const SCHEMA_VERSION = 10;
+  export function migrateData() {
     let storedVersion = 0;
     try {
       storedVersion = parseInt(localStorage.getItem("cf_schema_version") || "0");

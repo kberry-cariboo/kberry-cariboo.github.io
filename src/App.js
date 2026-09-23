@@ -1,4 +1,38 @@
-  function App() {
+import { __spreadProps, __spreadValues, genId, safeStorage, useCallback, useEffect, useMemo, useRef, useState } from "./lib/runtime.js";
+import { todayStr } from "./lib/dates.js";
+import { getBiometricCredId } from "./lib/biometric.js";
+import { ACTIVITY_LIMIT, sbChangePassword, useHousehold, useHouseholdData, useHouseholdState, useMemberPrefs } from "./lib/household-sync.js";
+import { APP_VERSION, CategoriesContext, DARK, HouseholdContext, LIGHT, LOGO_SRC, YEAR_COLORS, haptic, lowBalanceEpisodes, prefersReducedMotion, useLS, useRovingTabs, viewName } from "./lib/app-data.js";
+import { aiProbeProxy } from "./lib/ai.js";
+import { MobileYearBadge } from "./components/primitives.js";
+import { AddEntryModal } from "./components/forms.js";
+import { EntriesView } from "./components/entries.js";
+import { AccountFilter, BottomNav, HouseholdOnboardingView, Icon, NoticeStack, SyncDivergenceModal } from "./components/misc-ui.js";
+import { BudgetView } from "./components/budget.js";
+import { AIInsightsView, ForecastView } from "./components/forecast-plan.js";
+import { PlanView } from "./components/plan.js";
+import { DashboardView } from "./components/dashboard.js";
+import { HelpView } from "./components/help.js";
+import { AlertsPanel, ErrorBoundary, SettingsView } from "./components/settings.js";
+import { BudgetSubTabs, FeedbackToast, LockScreen, LoginView, PlanSubTabs, SelfTestView, UndoToast, toast } from "./components/auth-misc.js";
+import { LOCK_KEY, useIdleLock } from "./app/use-idle-lock.js";
+import { useRoute } from "./app/use-route.js";
+import { useDialogFocus } from "./app/use-dialog-focus.js";
+import { useOnlineStatus } from "./app/use-online-status.js";
+import { usePullToRefresh } from "./app/use-pull-to-refresh.js";
+import { useInstallPrompt } from "./app/use-install-prompt.js";
+import { useFlows } from "./app/use-flows.js";
+import { useKeyboardShortcuts } from "./app/use-keyboard-shortcuts.js";
+import { useNotifications } from "./app/use-notifications.js";
+import { useBackupNudge } from "./app/use-backup-nudge.js";
+import { useThemeAndFormat } from "./app/use-theme-and-format.js";
+import { useGlobalSearch } from "./app/use-global-search.js";
+import { useUndoStack } from "./app/use-undo-stack.js";
+import { useLowBalance } from "./app/use-low-balance.js";
+import { useBudgetActions } from "./app/use-budget-actions.js";
+import { useGoalRollovers } from "./app/use-goal-rollovers.js";
+import { useAppNotices } from "./app/use-app-notices.js";
+  export function App() {
     var _a;
     if (typeof location !== "undefined" && location.search.includes("selftest")) return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(SelfTestView, null));
     const {
@@ -798,5 +832,5 @@
     // is, reachable from any view rather than from two particular ones.
     /* @__PURE__ */ React.createElement("span", { className: "build-version-tag" }, "Build ", APP_VERSION)))));
   }
-  const root = ReactDOM.createRoot(document.getElementById("root"));
+  export const root = ReactDOM.createRoot(document.getElementById("root"));
   root.render(React.createElement(App, null));

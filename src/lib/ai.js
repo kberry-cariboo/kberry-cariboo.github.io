@@ -1,3 +1,4 @@
+import { supabaseClient } from "./supabase-config.js";
   // Single call path to Claude for every AI feature in the app.
   //
   // Two transports, in preference order:
@@ -15,15 +16,15 @@
   // Transport 2 necessarily exposes the key to anything that can run script on
   // the page, which is why 1 exists and is tried first. Which one served a
   // given call comes back as `via` so the UI can say so.
-  const AI_MODEL = "claude-opus-5";
-  const AI_PROXY_FN = "ai-proxy";
+  export const AI_MODEL = "claude-opus-5";
+  export const AI_PROXY_FN = "ai-proxy";
   // Probed once per page load and remembered here: null = not yet asked,
   // true/false = the answer. A missing function is a 404 on every call, so
   // there's no point re-probing it per feature.
-  let _aiProxyAvailable = null;
-  let _aiProxyProbe = null;
+  export let _aiProxyAvailable = null;
+  export let _aiProxyProbe = null;
 
-  function aiSignedIn() {
+  export function aiSignedIn() {
     return !!(supabaseClient && supabaseClient.auth);
   }
 
@@ -31,7 +32,7 @@
   // spending any Anthropic tokens — the function answers `{ping:true}` from
   // its own process. Resolves false (never throws) so callers can treat it as
   // a plain capability flag.
-  async function aiProbeProxy() {
+  export async function aiProbeProxy() {
     if (_aiProxyAvailable !== null) return _aiProxyAvailable;
     if (_aiProxyProbe) return _aiProxyProbe;
     // Not signed in is not an answer about the function — it's an answer about
@@ -70,11 +71,11 @@
 
   // True when *some* transport can serve a call. The UI uses this to decide
   // whether to nag for an API key: with the proxy deployed, no key is needed.
-  function aiCanRun(apiKey) {
+  export function aiCanRun(apiKey) {
     return !!(apiKey && apiKey.trim()) || _aiProxyAvailable === true;
   }
 
-  function aiErrorMessage(e) {
+  export function aiErrorMessage(e) {
     const msg = (e && e.message) || "Unknown error";
     if (e && e.code === "no_transport") {
       return "No AI access configured. Add an Anthropic API key in Settings → General, or deploy the ai-proxy Edge Function.";
@@ -91,7 +92,7 @@
     return msg;
   }
 
-  function aiFail(code, message) {
+  export function aiFail(code, message) {
     const err = new Error(message);
     err.code = code;
     return err;
@@ -101,7 +102,7 @@
   // caller would otherwise repeat: a refusal is a successful HTTP 200 with an
   // empty `content`, and a truncated reply is only visible via stop_reason —
   // both look like "it worked" if you go straight for content[0].text.
-  function aiReadResponse(body, schema) {
+  export function aiReadResponse(body, schema) {
     if (!body || !Array.isArray(body.content)) {
       throw aiFail("bad_response", "The AI service returned an unexpected response.");
     }
@@ -138,7 +139,7 @@
   // and disabling it is only permitted at effort `high` or below; `effort` is
   // the intended dial for cost, and a lower effort is both cheaper and safer
   // than turning thinking off.
-  function aiBuildRequest({ system, messages, schema, maxTokens = 2048, effort = "high" }) {
+  export function aiBuildRequest({ system, messages, schema, maxTokens = 2048, effort = "high" }) {
     const outputConfig = { effort };
     if (schema) outputConfig.format = { type: "json_schema", schema };
     return {
@@ -154,7 +155,7 @@
   // Splits a data: URL into the shape the Messages API wants for an image
   // block. Receipts are stored as compressed data URLs (see
   // compressReceiptImage), so this is the only conversion needed to send one.
-  function aiImageBlockFromDataUrl(dataUrl) {
+  export function aiImageBlockFromDataUrl(dataUrl) {
     const m = /^data:(image\/[a-zA-Z+]+);base64,(.+)$/.exec(String(dataUrl || ""));
     if (!m) return null;
     return { type: "image", source: { type: "base64", media_type: m[1], data: m[2] } };
@@ -164,7 +165,7 @@
   // returns values for the caller to prefill a form with rather than writing
   // anything: OCR of a crumpled receipt is a guess, and the user is already in
   // an edit dialog where checking three fields costs nothing.
-  async function aiExtractReceipt({ dataUrl, categories = [], apiKey = "" }) {
+  export async function aiExtractReceipt({ dataUrl, categories = [], apiKey = "" }) {
     const image = aiImageBlockFromDataUrl(dataUrl);
     if (!image) throw aiFail("bad_image", "That attachment isn't an image this can read.");
     const properties = {
@@ -201,7 +202,7 @@
   // Returns { data, text, truncated, usage, via } where `data` is the parsed
   // object when a schema was supplied. Throws an Error carrying a `.code` —
   // pass it through aiErrorMessage() for something worth showing a user.
-  async function callClaude({ system, messages, schema, maxTokens = 2048, effort = "high", apiKey = "" }) {
+  export async function callClaude({ system, messages, schema, maxTokens = 2048, effort = "high", apiKey = "" }) {
     const request = aiBuildRequest({ system, messages, schema, maxTokens, effort });
     const proxyReady = await aiProbeProxy();
     if (proxyReady) {

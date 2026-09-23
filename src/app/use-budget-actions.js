@@ -1,6 +1,12 @@
+import { __spreadProps, __spreadValues, genId, useCallback } from "../lib/runtime.js";
+import { remapOccurrenceKeys, signedAmount, splitEntryEditFromCurrentMonth } from "../lib/dates.js";
+import { applyYearRollforward, planYearRollforward, yearRollforwardParts } from "../lib/year-copy.js";
+import { fmt } from "../lib/format.js";
+import { MONTHS } from "../lib/app-data.js";
+import { toast } from "../components/auth-misc.js";
   // A description short enough for a log line, without cutting a word in half
   // when it already fits.
-  const logDesc = (d) => {
+  export const logDesc = (d) => {
     const t = String(d == null ? "" : d).trim() || "Entry";
     return t.length > 40 ? t.slice(0, 39) + "\u2026" : t;
   };
@@ -8,7 +14,7 @@
   // editing entries (split at the current month), single-date overrides,
   // marking paid, accepting a drift fix, rolling into next year, and deleting
   // with undo. Each logs to the activity feed. Moved out of App as is.
-  function useBudgetActions({ entries, setEntries, overridesByYr, setOverridesByYr, setCompleted, setGoals, deletedCopyIds, setDeletedCopyIds, budgetTargets, setBudgetTargets, yearConfigs, setYearConfigs, activeYear, setActiveYear, setBudgetMonth, sessionUser, logActivity, pushUndo }) {
+  export function useBudgetActions({ entries, setEntries, overridesByYr, setOverridesByYr, setCompleted, setGoals, deletedCopyIds, setDeletedCopyIds, budgetTargets, setBudgetTargets, yearConfigs, setYearConfigs, activeYear, setActiveYear, setBudgetMonth, sessionUser, logActivity, pushUndo }) {
     // Deleting an entry, expressed in those terms. The copy-provenance
     // bookkeeping is part of the delete (so a deleted copy doesn't come back
     // on the next year roll-forward) and part of the undo, so both live here

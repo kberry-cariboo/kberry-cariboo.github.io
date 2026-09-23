@@ -1,9 +1,11 @@
+import { useEffect, useLayoutEffect, useState } from "../lib/runtime.js";
+import { setMoneyFormat } from "../lib/format.js";
   // The two pieces of global presentation state the app's synchronous helpers
   // read: the theme attribute on <html> (plus the browser's theme-color), and
   // the money format fmt() uses — with the one forced re-render a currency
   // change needs, since fmt()'s output changing is invisible to React. Moved
   // out of App as is.
-  function useThemeAndFormat({ darkMode, sessionUser, locale, currency }) {
+  export function useThemeAndFormat({ darkMode, sessionUser, locale, currency }) {
     // fmt() reads module state, so React has no idea its output changed when
     // the currency does. This is the one re-render that has to be forced.
     const [, setMoneyTick] = useState(0);

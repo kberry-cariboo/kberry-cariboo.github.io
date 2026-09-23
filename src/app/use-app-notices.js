@@ -1,6 +1,10 @@
+import { useMemo } from "../lib/runtime.js";
+import { fmt } from "../lib/format.js";
+import { categoryAnomalies, categoryAnomalyFindings } from "../lib/anomaly.js";
+import { MONTHS, computeSpendingInsight, debtStrategyFinding, spendingInsightFinding } from "../lib/app-data.js";
   // What the app has to say: findings (what it has worked out) and notices
   // (the banners at the top). Moved out of App as is.
-  function useAppNotices({ activeFlow, activeYear, debtData, debtExtra, canWrite, showLowBanner, tab, navLowInfo, alertThresh, lowBannerKey, setLowBannerDismissed, setTab, showBackupNudge, dismissBackup, entries, setEntries, yearConfigs, setActiveYear, setYouSub }) {
+  export function useAppNotices({ activeFlow, activeYear, debtData, debtExtra, canWrite, showLowBanner, tab, navLowInfo, alertThresh, lowBannerKey, setLowBannerDismissed, setTab, showBackupNudge, dismissBackup, entries, setEntries, yearConfigs, setActiveYear, setYouSub }) {
     // Findings, as opposed to warnings: the things the app has worked out that
     // you would want told. The Alerts centre lists every one, so it is the
     // place you can go to see everything the app has to say — the screens that

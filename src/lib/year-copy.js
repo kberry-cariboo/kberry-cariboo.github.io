@@ -1,3 +1,5 @@
+import { __spreadProps, __spreadValues, genId } from "./runtime.js";
+import { daysInMonth, expandEntries } from "./dates.js";
   // ── Rolling one budget year forward into the next ────────────────────────
   //
   // Three doors lead here — Settings "+ Add <year>", Settings "Copy → <year>",
@@ -44,7 +46,7 @@
   // source's original value (a stale copy), never when the user has set it to
   // something of their own — so editing a copy through the entry form keeps
   // that edit, and a copy with its own occurrence edit is skipped entirely.
-  function syncSingleEntriesToYear(entries, fromYear, toYear, fromOvs = {}, toOvs = {}, deletedCopyIds = {}) {
+  export function syncSingleEntriesToYear(entries, fromYear, toYear, fromOvs = {}, toOvs = {}, deletedCopyIds = {}) {
     const srcs = [];
     const tgts = [];
     entries.forEach((e) => {
@@ -132,7 +134,7 @@
   // ownership marker: user-stamped target overrides are never touched, while
   // sync-written ones may be refreshed on a later run so source-year edits
   // made after the target year was created still flow forward.
-  function copyOccurrenceOverridesToYear(entries, fromOvs, fromYear, toYear, existingToOvs = {}) {
+  export function copyOccurrenceOverridesToYear(entries, fromOvs, fromYear, toYear, existingToOvs = {}) {
     const valid = new Set(expandEntries(entries, toYear, {}).map((ev) => ev.id));
     const added = {};
     Object.keys(fromOvs || {}).forEach((key) => {
@@ -165,7 +167,7 @@
   // source amount. Overrides are only written where the mirrored amount
   // differs from what the occurrence would show anyway; user-made overrides
   // in the target year (stamped _savedAt) are never touched.
-  function mirrorRecurringAmountsToYear(entries, fromOvs, fromYear, toYear, existingToOvs = {}, plannedAdds = {}) {
+  export function mirrorRecurringAmountsToYear(entries, fromOvs, fromYear, toYear, existingToOvs = {}, plannedAdds = {}) {
     const recurring = entries.filter((e) => e.repeats);
     if (!recurring.length) return {};
     // Nth-occurrence alignment only holds if both years expand to the same
@@ -244,7 +246,7 @@
   // message from. `changed` is false when the target year already matches, which
   // is the "nothing to do" case the Copy button reports rather than claiming a
   // successful copy.
-  function planYearRollforward({ entries, overridesByYr = {}, budgetTargets = {}, fromYear, toYear, deletedCopyIds = {} }) {
+  export function planYearRollforward({ entries, overridesByYr = {}, budgetTargets = {}, fromYear, toYear, deletedCopyIds = {} }) {
     // Budget targets: fill gaps only. A month already set in the target year is
     // the user's number and is never replaced by the source year's.
     const targetAdds = {};
@@ -293,7 +295,7 @@
   // Writes a plan through the setters. Functional updates throughout: the plan
   // was computed from a render's props, but a household sync can land between
   // the click and the write, and merging into `prev` keeps whatever arrived.
-  function applyYearRollforward(plan, toYear, { setEntries, setOverridesByYr, setBudgetTargets }) {
+  export function applyYearRollforward(plan, toYear, { setEntries, setOverridesByYr, setBudgetTargets }) {
     if (plan.clones.length || plan.updates.length) {
       setEntries((prev) => [
         ...prev.map((e) => {
@@ -315,7 +317,7 @@
   }
   // The shared sentence fragments, so all three doors describe the same work the
   // same way.
-  function yearRollforwardParts(counts, fromYear) {
+  export function yearRollforwardParts(counts, fromYear) {
     const parts = [];
     if (counts.targets) parts.push(`${counts.targets} budget target${counts.targets === 1 ? "" : "s"} added`);
     if (counts.clones) parts.push(`${counts.clones} one-time entr${counts.clones === 1 ? "y" : "ies"} copied`);

@@ -1,11 +1,25 @@
+import { __spreadProps, __spreadValues, genId, useEffect, useMemo, useState } from "../lib/runtime.js";
+import { centsToDollars, dollarsToCents } from "../lib/migrate.js";
+import { depositShiftNote, getCurrentBalance, getMonthSummaries, monthlyEquivalent, signedAmount, startOfToday, todayStr } from "../lib/dates.js";
+import { findAmountDrift } from "../lib/drift.js";
+import { netWorthSummary } from "../lib/networth.js";
+import { categoryDetail } from "../lib/cat-detail.js";
+import { ExportBar, downloadCSV, fmt, fmtAxisK, printView, roundMoney } from "../lib/format.js";
+import { Area, AreaChart, Bar, BarChart, CAT_PALETTE, CartesianGrid, Cell, Legend, Line, LineChart, MONTHS, Pie, PieChart, RUNWAY_DAYS, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis, haptic, notifyStorageWriteFailure, railTone, useIsMobile } from "../lib/app-data.js";
+import { aiCanRun, aiErrorMessage, callClaude } from "../lib/ai.js";
+import { Card, CatChip, CategoryDetailSheet, ChartTip, ChartToggle, HelpTip, LedgerRow, PillToggle, SectionTitle, SheetHandle, Sparkline, getCatColor } from "./primitives.js";
+import { Icon, RECONCILE_DESC, ReconcileModal, lastReconciledDate, reconcileCategory } from "./misc-ui.js";
+import { OnboardingWizard } from "./forecast-plan.js";
+import { DASH_AXIS_TICK_X, DASH_AXIS_TICK_Y, projectPayoffBalances } from "./plan-dashboard-shared.js";
+import { toast } from "./auth-misc.js";
   // Hoisted out of DashboardView's render body — an inline component
   // definition creates a new type each render and forces React to remount.
-  const GlanceTile = ({ title, children }) => /* @__PURE__ */ React.createElement("div", { className: "glance-tile" }, /* @__PURE__ */ React.createElement("div", { className: "glance-tile-title" }, title), children);
+  export const GlanceTile = ({ title, children }) => /* @__PURE__ */ React.createElement("div", { className: "glance-tile" }, /* @__PURE__ */ React.createElement("div", { className: "glance-tile-title" }, title), children);
   // "What changed this month" — the smallest useful AI surface in the app.
   // Everything it reports is computed here from the same flow the rest of the
   // dashboard draws; the model is only asked to say which of the differences
   // matter and why, never to do the arithmetic.
-  function MonthlyBriefCard({ flow, activeYear, categories = [], apiKey = "", isOffline = false }) {
+  export function MonthlyBriefCard({ flow, activeYear, categories = [], apiKey = "", isOffline = false }) {
     const [brief, setBrief] = useState(null);
     const [busy, setBusy] = useState(false);
     const [err, setErr] = useState("");
@@ -114,7 +128,7 @@
       ) : /* @__PURE__ */ React.createElement("div", { className: "txl" }, "Compare ", MONTHS[thisMonth], " with ", MONTHS[delta.prevMonth], " and have Claude pick out what moved.")
     );
   }
-  function DashboardView({ apiKey = "", isOffline = false, flow, openBal, yearFlows, viewFlows = null, yearConfigs, alertThreshold, activeYear, budgetTargets = {}, categories = [], categoryColors = {}, users = [], sessionUser = null, entries = [], toggleComplete = () => {
+  export function DashboardView({ apiKey = "", isOffline = false, flow, openBal, yearFlows, viewFlows = null, yearConfigs, alertThreshold, activeYear, budgetTargets = {}, categories = [], categoryColors = {}, users = [], sessionUser = null, entries = [], toggleComplete = () => {
   }, setYearConfigs = () => {
   }, addEntry = () => {
   }, setTab = () => {

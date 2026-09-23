@@ -1,8 +1,11 @@
+import { safeStorage, useEffect, useState } from "../lib/runtime.js";
+import { isBiometricAvailable } from "../lib/biometric.js";
+import { useIsCoarsePointer, useLS } from "../lib/app-data.js";
   // Idle-lock and launch-lock, with the biometric capability the lock screen
   // offers. Moved out of App as is; LOCK_KEY is module-level so the lock
   // screen's unlock (still rendered by App) stamps the same marker.
-  const LOCK_KEY = "cf_last_active_at";
-  function useIdleLock({ sessionUser, session, authLoading }) {
+  export const LOCK_KEY = "cf_last_active_at";
+  export function useIdleLock({ sessionUser, session, authLoading }) {
     const [lockTimeout, setLockTimeout] = useLS("cf_lock_timeout", 15);
     // Biometric setup is only offered on touch devices; the menu shortcut also
     // disappears once a credential is registered (managed from Settings after that).

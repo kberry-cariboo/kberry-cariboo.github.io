@@ -19,7 +19,7 @@
   // two different entries can share a description ("Insurance" for the car and
   // the house) and should not be added together, while one entry's occurrences
   // should be, even if a per-date override renamed one of them.
-  function categoryDetail(flow, category) {
+  export function categoryDetail(flow, category) {
     const events = (Array.isArray(flow) ? flow : []).filter(
       (e) => e && e.type === "expense" && (e.category || "") === category
     );

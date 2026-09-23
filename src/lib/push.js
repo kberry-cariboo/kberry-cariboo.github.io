@@ -1,3 +1,6 @@
+import { VAPID_PUBLIC_KEY, supabaseClient } from "./supabase-config.js";
+import { humanShortDate } from "./dates.js";
+import { fmt } from "./format.js";
   // Notifications — foreground (shown by the page while it's open) and
   // background Web Push (delivered by the browser's push service with the app
   // closed, rendered by Android as an ordinary system notification).
@@ -7,10 +10,10 @@
   // constructor at all (it throws "Illegal constructor"), so the constructor
   // form only ever worked on desktop. registration.showNotification() works on
   // both.
-  const NOTIFY_HORIZON_DAYS = 90;
-  const DEFAULT_NOTIFY_HOUR = 8;
+  export const NOTIFY_HORIZON_DAYS = 90;
+  export const DEFAULT_NOTIFY_HOUR = 8;
 
-  function pushSupported() {
+  export function pushSupported() {
     try {
       return "serviceWorker" in navigator && "PushManager" in window && typeof Notification !== "undefined";
     } catch (e) {
@@ -20,7 +23,7 @@
 
   // Base64url (what VAPID keys and the spec's examples use) -> Uint8Array,
   // which is the only form applicationServerKey accepts.
-  function urlBase64ToUint8Array(base64String) {
+  export function urlBase64ToUint8Array(base64String) {
     const padding = "=".repeat((4 - base64String.length % 4) % 4);
     const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
     const raw = atob(base64);
@@ -34,7 +37,7 @@
   // mistyped or half-pasted key into a clear message in Settings, instead of
   // an opaque "applicationServerKey is not valid" from deep inside subscribe()
   // — or worse, a key that decodes to *something* and fails only at send time.
-  function vapidKeyLooksValid(key) {
+  export function vapidKeyLooksValid(key) {
     if (!key) return false;
     if (!/^[A-Za-z0-9\-_]+=*$/.test(key)) return false;
     try {
@@ -44,7 +47,7 @@
     }
   }
 
-  function bufferToBase64Url(buf) {
+  export function bufferToBase64Url(buf) {
     const bytes = new Uint8Array(buf);
     let bin = "";
     for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
@@ -53,7 +56,7 @@
 
   // navigator.serviceWorker.ready never rejects and never resolves if no
   // worker is registered, so every caller needs a timeout or it hangs forever.
-  function swRegistration(timeoutMs = 8e3) {
+  export function swRegistration(timeoutMs = 8e3) {
     if (!("serviceWorker" in navigator)) return Promise.resolve(null);
     return Promise.race([
       navigator.serviceWorker.ready,
@@ -61,7 +64,7 @@
     ]).catch(() => null);
   }
 
-  async function showLocalNotification(title, opts) {
+  export async function showLocalNotification(title, opts) {
     try {
       if (typeof Notification === "undefined" || Notification.permission !== "granted") return false;
       const reg = await swRegistration();
@@ -73,7 +76,7 @@
     }
   }
 
-  async function requestNotificationPermission() {
+  export async function requestNotificationPermission() {
     if (typeof Notification === "undefined") return "unsupported";
     // Trust the resolved value rather than re-reading Notification.permission —
     // the property isn't always updated in the same tick (see the notifPerm
@@ -81,7 +84,7 @@
     return await Notification.requestPermission();
   }
 
-  function deviceTimeZone() {
+  export function deviceTimeZone() {
     try {
       return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
     } catch (e) {
@@ -91,7 +94,7 @@
 
   // Subscribe this device/browser to Web Push and record it server-side, so the
   // Edge Function has somewhere to send to. Returns { ok, reason }.
-  async function subscribeToPush(notifyHour = DEFAULT_NOTIFY_HOUR) {
+  export async function subscribeToPush(notifyHour = DEFAULT_NOTIFY_HOUR) {
     if (!pushSupported()) return { ok: false, reason: "unsupported" };
     if (!VAPID_PUBLIC_KEY) return { ok: false, reason: "no-vapid-key" };
     if (!vapidKeyLooksValid(VAPID_PUBLIC_KEY)) return { ok: false, reason: "bad-vapid-key" };
@@ -137,7 +140,7 @@
     return { ok: true, endpoint: json.endpoint };
   }
 
-  async function unsubscribeFromPush() {
+  export async function unsubscribeFromPush() {
     try {
       const reg = await swRegistration();
       if (!reg || !reg.pushManager) return;
@@ -158,7 +161,7 @@
   // Re-register the current subscription. Push services rotate endpoints, and
   // the `pushsubscriptionchange` event can't reach our RPCs (the worker has no
   // Supabase session), so the app repairs its own row on every launch instead.
-  async function refreshPushSubscription(notifyHour) {
+  export async function refreshPushSubscription(notifyHour) {
     if (!pushSupported()) return { ok: false, reason: "unsupported" };
     if (!VAPID_PUBLIC_KEY) return { ok: false, reason: "no-vapid-key" };
     if (!vapidKeyLooksValid(VAPID_PUBLIC_KEY)) return { ok: false, reason: "bad-vapid-key" };
@@ -169,7 +172,7 @@
     return await subscribeToPush(notifyHour);
   }
 
-  function ymd(d) {
+  export function ymd(d) {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   }
 
@@ -184,7 +187,7 @@
   // supabase/functions/send-notifications/index.ts) because it has to re-word
   // the message after dropping bills that were paid since the schedule was
   // published. Keep the two in step; a self-test pins the output of this one.
-  function billDigestMessage(items) {
+  export function billDigestMessage(items) {
     if (!items || !items.length) return null;
     if (items.length === 1) {
       return { title: `${items[0].desc} is due today`, body: fmt(items[0].cents) };
@@ -213,7 +216,7 @@
   // three months. The one thing that genuinely can't be precomputed is whether
   // a bill has since been marked paid — the Edge Function re-checks that
   // against completed_occurrences at send time.
-  function buildNotificationSchedule({ yearFlows = {}, completed = {}, alertThreshold = 0, horizonDays = NOTIFY_HORIZON_DAYS, now = /* @__PURE__ */ new Date() }) {
+  export function buildNotificationSchedule({ yearFlows = {}, completed = {}, alertThreshold = 0, horizonDays = NOTIFY_HORIZON_DAYS, now = /* @__PURE__ */ new Date() }) {
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const end = new Date(today);
     end.setDate(end.getDate() + horizonDays);
@@ -282,7 +285,7 @@
 
   // Replaces the household's whole schedule in one call — simpler and more
   // robust than diffing, since the rows are cheap and fully derived.
-  async function publishNotificationSchedule(rows) {
+  export async function publishNotificationSchedule(rows) {
     if (!supabaseClient) return { ok: false, reason: "no-supabase" };
     const { error } = await supabaseClient.rpc("save_notification_schedule", { p_rows: rows });
     if (error) return { ok: false, reason: error.message };

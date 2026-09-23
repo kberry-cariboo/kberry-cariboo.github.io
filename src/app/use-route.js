@@ -1,8 +1,10 @@
+import { safeStorage, useEffect, useRef, useState } from "../lib/runtime.js";
+import { LEGACY_FLOW_SUBS, ROUTE_FLOW_SUBS, parseTabHash, useLS, viewDocTitle } from "../lib/app-data.js";
   // Where the reader is: the tab, the Flow and Plan lenses, the Settings page,
   // and the hash route that mirrors them (Back/Forward, deep links, legacy
   // routes, the document title, scroll reset on navigation). Moved out of App
   // as is.
-  function useRoute() {
+  export function useRoute() {
     const [tab, setTab] = useState(() => {
       const fromHash = parseTabHash().tab;
       if (fromHash) return fromHash;

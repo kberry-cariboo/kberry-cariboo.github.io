@@ -1,3 +1,7 @@
+import { centsToDollars } from "./migrate.js";
+import { localDateStr, parseDate } from "./dates.js";
+import { Icon } from "../components/misc-ui.js";
+import { toast } from "../components/auth-misc.js";
   // Extracted from app-data.js (round-9 AR4 remainder) — pure code motion.
   // Money is stored as integer cents everywhere at rest (state, localStorage,
   // the cloud payload) — see migrate.js's schema v8 migration, which also
@@ -7,7 +11,7 @@
   // two coincide at every existing call site since those are all
   // post-arithmetic "fold" points (proration, splits, percentages) that can
   // land on a fractional cent.
-  const roundMoney = (n) => Math.round(Number(n) + Number.EPSILON);
+  export const roundMoney = (n) => Math.round(Number(n) + Number.EPSILON);
   // One negative-number convention app-wide: a minus sign, never parentheses
   // (parens + red was double-encoding, and mixed with signed amounts elsewhere).
   // `n` is cents.
@@ -21,7 +25,7 @@
   // at rest, so a 0-decimal currency (yen) or a 3-decimal one (dinar) would
   // need the storage model changed, not just the formatting — offering one
   // here would produce amounts that are quietly wrong by a factor of ten.
-  const CURRENCIES = [
+  export const CURRENCIES = [
     { code: "CAD", name: "Canadian dollar" },
     { code: "USD", name: "US dollar" },
     { code: "EUR", name: "Euro" },
@@ -44,21 +48,21 @@
   // short and described by what each one looks like rather than by country,
   // because that is the actual choice being made: someone in Ireland wanting
   // 1.234,56 should not have to know which locale tag produces it.
-  const NUMBER_LOCALES = [
+  export const NUMBER_LOCALES = [
     { code: "en-CA", name: "1,234.56  (comma / point)" },
     { code: "de-DE", name: "1.234,56  (point / comma)" },
     { code: "fr-FR", name: "1 234,56  (space / comma)" },
     { code: "en-IN", name: "1,23,456.78  (Indian grouping)" },
     { code: "de-CH", name: "1\u2019234.56  (apostrophe / point)" }
   ];
-  const DEFAULT_CURRENCY = "CAD";
-  const DEFAULT_LOCALE = "en-CA";
-  let _money = { locale: DEFAULT_LOCALE, currency: DEFAULT_CURRENCY, symbol: "$", nf: null };
+  export const DEFAULT_CURRENCY = "CAD";
+  export const DEFAULT_LOCALE = "en-CA";
+  export let _money = { locale: DEFAULT_LOCALE, currency: DEFAULT_CURRENCY, symbol: "$", nf: null };
   // The symbol on its own, which is what the app's own sign convention needs:
   // a leading minus, then the symbol, then the grouped number. Intl's
   // style:"currency" puts the sign wherever the locale wants it and would
   // give three different shapes across the app's tiles and tables.
-  function currencySymbol(locale, currency) {
+  export function currencySymbol(locale, currency) {
     try {
       const parts = new Intl.NumberFormat(locale, { style: "currency", currency, currencyDisplay: "narrowSymbol" }).formatToParts(0);
       const sym = parts.find((p) => p.type === "currency");
@@ -86,8 +90,8 @@
   // list is not a ledger — it lists entry *definitions*, whose start dates can
   // be years old and whose end dates are often in another year — so it passes
   // null and always shows the year.
-  let _dateFmt = { short: null, withYear: null };
-  function buildDateFormats(locale) {
+  export let _dateFmt = { short: null, withYear: null };
+  export function buildDateFormats(locale) {
     const mk = (opts) => {
       try {
         return new Intl.DateTimeFormat(locale, opts);
@@ -107,7 +111,7 @@
   // `d` is a Date or a YYYY-MM-DD string. `contextYear` is the year the
   // surrounding view is showing; the year is appended when the date is not in
   // it. Pass null to always append it.
-  function fmtDate(d, contextYear) {
+  export function fmtDate(d, contextYear) {
     const date = typeof d === "string" ? parseDate(d) : d;
     if (!date || isNaN(date)) return typeof d === "string" ? d : "\u2014";
     const showYear = contextYear === null || contextYear === void 0 ? true : date.getFullYear() !== Number(contextYear);
@@ -116,7 +120,7 @@
     // No Intl at all: the ISO date is wrong-looking but never ambiguous.
     return localDateStr(date);
   }
-  function setMoneyFormat(locale, currency) {
+  export function setMoneyFormat(locale, currency) {
     const loc = locale || DEFAULT_LOCALE;
     const cur = currency || DEFAULT_CURRENCY;
     if (_money.locale === loc && _money.currency === cur && _money.nf) return;
@@ -140,7 +144,7 @@
   // rather than formatting a number — the alert threshold, an opening balance,
   // a goal target. They were literal "$" characters, which is how a household
   // set to euros ends up typing into a box labelled with a dollar sign.
-  const moneySymbol = () => _money.symbol;
+  export const moneySymbol = () => _money.symbol;
   // One amount convention app-wide, and this is where it is written down.
   //
   //   A column that names the direction — the In and Out columns of Monthly
@@ -156,7 +160,7 @@
   // two sites built their own and so didn't follow this function's negative
   // convention (a minus, never parentheses) or the household's currency
   // symbol.
-  const fmt = (n, showSign = false) => {
+  export const fmt = (n, showSign = false) => {
     if (n === void 0 || n === null || isNaN(n)) return "\u2014";
     const d = Math.abs(centsToDollars(n));
     const abs = _money.nf ? _money.nf.format(d) : d.toFixed(2);
@@ -169,7 +173,7 @@
   // it a $15M axis tick reads "$15000k". (mini-recharts' own defaultFmt
   // already tiers this way; the charts pass this formatter instead, so it
   // needs to agree.)
-  const fmtAxisK = (v) => {
+  export const fmtAxisK = (v) => {
     const d = Math.abs(centsToDollars(v));
     const sign = (v < 0 ? "-" : "") + _money.symbol;
     // The zero line read "$0k" before — the suffix was unconditional.
@@ -194,14 +198,14 @@
   // household of one (where "by Ken" on every row is noise), or an id no
   // longer in the member list. Callers render nothing at all in that case
   // rather than "Unknown".
-  function memberName(userId, members, opts = {}) {
+  export function memberName(userId, members, opts = {}) {
     if (!userId || !Array.isArray(members) || members.length < 2 && !opts.always) return "";
     const m = members.find((x) => x && x.user_id === userId);
     if (!m) return "";
     if (opts.selfId && m.user_id === opts.selfId) return "you";
     return m.full_name || m.email || "";
   }
-  function downloadBlob(filename, blob) {
+  export function downloadBlob(filename, blob) {
     try {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -226,7 +230,7 @@
       return false;
     }
   }
-  function downloadCSV(filename, rows, headers) {
+  export function downloadCSV(filename, rows, headers) {
     const esc = (v) => {
       const s = v === null || v === void 0 ? "" : String(v);
       return s.includes(",") || s.includes('"') || s.includes("\n") ? `"${s.replace(/"/g, '""')}"` : s;
@@ -234,7 +238,7 @@
     const lines = [headers.map(esc).join(","), ...rows.map((r) => r.map(esc).join(","))];
     return downloadBlob(filename, new Blob([lines.join("\n")], { type: "text/csv" }));
   }
-  function printView(title) {
+  export function printView(title) {
     const prev = document.title;
     document.title = title;
     window.print();
@@ -244,7 +248,7 @@
   // buttons share a single size (cf-btn--md) and differ only in variant —
   // CSV and PDF used to carry their own inline 11px/4px-12px, which put two
   // type scales side by side in the same row on every screen.
-  const ExportBar = ({ onAdd, onCSV, onPrint, style = {} }) => /* @__PURE__ */ React.createElement("div", { "data-noprint": true, className: "export-bar", style }, onCSV && /* @__PURE__ */ React.createElement(
+  export const ExportBar = ({ onAdd, onCSV, onPrint, style = {} }) => /* @__PURE__ */ React.createElement("div", { "data-noprint": true, className: "export-bar", style }, onCSV && /* @__PURE__ */ React.createElement(
     "button",
     {
       onClick: onCSV,
@@ -271,7 +275,7 @@
     },
     "+ Add"
   ));
-  function fmtVarRange(monthlyAmounts) {
+  export function fmtVarRange(monthlyAmounts) {
     try {
       const vals = (Array.isArray(monthlyAmounts) ? monthlyAmounts : Object.values(monthlyAmounts || {})).map(Number).filter((v) => !isNaN(v)).map(centsToDollars);
       if (!vals.length) return "Variable";

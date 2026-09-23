@@ -1,5 +1,6 @@
+import { useEffect, useState } from "../lib/runtime.js";
   // Whether the browser says it is offline. Moved out of App as is.
-  function useOnlineStatus() {
+  export function useOnlineStatus() {
     // Going offline used to change nothing on screen. The sync layer already
     // handles it correctly — it skips the save and retries on reconnect (see
     // the `online` listener in household-sync.js) — but a phone with no signal

@@ -1,3 +1,14 @@
+import { __spreadProps, __spreadValues, genId, useContext, useEffect, useState } from "../lib/runtime.js";
+import { centsToDollars, dollarsToCents } from "../lib/migrate.js";
+import { getCurrentBalance, humanShortDate, todayStr } from "../lib/dates.js";
+import { ASSET_KINDS, assetKindLabel, netWorthSummary } from "../lib/networth.js";
+import { ExportBar, downloadCSV, fmt, fmtAxisK, moneySymbol, printView, roundMoney } from "../lib/format.js";
+import { CartesianGrid, DEFAULT_ALERT_THRESHOLD, HouseholdContext, Legend, Line, LineChart, MONTHS, ResponsiveContainer, Tooltip, XAxis, YAxis, autoFocusOnDesktop, debtStrategyFinding, haptic, simulateDebtStrategy, useLS } from "../lib/app-data.js";
+import { Card, ChartTip, ConfirmDialog, EmptyState, FieldLabel, HelpTip, KpiCard, PillToggle, SectionTitle, SheetHandle, Sparkline } from "./primitives.js";
+import { ContextMenu } from "./forms.js";
+import { Icon } from "./misc-ui.js";
+import { DASH_AXIS_TICK_X, DASH_AXIS_TICK_Y, projectPayoffBalances } from "./plan-dashboard-shared.js";
+import { MoneyInput, toast } from "./auth-misc.js";
   // Hoisted out of PlanView's render body — an inline component
   // definition creates a new type each render and forces React to remount.
   // The screen exists to compare two strategies, and it used to stack them as
@@ -8,7 +19,7 @@
   // The payoff order was a 10px sentence of arrows wrapping to four lines. It
   // is a numbered list now, for the chosen strategy only, because that is the
   // form an ordered list of nine things has always wanted.
-  const StratCompare = ({ av, sn, base, pick, onPick }) => {
+  export const StratCompare = ({ av, sn, base, pick, onPick }) => {
     const better = (a, b, lowerWins = true) => a === b ? null : (lowerWins ? a < b : a > b);
     const rows = [
       { label: "Debt-free", a: av.debtFreeDate, b: sn.debtFreeDate, win: better(av.months, sn.months) },
@@ -65,7 +76,7 @@
           /* @__PURE__ */ React.createElement("span", { className: "strat-order-name" }, n)))));
   };
 
-  function PlanView({ flow, openBal, assets = [], setAssets = () => {
+  export function PlanView({ flow, openBal, assets = [], setAssets = () => {
   }, entries = [], setEntries = () => {
   }, goals = [], setGoals = () => {
   }, categories = [], alertThreshold = DEFAULT_ALERT_THRESHOLD, activeYear = (/* @__PURE__ */ new Date()).getFullYear(), debtData = {}, setDebtData = () => {

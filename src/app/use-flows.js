@@ -1,8 +1,12 @@
+import { __spreadProps, __spreadValues, useMemo } from "../lib/runtime.js";
+import { setHolidayRegion, setStoredHolidays } from "../lib/holidays.js";
+import { accountIdOf, buildYearFlows, computeFlow } from "../lib/dates.js";
+import { accountOpenings, useLS } from "../lib/app-data.js";
   // Every running balance the app shows: each budget year's flow (each
   // opening on the last one's close), the what-if scenario over the same
   // entries, and the account-filtered view of both. Moved out of App as is;
   // the computing is buildYearFlows/computeFlow in dates.js.
-  function useFlows({ entries, yearConfigs, overridesByYr, holidays, holidayRegionCode, accounts, activeYear }) {
+  export function useFlows({ entries, yearConfigs, overridesByYr, holidays, holidayRegionCode, accounts, activeYear }) {
     // Holiday lookups inside expandEntries are synchronous and reach through a
     // module-level reference rather than a prop — it's called from a dozen
     // places that have no access to this state (settings year-copy, the debt

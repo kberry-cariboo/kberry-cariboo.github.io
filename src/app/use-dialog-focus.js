@@ -1,6 +1,7 @@
+import { useEffect } from "../lib/runtime.js";
   // Focus management for every dialog the app renders: return focus to what
   // opened it, and keep Tab inside the topmost one. Moved out of App as is.
-  function useDialogFocus() {
+  export function useDialogFocus() {
     // Dialogs already move focus in (autoFocus / the trap below) and Escape
     // already closes every one of them, but on close focus fell to <body> —
     // so a keyboard user was returned to the very top of the tab order, ~32

@@ -9,14 +9,14 @@
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { loadSrc } from './load-src.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (p) => readFileSync(join(ROOT, p), 'utf8');
 
-const load = new Function(`
-  ${read('src/lib/drift.js')}
-  return { findAmountDrift, driftForEntry, driftSamplesFor, driftMedian };
-`);
+// The source is ES modules; loadSrc bundles these (and what they import) and
+// runs them against the stand-ins passed here.
+const load = () => loadSrc(['src/lib/drift.js'], {});
 const { findAmountDrift, driftForEntry, driftSamplesFor, driftMedian } = load();
 
 const results = [];

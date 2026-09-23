@@ -22,6 +22,10 @@ on:
       # change happens to land. The Node and Postgres bumps below were pushed
       # and never built for exactly that reason.
       - ".github/workflows/**"
+      # The build and the lint depend on these now (esbuild, ESLint config).
+      - "package.json"
+      - "package-lock.json"
+      - "eslint.config.mjs"
   pull_request:
     paths:
       - "src/**"
@@ -34,6 +38,10 @@ on:
       - "images/**"
       - "scripts/**"
       - ".github/workflows/**"
+      # The build and the lint depend on these now (esbuild, ESLint config).
+      - "package.json"
+      - "package-lock.json"
+      - "eslint.config.mjs"
   workflow_dispatch: {}
 
 permissions:
@@ -92,17 +100,22 @@ jobs:
           # LTS and a support window to lose by it.
           node-version: "24"
 
+      # The build bundles src/ (ES modules) with esbuild, pinned in
+      # package.json and package-lock.json. npm ci installs exactly the locked
+      # versions; Playwright's own browser download is left to the step that
+      # installs Chromium with its system dependencies, below.
+      - name: Install the locked dev dependencies
+        run: npm ci --no-audit --no-fund
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+
       - name: Build index.html and sw.js
         run: node build.js
 
-      # Correctness-only lint (no-dupe-keys etc.) on the split source, plus
-      # no-undef/no-unused-vars on the concatenated bundle (the shared scope
-      # the app actually runs in — see eslint.config.mjs and
-      # scripts/lint-bundle.js for why those two rules can't run per-file).
+      # Correctness-only lint, plus no-undef/no-unused-vars on every module:
+      # each file imports what it uses, so the check runs per file.
       - name: Lint source
-        run: |
-          node scripts/lint-bundle.js
-          npx --yes eslint@10 "src/lib/**/*.js" "src/components/**/*.js" "src/app/**/*.js" src/App.js build.js .eslint-bundle.js
+        run: npm run lint
 
       # Global install (not a package.json dependency) matches how the rest of
       # this repo has no node_modules — tests/regression.mjs resolves it via

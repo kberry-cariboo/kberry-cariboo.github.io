@@ -1,9 +1,16 @@
+import { __spreadProps, __spreadValues, useContext, useEffect, useMemo, useState } from "../lib/runtime.js";
+import { centsToDollars, dollarsToCents } from "../lib/migrate.js";
+import { daysInMonth, depositShiftNote, humanShortDate, parseDate, todayStr } from "../lib/dates.js";
+import { fmt, memberName } from "../lib/format.js";
+import { HouseholdContext, LOGO_SRC, MONTHS, autoFocusOnDesktop, compressReceiptImage, haptic, prefersReducedMotion } from "../lib/app-data.js";
+import { aiCanRun, aiErrorMessage, aiExtractReceipt } from "../lib/ai.js";
+import { FieldError, FieldLabel, HelpTip, SheetHandle } from "./primitives.js";
   // Shown only when this device has edits the server never received *and* the
   // cloud copy also changed since. Both outcomes lose somebody's work, so the
   // app refuses to guess — it stops syncing and asks. Local state is left
   // exactly as-is until a button is pressed, so dismissing by accident can't
   // destroy anything (there is deliberately no dismiss).
-  function SyncDivergenceModal({ divergence, onKeepLocal, onUseCloud }) {
+  export function SyncDivergenceModal({ divergence, onKeepLocal, onUseCloud }) {
     const [busy, setBusy] = useState(false);
     if (!divergence) return null;
     const when = (() => {
@@ -42,7 +49,7 @@
     ));
   }
 
-  function ReceiptLightbox({ src, onClose }) {
+  export function ReceiptLightbox({ src, onClose }) {
     useEffect(() => {
       const h = (e) => {
         if (e.key === "Escape") onClose();
@@ -84,7 +91,7 @@
   // Combined stands first and is the default. Every view behind this reads a
   // flow and an opening balance, so narrowing is a matter of handing them a
   // smaller pair; none of them knows this exists.
-  function AccountFilter({ accounts = [], value = "", onChange = () => {
+  export function AccountFilter({ accounts = [], value = "", onChange = () => {
   } }) {
     if (!Array.isArray(accounts) || accounts.length < 2) return null;
     return /* @__PURE__ */ React.createElement("div", { className: "account-filter", "data-noprint": true }, /* @__PURE__ */ React.createElement("label", { htmlFor: "account-filter-select", className: "account-filter-label" }, "Account"), /* @__PURE__ */ React.createElement(
@@ -99,7 +106,7 @@
       accounts.map((a) => /* @__PURE__ */ React.createElement("option", { key: a.id, value: a.id }, a.name))
     ));
   }
-  function Icon({ name, size = 20, strokeWidth = 2, style }) {
+  export function Icon({ name, size = 20, strokeWidth = 2, style }) {
     const common = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth, strokeLinecap: "round", strokeLinejoin: "round", style, "aria-hidden": "true", focusable: "false" };
     switch (name) {
       case "plus":
@@ -211,7 +218,7 @@
   // On a phone it replaces the index strip rather than joining it — the strip
   // is a two-column grid of fourteen pills, about 200px, and it is only useful
   // at the top of the page. Desktop keeps the strip and never renders this.
-  function SectionNav({ sections = [], label = "Section" }) {
+  export function SectionNav({ sections = [], label = "Section" }) {
     const [open, setOpen] = useState(false);
     const [current, setCurrent] = useState(null);
     // Scroll position, not intersection. "First section currently on screen"
@@ -289,8 +296,8 @@
   // bad month can never rebuild the wall: the worst tone leads, and opening it
   // is one tap. Sorting is by severity, not by which effect happened to run
   // first, so the thing that matters is the thing you read.
-  const NOTICE_RANK = { critical: 0, warn: 1, info: 2 };
-  function NoticeStack({ notices = [] }) {
+  export const NOTICE_RANK = { critical: 0, warn: 1, info: 2 };
+  export function NoticeStack({ notices = [] }) {
     const [open, setOpen] = useState(false);
     const list = useMemo(
       () => notices.filter(Boolean).slice().sort((a, b) => NOTICE_RANK[a.tone] - NOTICE_RANK[b.tone]),
@@ -334,7 +341,7 @@
   // The centre button is the one thing the old nav had no room for: adding an
   // entry. It was reachable only through Budget → Entries → the toolbar, which
   // is three taps for the app's most common act.
-  function BottomNav({ tab, setTab, lowAlert = false, onCompose }) {
+  export function BottomNav({ tab, setTab, lowAlert = false, onCompose }) {
     const items = [
       { id: "today", icon: "home", label: "Today" },
       { id: "flow", icon: "trending-up", label: "Flow" },
@@ -394,7 +401,7 @@
   // Actual, distort a category, or turn up in the AI's spending analysis. It
   // is visible in the ledger on the day it was made, and can be deleted like
   // any other entry if it was a mistake.
-  function ReconcileModal({ projected, categories = [], lastReconciled = null, onCancel, onConfirm }) {
+  export function ReconcileModal({ projected, categories = [], lastReconciled = null, onCancel, onConfirm }) {
     const [actual, setActual] = useState("");
     const [err, setErr] = useState("");
     // How long the projection has been running unchecked. The adjustment about
@@ -480,7 +487,7 @@
   // category list's catch-all and the natural home; a household that renamed
   // or removed it gets the last category instead, which is where the defaults
   // put the catch-all anyway.
-  function reconcileCategory(categories) {
+  export function reconcileCategory(categories) {
     if (!Array.isArray(categories) || !categories.length) return "Other";
     return categories.includes("Other") ? "Other" : categories[categories.length - 1];
   }
@@ -489,8 +496,8 @@
   // hidden field: it needs no new column, it reads correctly in the ledger and
   // in a CSV export, and if someone renames one the only consequence is that
   // this stops counting it.
-  const RECONCILE_DESC = "Balance adjustment";
-  function lastReconciledDate(entries) {
+  export const RECONCILE_DESC = "Balance adjustment";
+  export function lastReconciledDate(entries) {
     if (!Array.isArray(entries)) return null;
     let latest = null;
     entries.forEach((e) => {
@@ -498,7 +505,7 @@
     });
     return latest;
   }
-  function OccurrenceEditModal({ ev, orig, onSave, onCancel, onReset, onDelete, onEditEntry = null, onSkip = null, apiKey = "", isOffline = false, categories = [] }) {
+  export function OccurrenceEditModal({ ev, orig, onSave, onCancel, onReset, onDelete, onEditEntry = null, onSkip = null, apiKey = "", isOffline = false, categories = [] }) {
     const [desc, setDesc] = useState(ev.desc || (orig.desc || ""));
     const plannedCents = ev.plannedAmount !== void 0 ? ev.plannedAmount : ev.amount;
     const [amount, setAmount] = useState(String(centsToDollars(plannedCents)));
@@ -802,7 +809,7 @@
       )
     );
   }
-  function HouseholdOnboardingView({ email, createHousehold, joinHousehold, signOut }) {
+  export function HouseholdOnboardingView({ email, createHousehold, joinHousehold, signOut }) {
     const [mode, setMode] = useState("create");
     const [fullName, setFullName] = useState("");
     const [code, setCode] = useState("");

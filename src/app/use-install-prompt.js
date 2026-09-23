@@ -1,6 +1,7 @@
+import { useEffect, useState } from "../lib/runtime.js";
   // The browser's "install this app" offer, held until the menu uses it.
   // Moved out of App as is.
-  function useInstallPrompt() {
+  export function useInstallPrompt() {
     const [installPrompt, setInstallPrompt] = useState(null);
     const [showInstall, setShowInstall] = useState(false);
     useEffect(() => {

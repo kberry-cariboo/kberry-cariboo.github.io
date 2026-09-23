@@ -1,4 +1,12 @@
-  function EntriesView({ entries, setEntries, saveEntryEdit = null, addEntry, categories, categoryColors = {}, activeYear, apiKey = "", isOffline = false, onDeleted = () => {
+import { __spreadProps, __spreadValues, genId, useEffect, useMemo, useState } from "../lib/runtime.js";
+import { isArchived, signedAmount } from "../lib/dates.js";
+import { fmt, fmtDate, fmtVarRange } from "../lib/format.js";
+import { DEFAULT_ENTRIES_COLS, ENTRIES_COL_LABELS, WEEKDAYS, eventMatchesSearch, scheduleSentence, useIsCoarsePointer, useIsMobile, useLS } from "../lib/app-data.js";
+import { Card, CatChip, ConfirmDialog, EmptyState, GridPagination, PillToggle, SheetHandle, cumulativeRows, paginateRows, useInfiniteScroll } from "./primitives.js";
+import { ContextMenu, EntryForm, FilterPill } from "./forms.js";
+import { CsvImportModal } from "./csv-import.js";
+import { Icon } from "./misc-ui.js";
+  export function EntriesView({ entries, setEntries, saveEntryEdit = null, addEntry, categories, categoryColors = {}, activeYear, apiKey = "", isOffline = false, onDeleted = () => {
   }, templates = [], setTemplates, globalSearch = "", allYearFlows = null, colOrder = DEFAULT_ENTRIES_COLS, setColOrder = () => {
   }, filter = "all", setFilter = () => {
   }, filterCats = [], setFilterCats = () => {

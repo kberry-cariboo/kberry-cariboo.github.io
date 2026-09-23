@@ -1,7 +1,13 @@
+import { safeStorage, useEffect, useState } from "../lib/runtime.js";
+import { supabaseClient } from "../lib/supabase-config.js";
+import { startOfToday } from "../lib/dates.js";
+import { fmt } from "../lib/format.js";
+import { DEFAULT_NOTIFY_HOUR, billDigestMessage, buildNotificationSchedule, publishNotificationSchedule, refreshPushSubscription, requestNotificationPermission, showLocalNotification, subscribeToPush, unsubscribeFromPush } from "../lib/push.js";
+import { MONTHS, useLS } from "../lib/app-data.js";
   // Notifications, both layers: the foreground once-a-day alerts while the
   // app is open, and Web Push (subscription upkeep plus publishing the 90-day
   // schedule the Edge Function sends from). Moved out of App as is.
-  function useNotifications({ household, yearFlows, completed, alertThresh, activeYear, activeFlow, navLowInfo, todayKey }) {
+  export function useNotifications({ household, yearFlows, completed, alertThresh, activeYear, activeFlow, navLowInfo, todayKey }) {
     const [notifyEnabled, setNotifyEnabled] = useLS("cf_notify_enabled", false);
     // Sourced only from Notification.requestPermission()'s resolved value,
     // never re-read from the Notification.permission property afterward —

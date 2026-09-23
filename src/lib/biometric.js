@@ -1,3 +1,4 @@
+import { safeStorage } from "./runtime.js";
   // Extracted from app-data.js (round-9 AR4 remainder) — pure code motion.
 
   // ── Biometric unlock (WebAuthn platform authenticator) ──────────────
@@ -6,13 +7,13 @@
   // successful ceremony only proves "the same fingerprint/face that
   // registered this device is present right now." It gates re-entry after
   // the auto-lock timeout; it never signs anyone in or out of Supabase.
-  function b64urlEncode(buf) {
+  export function b64urlEncode(buf) {
     const bytes = new Uint8Array(buf);
     let str = "";
     for (let i = 0; i < bytes.byteLength; i++) str += String.fromCharCode(bytes[i]);
     return btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
   }
-  function b64urlDecode(str) {
+  export function b64urlDecode(str) {
     str = str.replace(/-/g, "+").replace(/_/g, "/");
     while (str.length % 4) str += "=";
     const bin = atob(str);
@@ -20,12 +21,12 @@
     for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
     return bytes.buffer;
   }
-  function randomChallenge() {
+  export function randomChallenge() {
     const arr = new Uint8Array(32);
     crypto.getRandomValues(arr);
     return arr;
   }
-  async function isBiometricAvailable() {
+  export async function isBiometricAvailable() {
     try {
       if (!window.PublicKeyCredential || !PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable) return false;
       return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
@@ -33,14 +34,14 @@
       return false;
     }
   }
-  function getBiometricCredId(userId) {
+  export function getBiometricCredId(userId) {
     try {
       return localStorage.getItem("cf_webauthn_" + userId);
     } catch (e) {
       return null;
     }
   }
-  async function registerBiometric(userId, email, fullName) {
+  export async function registerBiometric(userId, email, fullName) {
     const cred = await navigator.credentials.create({
       publicKey: {
         rp: { name: "CashFlow" },
@@ -68,10 +69,10 @@
     }
     return credId;
   }
-  function clearBiometric(userId) {
+  export function clearBiometric(userId) {
     safeStorage.remove("cf_webauthn_" + userId);
   }
-  async function verifyBiometric(userId) {
+  export async function verifyBiometric(userId) {
     const credId = getBiometricCredId(userId);
     if (!credId) throw new Error("No biometric unlock set up on this device.");
     const assertion = await navigator.credentials.get({

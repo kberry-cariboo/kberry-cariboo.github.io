@@ -1,10 +1,10 @@
-  var __defProp = Object.defineProperty;
-  var __defProps = Object.defineProperties;
-  var __getOwnPropDescs = Object.getOwnPropertyDescriptors;
-  var __getOwnPropSymbols = Object.getOwnPropertySymbols;
-  var __hasOwnProp = Object.prototype.hasOwnProperty;
-  var __propIsEnum = Object.prototype.propertyIsEnumerable;
-  var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+  export var __defProp = Object.defineProperty;
+  export var __defProps = Object.defineProperties;
+  export var __getOwnPropDescs = Object.getOwnPropertyDescriptors;
+  export var __getOwnPropSymbols = Object.getOwnPropertySymbols;
+  export var __hasOwnProp = Object.prototype.hasOwnProperty;
+  export var __propIsEnum = Object.prototype.propertyIsEnumerable;
+  export var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
   // Object spread, as the transpiled source spells it. These were esbuild's
   // down-levelling helpers, which copy property by property through an `in`
   // check and, for some keys, Object.defineProperty — and they sit in the
@@ -17,7 +17,7 @@
   // hand-edited backup file could carry: assigning it would set the target's
   // prototype, where the old helper defined an ordinary property. That case
   // alone keeps the old path.
-  var __spreadSlow = (a, b) => {
+  export var __spreadSlow = (a, b) => {
     for (var prop in b || (b = {}))
       if (__hasOwnProp.call(b, prop))
         __defNormalProp(a, prop, b[prop]);
@@ -28,9 +28,9 @@
       }
     return a;
   };
-  var __spreadValues = (a, b) => b != null && __hasOwnProp.call(b, "__proto__") ? __spreadSlow(a, b) : Object.assign(a, b);
-  var __spreadProps = (a, b) => b != null && __hasOwnProp.call(b, "__proto__") ? __defProps(a, __getOwnPropDescs(b)) : Object.assign(a, b);
-  var __objRest = (source, exclude) => {
+  export var __spreadValues = (a, b) => b != null && __hasOwnProp.call(b, "__proto__") ? __spreadSlow(a, b) : Object.assign(a, b);
+  export var __spreadProps = (a, b) => b != null && __hasOwnProp.call(b, "__proto__") ? __defProps(a, __getOwnPropDescs(b)) : Object.assign(a, b);
+  export var __objRest = (source, exclude) => {
     var target = {};
     for (var prop in source)
       if (__hasOwnProp.call(source, prop) && exclude.indexOf(prop) < 0)
@@ -42,7 +42,7 @@
       }
     return target;
   };
-  const { useState, useMemo, useEffect, useLayoutEffect, useCallback, useRef, useContext, createContext } = React;
+  export const { useState, useMemo, useEffect, useLayoutEffect, useCallback, useRef, useContext, createContext } = React;
   // Every new entry/goal/debt-row/clone id goes through this — Date.now() had
   // a real (if small) collision window: two adds in the same millisecond (a
   // fast double-tap, two goal-linked entries created in one save) produced
@@ -51,7 +51,7 @@
   // these shared helpers live) because migrate.js's schema v1 backfill calls
   // this at module-load time, before app-data.js's declarations would exist —
   // runtime.js is the first file in build.js's concatenation order.
-  function genId() {
+  export function genId() {
     try {
       if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
     } catch (e) {
@@ -65,7 +65,7 @@
   // twenty-odd times. Anything that must tell the user a write failed uses
   // useLS (notifyStorageWriteFailure) instead; these are the calls where a
   // failure is genuinely ignorable. get returns null on any failure.
-  const safeStorage = {
+  export const safeStorage = {
     area(which) {
       try {
         return which === "session" ? window.sessionStorage : window.localStorage;

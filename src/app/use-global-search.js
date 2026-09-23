@@ -1,7 +1,8 @@
+import { useEffect, useMemo, useRef, useState } from "../lib/runtime.js";
   // The header search: its text, what it will search from where you are, and
   // taking you to the ledger when a search starts somewhere that can't show
   // results. Moved out of App as is.
-  function useGlobalSearch({ tab, flowSub, activeYear, setTab, setFlowSub }) {
+  export function useGlobalSearch({ tab, flowSub, activeYear, setTab, setFlowSub }) {
     const [globalSearch, setGlobalSearch] = useState("");
     const prevSearchRef = useRef("");
     useEffect(() => {

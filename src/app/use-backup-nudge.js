@@ -1,5 +1,7 @@
+import { safeStorage, useEffect, useState } from "../lib/runtime.js";
+import { exportHouseholdBackup } from "../lib/household-sync.js";
   // The 30-day "time for a backup" reminder. Moved out of App as is.
-  function useBackupNudge(houseValues) {
+  export function useBackupNudge(houseValues) {
     const [showBackupNudge, setShowBackupNudge] = useState(false);
     useEffect(() => {
       try {

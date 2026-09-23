@@ -1,7 +1,9 @@
+import { useMemo } from "../lib/runtime.js";
+import { useLS } from "../lib/app-data.js";
   // The next sixty days' lowest point, if it is under the alert threshold,
   // and whether its banner has been dismissed — by which dip, not by date.
   // Moved out of App as is.
-  function useLowBalance({ activeFlow, viewFlows, activeYear, alertThresh }) {
+  export function useLowBalance({ activeFlow, viewFlows, activeYear, alertThresh }) {
     const navLowInfo = useMemo(() => {
       try {
         const now = /* @__PURE__ */ new Date();

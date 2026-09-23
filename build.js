@@ -11,59 +11,24 @@ const crypto = require("crypto");
 const ROOT = __dirname;
 const read = (p) => fs.readFileSync(path.join(ROOT, p), "utf8");
 
-const APP_MODULES = [
-  "src/lib/runtime.js",
-  "src/lib/supabase-config.js",
-  "src/lib/migrate.js",
-  "src/lib/holidays.js",
-  "src/lib/dates.js",
-  "src/lib/drift.js",
-  "src/lib/sinking.js",
-  "src/lib/networth.js",
-  "src/lib/cat-detail.js",
-  "src/lib/year-copy.js",
-  "src/lib/help-shots.js",
-  "src/lib/format.js",
-  "src/lib/anomaly.js",
-  "src/lib/biometric.js",
-  "src/lib/receipt-store.js",
-  "src/lib/household-sync.js",
-  "src/lib/push.js",
-  "src/lib/app-data.js",
-  "src/lib/ai.js",
-  "src/components/primitives.js",
-  "src/components/forms.js",
-  "src/components/csv-import.js",
-  "src/components/entries.js",
-  "src/components/misc-ui.js",
-  "src/components/budget.js",
-  "src/components/forecast-plan.js",
-  "src/components/plan-dashboard-shared.js",
-  "src/components/plan.js",
-  "src/components/dashboard.js",
-  "src/components/help.js",
-  "src/components/settings.js",
-  "src/components/auth-misc.js",
-  // App.js's hooks, one concern each; App composes them.
-  "src/app/use-idle-lock.js",
-  "src/app/use-route.js",
-  "src/app/use-dialog-focus.js",
-  "src/app/use-online-status.js",
-  "src/app/use-pull-to-refresh.js",
-  "src/app/use-install-prompt.js",
-  "src/app/use-flows.js",
-  "src/app/use-keyboard-shortcuts.js",
-  "src/app/use-notifications.js",
-  "src/app/use-backup-nudge.js",
-  "src/app/use-theme-and-format.js",
-  "src/app/use-global-search.js",
-  "src/app/use-undo-stack.js",
-  "src/app/use-low-balance.js",
-  "src/app/use-budget-actions.js",
-  "src/app/use-goal-rollovers.js",
-  "src/app/use-app-notices.js",
-  "src/App.js",
-];
+// The app is ES modules under src/, entered at src/main.js. esbuild bundles
+// them into one IIFE that goes inline into index.html, between the bootstrap
+// head (service worker registration, CF_VERSION, the error screen) and tail.
+// It is the build's one dependency (package.json, pinned exactly).
+const esbuild = require("esbuild");
+function bundleApp() {
+  const res = esbuild.buildSync({
+    entryPoints: [path.join(ROOT, "src/main.js")],
+    bundle: true,
+    format: "iife",
+    target: "es2020",
+    charset: "utf8",
+    legalComments: "none",
+    write: false,
+    logLevel: "silent",
+  });
+  return res.outputFiles[0].text;
+}
 
 // The service worker can't be inlined into index.html — it has to be fetched
 // from a real same-origin URL — so it's the one build output besides
@@ -140,9 +105,16 @@ function build() {
   const miniRecharts = read("src/vendor/mini-recharts.js");
   const supabaseClient = read("src/vendor/supabase-client.js");
 
+  let bundled;
+  try {
+    bundled = bundleApp();
+  } catch (err) {
+    console.error("build.js: esbuild could not bundle src/main.js:\n" + (err.errors || []).map((e) => `  ${e.location ? e.location.file + ":" + e.location.line + " " : ""}${e.text}`).join("\n"));
+    process.exit(1);
+  }
   const appCode =
     read("src/bootstrap-head.js") +
-    APP_MODULES.map(read).join("") +
+    bundled +
     read("src/bootstrap-tail.js");
 
   // Sanity check: the reassembled app code must be syntactically valid on
@@ -168,8 +140,7 @@ function build() {
   buildServiceWorker(withCsp);
 }
 
-module.exports = { APP_MODULES, ROOT, read };
-// Only build when run directly (`node build.js`) — scripts/lint-bundle.js
-// requires this module purely for APP_MODULES/read and must not trigger a
-// build as a side effect of `require`.
+module.exports = { ROOT, read, bundleApp };
+// Only build when run directly (`node build.js`); tests require this module for
+// bundleApp and must not trigger a build as a side effect of `require`.
 if (require.main === module) build();

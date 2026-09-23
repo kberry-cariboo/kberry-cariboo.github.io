@@ -1,6 +1,7 @@
+import { useCallback, useEffect, useRef, useState } from "../lib/runtime.js";
   // The undo toast's stack: each entry a label and the function that puts
   // things back. Moved out of App as is.
-  function useUndoStack() {
+  export function useUndoStack() {
     const [undoStack, setUndoStack] = useState([]);
     // An undoable action is a label for the toast plus the function that puts
     // things back.

@@ -1,7 +1,12 @@
+import { __spreadProps, __spreadValues, genId } from "./runtime.js";
+import { DEFAULT_ACCOUNT_ID } from "./migrate.js";
+import { holidayOn } from "./holidays.js";
+import { fmtDate, roundMoney } from "./format.js";
+import { MONTHS, MONTH_DAYS, WEEKDAYS } from "./app-data.js";
   // Extracted from app-data.js (round-9 AR4 remainder) — pure code motion.
-  const isLeapYear = (y) => y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0);
-  const daysInMonth = (m, y) => MONTH_DAYS[m] + (m === 1 && isLeapYear(y) ? 1 : 0);
-  function parseDate(str) {
+  export const isLeapYear = (y) => y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0);
+  export const daysInMonth = (m, y) => MONTH_DAYS[m] + (m === 1 && isLeapYear(y) ? 1 : 0);
+  export function parseDate(str) {
     if (!str) return null;
     const [y, m, d] = str.split("-").map(Number);
     return new Date(y, m - 1, d);
@@ -9,22 +14,22 @@
   // Kept as the name a dozen call sites already use; the presentation itself
   // lives in one place (fmtDate in format.js) so every date in the app reads
   // the same way and follows the household's locale.
-  function humanShortDate(str, contextYear) {
+  export function humanShortDate(str, contextYear) {
     return fmtDate(str, contextYear === void 0 ? (/* @__PURE__ */ new Date()).getFullYear() : contextYear);
   }
-  function todayStr() {
+  export function todayStr() {
     const t = /* @__PURE__ */ new Date();
     return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
   }
-  function startOfToday() {
+  export function startOfToday() {
     const d = /* @__PURE__ */ new Date();
     d.setHours(0, 0, 0, 0);
     return d;
   }
-  function localDateStr(d) {
+  export function localDateStr(d) {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   }
-  function isArchived(e, year) {
+  export function isArchived(e, year) {
     const yr = year || (/* @__PURE__ */ new Date()).getFullYear();
     const yearStart = `${yr}-01-01`;
     const yearEnd = `${yr}-12-31`;
@@ -51,7 +56,7 @@
   // "Ken - Payroll (1st)", "Mel - Payroll" and "PAY ROLL — Ken" all read as
   // payroll to a person, and the alternative would be a checkbox that every
   // payroll entry has to have ticked by hand before it behaves correctly.
-  const PAYROLL_DESC_RE = /pay\s*-?\s*roll/i;
+  export const PAYROLL_DESC_RE = /pay\s*-?\s*roll/i;
   // ...but a guess from a description is only ever a guess. `bankingDay` is the
   // per-entry answer, and it wins when it is set:
   //
@@ -65,7 +70,7 @@
   // Repeating income only, in every case. A one-time entry's date was typed by
   // hand — it is already the date the money arrived — and expenses leave when
   // the biller pulls them, which is not this rule.
-  function isPayrollDeposit(e, desc) {
+  export function isPayrollDeposit(e, desc) {
     if (!e.repeats || e.type !== "income") return false;
     if (e.bankingDay === true || e.bankingDay === false) return e.bankingDay;
     return PAYROLL_DESC_RE.test(String(desc || ""));
@@ -77,7 +82,7 @@
   //
   // The walk is bounded: a corrupt holiday list can't spin here, and ten days
   // is well past the longest real run of closures.
-  function priorBankingDay(date) {
+  export function priorBankingDay(date) {
     let d = date;
     for (let i = 0; i < 10; i++) {
       const wd = d.getDay();
@@ -90,7 +95,7 @@
   }
   // Why a row is marked. Names the holiday when there is one, because "Canada
   // Day" explains the early deposit in a way "a closed day" doesn't.
-  function depositShiftNote(ev) {
+  export function depositShiftNote(ev) {
     if (!ev || !ev.depositShifted || !ev.depositDate) return "";
     const paid = ev.depositDate;
     const hol = holidayOn(localDateStr(ev.date));
@@ -101,7 +106,7 @@
   // the last one. Returns null when a month has no 5th such weekday, so a
   // "5th Friday" entry simply produces nothing in the months that lack one
   // rather than silently sliding into the next month.
-  function nthWeekdayInMonth(year, month, weekday, nth) {
+  export function nthWeekdayInMonth(year, month, weekday, nth) {
     if (nth === -1) {
       const last = new Date(year, month, daysInMonth(month, year));
       last.setDate(last.getDate() - ((last.getDay() - weekday + 7) % 7));
@@ -114,18 +119,18 @@
   // The account an entry or event belongs to, with the default standing in for
   // anything written before accounts existed. Every reader goes through this
   // rather than reading `.accountId` directly, so "unset" has one meaning.
-  const accountIdOf = (x) => (x && x.accountId) || DEFAULT_ACCOUNT_ID;
+  export const accountIdOf = (x) => (x && x.accountId) || DEFAULT_ACCOUNT_ID;
   // A transfer that names a destination moves money between two accounts, and
   // shows up twice: out of one, into the other. Anything else — an old
   // transfer, or one with no destination — keeps its single-sided meaning.
-  const isInterAccountTransfer = (e) => !!(e && e.type === "transfer" && e.toAccountId && e.toAccountId !== accountIdOf(e));
+  export const isInterAccountTransfer = (e) => !!(e && e.type === "transfer" && e.toAccountId && e.toAccountId !== accountIdOf(e));
   // What a repeating entry costs (or brings in) in an ordinary month, from its
   // schedule rather than from a year's total. Dividing the year's occurrences
   // by twelve — which is what "Car loan ends — frees $X/mo" used to do — is
   // only right for an entry that runs all twelve months: a nine-month loan at
   // $385 read as freeing $288.75. Units mirror expandEntries below; a
   // multi-weekday weekly entry counts each of its days, as that loop does.
-  function monthlyEquivalent(e) {
+  export function monthlyEquivalent(e) {
     if (!e || !e.repeats) return (e && e.amount) || 0;
     const every = Math.max(1, e.recurEvery || 1);
     const unit = e.recurUnit || "month";
@@ -137,7 +142,7 @@
       : 1 / every; // month, monthend, monthweekday
     return roundMoney((e.amount || 0) * perMonth);
   }
-  function expandEntries(entries, year, overrides = {}) {
+  export function expandEntries(entries, year, overrides = {}) {
     const events = [];
     const yearStart = new Date(year, 0, 1);
     const yearEnd = new Date(year, 11, 31);
@@ -360,7 +365,7 @@
   // Returns { entries, newId, splitDate } — newId is null when the edit was
   // applied in place (no history to protect, or nothing value-affecting
   // changed).
-  function splitEntryEditFromCurrentMonth(entries, editedId, data, now = new Date()) {
+  export function splitEntryEditFromCurrentMonth(entries, editedId, data, now = new Date()) {
     const old = entries.find((e) => e.id === editedId);
     const inPlace = () => ({ entries: entries.map((e) => e.id === editedId ? __spreadProps(__spreadValues({}, data), { id: editedId }) : e), newId: null, splitDate: null });
     if (!old) return { entries, newId: null, splitDate: null };
@@ -424,7 +429,7 @@
   // on/after the split boundary belongs to the new segment; earlier keys stay
   // with the original. Remapped keys whose dates the new pattern doesn't
   // generate simply never match anything — inert, not harmful.
-  function remapOccurrenceKeys(obj, oldId, newId, fromDateStr) {
+  export function remapOccurrenceKeys(obj, oldId, newId, fromDateStr) {
     const out = {};
     const re = new RegExp(`^${oldId}-(\\d+)-(\\d+)-(\\d+)$`);
     Object.keys(obj || {}).forEach((k) => {
@@ -452,19 +457,19 @@
   // balance and stays out of income totals" regression case pins down. Cash
   // direction is what the *ledger* runs on: which column a row prints in, and
   // which way the running balance moves.
-  const isInflowEvent = (ev) => ev.type === "income" || ev.type === "transfer" && ev.transferDirection === "in";
-  const isOutflowEvent = (ev) => !isInflowEvent(ev);
+  export const isInflowEvent = (ev) => ev.type === "income" || ev.type === "transfer" && ev.transferDirection === "in";
+  export const isOutflowEvent = (ev) => !isInflowEvent(ev);
   // Cents, signed by which side of the account the event falls on. Used
   // anywhere a running total needs a signed amount instead of computeFlow's
   // per-event balance.
-  function signedAmount(ev) {
+  export function signedAmount(ev) {
     return isInflowEvent(ev) ? ev.amount : -ev.amount;
   }
   // Every configured year's flow, each opening on the previous year's close
   // (the first on its own opening balance). The real budget and the what-if
   // scenario both go through this, so they cannot disagree about how a year
   // carries into the next; they used to be two copies of the same loop.
-  function buildYearFlows(entryList, yearConfigs, overridesByYr) {
+  export function buildYearFlows(entryList, yearConfigs, overridesByYr) {
     const flows = {};
     let carry = null;
     [...yearConfigs].sort((a, b) => a.year - b.year).forEach((yc, i) => {
@@ -481,7 +486,7 @@
   // recompute cost (a 300-entry household, three years: ~25k copies per
   // edit). Anything passing a view of events that live elsewhere — a filtered
   // flow — must leave it false, or it would rewrite balances under their owner.
-  function computeFlow(events, openBal, { owned = false } = {}) {
+  export function computeFlow(events, openBal, { owned = false } = {}) {
     let bal = openBal;
     if (owned) {
       for (const ev of events) {
@@ -513,7 +518,7 @@
   // so a UI showing all of them can be checked with mental arithmetic. Both
   // are 0 for a month with no transfers, which is how callers know not to
   // spend a column on them.
-  function getMonthSummaries(flow, openBal) {
+  export function getMonthSummaries(flow, openBal) {
     return MONTHS.map((m, i) => {
       const evs = flow.filter((ev) => ev.month === i);
       const prev = flow.filter((ev) => ev.month < i);
@@ -527,7 +532,7 @@
       return { month: m, monthIdx: i, income, expense, transfersIn, transfersOut, surplus: roundMoney(close - open), open, close };
     });
   }
-  function getCurrentBalance(flow, openBal, year) {
+  export function getCurrentBalance(flow, openBal, year) {
     const today = /* @__PURE__ */ new Date();
     if (today.getFullYear() < year) return openBal;
     if (today.getFullYear() > year) {

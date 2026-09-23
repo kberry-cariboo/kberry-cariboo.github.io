@@ -15,6 +15,7 @@
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { loadSrc } from './load-src.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (p) => readFileSync(join(ROOT, p), 'utf8');
@@ -29,16 +30,9 @@ const localStorage = {
   removeItem: (k) => store.delete(k),
 };
 const noHook = () => { throw new Error('year copy must not need React'); };
-const load = new Function('React', 'localStorage', 'window', `
-  ${read('src/lib/runtime.js')}
-  ${read('src/lib/migrate.js')}
-  ${read('src/lib/holidays.js')}
-  const MONTH_DAYS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-  ${read('src/lib/dates.js')}
-  ${read('src/lib/year-copy.js')}
-  return { syncSingleEntriesToYear, copyOccurrenceOverridesToYear, mirrorRecurringAmountsToYear,
-           planYearRollforward, applyYearRollforward, yearRollforwardParts, expandEntries };
-`);
+// The source is ES modules; loadSrc bundles these (and what they import) and
+// runs them against the stand-ins passed here.
+const load = (React, localStorage, window) => loadSrc(['src/lib/dates.js', 'src/lib/year-copy.js'], { React, localStorage, window });
 const {
   syncSingleEntriesToYear, copyOccurrenceOverridesToYear, mirrorRecurringAmountsToYear,
   planYearRollforward, applyYearRollforward, expandEntries,

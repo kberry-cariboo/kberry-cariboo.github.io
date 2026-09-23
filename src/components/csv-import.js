@@ -1,9 +1,17 @@
+import { genId, useMemo, useState } from "../lib/runtime.js";
+import { dollarsToCents } from "../lib/migrate.js";
+import { humanShortDate, localDateStr, parseDate } from "../lib/dates.js";
+import { fmt } from "../lib/format.js";
+import { aiCanRun, aiErrorMessage, callClaude } from "../lib/ai.js";
+import { FieldLabel, PillToggle, SheetHandle, Toggle } from "./primitives.js";
+import { Icon } from "./misc-ui.js";
+import { toast } from "./auth-misc.js";
   // Minimal, dependency-free CSV parser (RFC 4180-ish): handles quoted
   // fields with embedded commas/newlines and doubled-quote escapes, since
   // real bank exports routinely quote the description column. A naive
   // text.split(",").split("\n") breaks the moment a description contains a
   // comma — which for a "Vendor, Inc." style payee is common enough to matter.
-  function parseCSV(text) {
+  export function parseCSV(text) {
     const rows = [];
     let row = [], field = "", inQuotes = false;
     for (let i = 0; i < text.length; i++) {
@@ -41,7 +49,7 @@
   // user reviews in the preview table before anything is imported, not a
   // silent authority, so an occasional wrong guess is recoverable by editing
   // the mapped column or fixing the row afterward in Entries.
-  function parseCsvDate(str) {
+  export function parseCsvDate(str) {
     const s = (str || "").trim();
     if (!s) return null;
     let m = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
@@ -54,7 +62,7 @@
   }
   // Strips currency symbols/thousands separators; treats parenthesized
   // amounts ("($42.50)") as negative, matching common statement formatting.
-  function parseCsvAmount(str) {
+  export function parseCsvAmount(str) {
     let s = (str || "").trim();
     if (!s) return null;
     let neg = false;
@@ -72,12 +80,12 @@
     if (isNaN(n)) return null;
     return neg ? -n : n;
   }
-  const CSV_DATE_HINTS = ["date", "posted", "transaction date", "post date"];
-  const CSV_DESC_HINTS = ["description", "memo", "payee", "name", "merchant"];
-  const CSV_AMOUNT_HINTS = ["amount", "value"];
-  const CSV_DEBIT_HINTS = ["debit", "withdrawal", "money out"];
-  const CSV_CREDIT_HINTS = ["credit", "deposit", "money in"];
-  function guessColumn(headers, hints) {
+  export const CSV_DATE_HINTS = ["date", "posted", "transaction date", "post date"];
+  export const CSV_DESC_HINTS = ["description", "memo", "payee", "name", "merchant"];
+  export const CSV_AMOUNT_HINTS = ["amount", "value"];
+  export const CSV_DEBIT_HINTS = ["debit", "withdrawal", "money out"];
+  export const CSV_CREDIT_HINTS = ["credit", "deposit", "money in"];
+  export function guessColumn(headers, hints) {
     const lower = headers.map((h) => (h || "").toLowerCase());
     for (const hint of hints) {
       const idx = lower.findIndex((h) => h === hint);
@@ -98,8 +106,8 @@
   // to fit inside max_tokens. 60 keeps a batch comfortably inside the 4000 we
   // ask for while still importing a year of transactions in a handful of
   // calls.
-  const CSV_AI_BATCH = 60;
-  function CsvImportModal({ show, onClose, onImport, categories = [], existingEntries = [], scheduledOccurrences = [], apiKey = "", isOffline = false }) {
+  export const CSV_AI_BATCH = 60;
+  export function CsvImportModal({ show, onClose, onImport, categories = [], existingEntries = [], scheduledOccurrences = [], apiKey = "", isOffline = false }) {
     const [step, setStep] = useState("upload");
     const [fileName, setFileName] = useState("");
     const [headers, setHeaders] = useState([]);

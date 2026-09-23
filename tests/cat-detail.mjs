@@ -10,14 +10,14 @@
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { loadSrc } from './load-src.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (p) => readFileSync(join(ROOT, p), 'utf8');
 
-const load = new Function(`
-  ${read('src/lib/cat-detail.js')}
-  return { categoryDetail };
-`);
+// The source is ES modules; loadSrc bundles these (and what they import) and
+// runs them against the stand-ins passed here.
+const load = () => loadSrc(['src/lib/cat-detail.js'], {});
 const { categoryDetail } = load();
 
 const results = [];

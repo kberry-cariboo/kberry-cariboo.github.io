@@ -10,6 +10,7 @@
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { loadSrc } from './load-src.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (p) => readFileSync(join(ROOT, p), 'utf8');
@@ -17,19 +18,9 @@ const read = (p) => readFileSync(join(ROOT, p), 'utf8');
 // networth.js reads parseDate/localDateStr from dates.js for the staleness
 // check, so the real ones are loaded rather than stubbed.
 const noHook = () => { throw new Error('net worth must not need React'); };
-const load = new Function('React', 'localStorage', 'window', `
-  ${read('src/lib/runtime.js')}
-  ${read('src/lib/migrate.js')}
-  ${read('src/lib/holidays.js')}
-  const MONTH_DAYS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-  const WEEKDAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-  const MONTHS = ["January","February","March","April","May","June","July",
-                  "August","September","October","November","December"];
-  ${read('src/lib/format.js')}
-  ${read('src/lib/dates.js')}
-  ${read('src/lib/networth.js')}
-  return { netWorthSummary, assetsTotal, debtsTotal, staleAssets, ASSET_KINDS, assetKindLabel };
-`);
+// The source is ES modules; loadSrc bundles these (and what they import) and
+// runs them against the stand-ins passed here.
+const load = (React, localStorage, window) => loadSrc(['src/lib/dates.js', 'src/lib/networth.js'], { React, localStorage, window });
 const store = new Map();
 const localStorage = {
   getItem: (k) => (store.has(k) ? store.get(k) : null),

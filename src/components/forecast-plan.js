@@ -1,4 +1,14 @@
-  function ForecastView({ apiKey = "", isOffline = false, yearFlows, yearConfigs, openBalByYear, alertThreshold = DEFAULT_ALERT_THRESHOLD, globalSearch = "", budgetTargets = {}, horizon = 90, setHorizon = () => {
+import { __spreadProps, __spreadValues, safeStorage, useCallback, useEffect, useMemo, useState } from "../lib/runtime.js";
+import { centsToDollars, dollarsToCents } from "../lib/migrate.js";
+import { depositShiftNote, getMonthSummaries, isInflowEvent, isOutflowEvent, signedAmount } from "../lib/dates.js";
+import { ExportBar, downloadCSV, fmt, fmtAxisK, fmtDate, moneySymbol, printView, roundMoney } from "../lib/format.js";
+import { Area, AreaChart, CartesianGrid, DEFAULT_ALERT_THRESHOLD, Legend, Line, MONTHS, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis, eventMatchesSearch, prefersReducedMotion, useIsMobile, useLS } from "../lib/app-data.js";
+import { aiCanRun, aiErrorMessage, aiProbeProxy, callClaude } from "../lib/ai.js";
+import { Card, CatChip, ChartTip, GridPagination, HelpTip, KpiCard, LedgerRow, PillToggle, Toggle, cumulativeRows, useInfiniteScroll } from "./primitives.js";
+import { AddEntryModal } from "./forms.js";
+import { Icon } from "./misc-ui.js";
+import { DASH_AXIS_TICK_X, DASH_AXIS_TICK_Y } from "./plan-dashboard-shared.js";
+  export function ForecastView({ apiKey = "", isOffline = false, yearFlows, yearConfigs, openBalByYear, alertThreshold = DEFAULT_ALERT_THRESHOLD, globalSearch = "", budgetTargets = {}, horizon = 90, setHorizon = () => {
   }, categories = [], categoryColors = {}, addEntry = null, templates = [], setTemplates = null, completed = {}, toggleComplete = () => {
   }, entries = [], scenarioOn = false, setScenarioOn = () => {
   }, scenarioAdj = {}, setScenarioAdj = () => {
@@ -313,7 +323,7 @@
       })());
     })))), /* @__PURE__ */ React.createElement("div", { className: "forecast-legend" }, "vs Target \u2014 how far past its month\u2019s budget target this occurrence leaves its category. ", /* @__PURE__ */ React.createElement("span", { className: "c-textLt" }, "\u2713"), " within target \u00b7 ", /* @__PURE__ */ React.createElement("span", { style: { color: "var(--amberInk)", fontWeight: 600 } }, "+1\u201320%"), " slightly over \u00b7 ", /* @__PURE__ */ React.createElement("span", { style: { color: "var(--red)", fontWeight: 600 } }, "more than +20%"), " well over \u00b7 ", /* @__PURE__ */ React.createElement("span", { className: "c-textLt" }, "\u2014"), " money in, or no target set"), /* @__PURE__ */ React.createElement(GridPagination, { pageInfo: pgInfo, pageSize: pgSize, setPageSize: changePageSize, label: "events", isMobile: true }))));
   }
-  function OnboardingWizard({ yearConfigs, setYearConfigs, addEntry, categories, setTab }) {
+  export function OnboardingWizard({ yearConfigs, setYearConfigs, addEntry, categories, setTab }) {
     const [step, setStep] = useState(0);
     const [openBal, setOpenBal] = useState("");
     const [income, setIncome] = useState({ desc: "", amount: "", category: "Income" });
@@ -428,15 +438,15 @@
       background: i <= step ? "var(--primary)" : "var(--border)"
     } }))), steps[step]);
   }
-  function BoldText({ text = "" }) {
+  export function BoldText({ text = "" }) {
     const parts = text.split(/\*\*([^*]+)\*\*/g);
     return React.createElement(React.Fragment, null, ...parts.map(
       (p, i) => i % 2 === 1 ? React.createElement("strong", { key: i }, p) : p
     ));
   }
   // Hoisted out of AIInsightsView (was remounted every parent render).
-  const VizRow = ({ label, fillPct, fillColor, value, sub, rowTitle }) => /* @__PURE__ */ React.createElement("div", { title: rowTitle || void 0, className: "vizrow-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "vizrow-toprow" }, /* @__PURE__ */ React.createElement("span", { className: "txm vizrow-label" }, label), /* @__PURE__ */ React.createElement("span", { className: "mno vizrow-value" }, value, sub && /* @__PURE__ */ React.createElement("span", { className: "vizrow-sub" }, " ", sub))), /* @__PURE__ */ React.createElement("div", { className: "vizrow-track" }, /* @__PURE__ */ React.createElement("div", { className: "vizrow-fill", style: { width: Math.max(3, Math.min(100, fillPct)) + "%", background: fillColor } })));
-  function AIInsightsView({ flow, openBal, yearConfigs, budgetTargets, activeYear, categories = [], apiKey = "", goals = [], debtData = {}, isOffline = false, setTab = () => {
+  export const VizRow = ({ label, fillPct, fillColor, value, sub, rowTitle }) => /* @__PURE__ */ React.createElement("div", { title: rowTitle || void 0, className: "vizrow-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "vizrow-toprow" }, /* @__PURE__ */ React.createElement("span", { className: "txm vizrow-label" }, label), /* @__PURE__ */ React.createElement("span", { className: "mno vizrow-value" }, value, sub && /* @__PURE__ */ React.createElement("span", { className: "vizrow-sub" }, " ", sub))), /* @__PURE__ */ React.createElement("div", { className: "vizrow-track" }, /* @__PURE__ */ React.createElement("div", { className: "vizrow-fill", style: { width: Math.max(3, Math.min(100, fillPct)) + "%", background: fillColor } })));
+  export function AIInsightsView({ flow, openBal, yearConfigs, budgetTargets, activeYear, categories = [], apiKey = "", goals = [], debtData = {}, isOffline = false, setTab = () => {
   } }) {
     const [loading, setLoading] = useState(false);
     const [report, setReport] = useState(null);

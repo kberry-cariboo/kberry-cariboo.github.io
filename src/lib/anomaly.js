@@ -1,3 +1,4 @@
+import { fmt } from "./format.js";
   // Categories spending unlike themselves.
   //
   // computeSpendingInsight already compares the month's total against its
@@ -15,7 +16,7 @@
   //
   // Pure functions over the flow array. Money is integer cents.
 
-  const ANOMALY_DEFAULTS = {
+  export const ANOMALY_DEFAULTS = {
     // How many months of history to average over. Six is long enough for a
     // quarterly bill to appear twice and short enough that last winter's
     // heating is not still being held against this April.
@@ -34,7 +35,7 @@
   };
 
   // Expense totals per category for one month of the flow.
-  function anomalyMonthTotals(flow, month) {
+  export function anomalyMonthTotals(flow, month) {
     const out = {};
     (flow || []).forEach((ev) => {
       if (!ev || ev.month !== month || ev.type !== "expense") return;
@@ -49,7 +50,7 @@
   // `month` is the month being judged, zero-indexed, and the comparison runs
   // over the months before it — so January has nothing to say and returns
   // nothing, rather than comparing itself against an empty history.
-  function categoryAnomalies(flow, month, opts = {}) {
+  export function categoryAnomalies(flow, month, opts = {}) {
     const o = { ...ANOMALY_DEFAULTS, ...opts };
     if (!Array.isArray(flow) || !Number.isFinite(month) || month <= 0) return [];
     const from = Math.max(0, month - o.lookback);
@@ -115,7 +116,7 @@
 
   // One line per anomaly, in the shape the Alerts centre renders. Kept beside
   // the arithmetic so the wording and the thresholds stay in one file.
-  function categoryAnomalyFindings(anomalies, monthName, limit = 3) {
+  export function categoryAnomalyFindings(anomalies, monthName, limit = 3) {
     return (anomalies || []).slice(0, limit).map((a) => ({
       id: "cat-anomaly-" + a.category,
       // Spending less than usual is not good news by itself — a missed bill

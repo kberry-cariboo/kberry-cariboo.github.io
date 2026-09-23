@@ -1,3 +1,4 @@
+import { localDateStr, parseDate } from "./dates.js";
   // Net worth: what you own, less what you owe.
   //
   // The app already knew two thirds of this and never said it. Debts carry
@@ -14,33 +15,33 @@
   //
   // Pure functions over plain data. Money is integer cents, as everywhere.
 
-  const ASSET_KINDS = [
+  export const ASSET_KINDS = [
     { id: "property", label: "Property" },
     { id: "vehicle", label: "Vehicle" },
     { id: "investment", label: "Investments" },
     { id: "savings", label: "Savings" },
     { id: "other", label: "Other" }
   ];
-  const ASSET_KIND_IDS = ASSET_KINDS.map((k) => k.id);
-  const assetKindLabel = (id) => {
+  export const ASSET_KIND_IDS = ASSET_KINDS.map((k) => k.id);
+  export const assetKindLabel = (id) => {
     const k = ASSET_KINDS.find((x) => x.id === id);
     return k ? k.label : "Other";
   };
   // Values arrive from a form and from the sync, so they can be a string, a
   // number, or missing. Anything that is not a finite number is nothing —
   // never NaN, which would poison every total it touches.
-  const assetValueOf = (a) => {
+  export const assetValueOf = (a) => {
     const n = typeof a === "number" ? a : parseFloat(a && a.value);
     return Number.isFinite(n) ? n : 0;
   };
-  function assetsTotal(assets) {
+  export function assetsTotal(assets) {
     return (Array.isArray(assets) ? assets : []).reduce((s, a) => s + assetValueOf(a), 0);
   }
   // Debts are stored keyed by id, with balances as cents in a string, and a
   // `hidden` flag for the ones auto-detected from entries that the user has
   // said are not debts. A hidden debt is not counted here for the same reason
   // it is not simulated: the user has said it is not one.
-  function debtsTotal(debtData) {
+  export function debtsTotal(debtData) {
     return Object.keys(debtData || {}).reduce((s, key) => {
       const d = debtData[key] || {};
       if (d.hidden) return s;
@@ -52,8 +53,8 @@
   // feeds should not be presented as current without saying when it was last
   // confirmed. A year is the threshold: annual is about how often people
   // actually revisit a house or a pension valuation.
-  const ASSET_STALE_DAYS = 365;
-  function staleAssets(assets, asOf, staleDays = ASSET_STALE_DAYS) {
+  export const ASSET_STALE_DAYS = 365;
+  export function staleAssets(assets, asOf, staleDays = ASSET_STALE_DAYS) {
     if (!asOf) return [];
     const now = parseDate(asOf);
     if (!now) return [];
@@ -69,7 +70,7 @@
   // rather than recomputed, so the two can never disagree. It is signed: a
   // household running below zero has less than nothing in the bank, and net
   // worth should say so.
-  function netWorthSummary({ assets = [], debtData = {}, cash = 0, asOf = "", staleDays = ASSET_STALE_DAYS } = {}) {
+  export function netWorthSummary({ assets = [], debtData = {}, cash = 0, asOf = "", staleDays = ASSET_STALE_DAYS } = {}) {
     const owned = assetsTotal(assets);
     const owed = debtsTotal(debtData);
     const cashCents = Number.isFinite(cash) ? cash : 0;

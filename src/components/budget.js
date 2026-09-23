@@ -1,8 +1,18 @@
+import { __spreadProps, __spreadValues, genId, safeStorage, useContext, useEffect, useMemo, useRef, useState } from "../lib/runtime.js";
+import { centsToDollars, dollarsToCents } from "../lib/migrate.js";
+import { accountIdOf, daysInMonth, depositShiftNote, getMonthSummaries, isInflowEvent, isOutflowEvent, signedAmount, startOfToday } from "../lib/dates.js";
+import { categoryDetail } from "../lib/cat-detail.js";
+import { ExportBar, downloadCSV, fmt, printView, roundMoney } from "../lib/format.js";
+import { BUDGET_COL_LABELS, DEFAULT_ALERT_THRESHOLD, DEFAULT_BUDGET_COLS, HouseholdContext, MONTHS, accountName, autoFocusOnDesktop, eventMatchesSearch, haptic, useIsCoarsePointer, useIsMobile, useLS, varianceTitle } from "../lib/app-data.js";
+import { Card, CatChip, CategoryDetailSheet, ConfirmDialog, EmptyState, GridPagination, HelpTip, KpiCard, LedgerRow, MonthPicker, SheetHandle, cumulativeRows, getCatColor, paginateRows, useInfiniteScroll } from "./primitives.js";
+import { ContextMenu, EntryForm } from "./forms.js";
+import { Icon, OccurrenceEditModal } from "./misc-ui.js";
+import { toast } from "./auth-misc.js";
   // Hoisted out of BudgetView: defining these inside the component made React
   // see a new component type each render and remount their DOM.
-  const TodayLine = () => /* @__PURE__ */ React.createElement("tr", { key: "today-marker" }, /* @__PURE__ */ React.createElement("td", { colSpan: 8, className: "today-line-td" }, /* @__PURE__ */ React.createElement("div", { className: "today-line-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }), /* @__PURE__ */ React.createElement("span", { className: "today-label" }, "TODAY"), /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }))));
-  const TodayLineCard = () => /* @__PURE__ */ React.createElement("div", { key: "today-marker-card", className: "today-line-card-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }), /* @__PURE__ */ React.createElement("span", { className: "today-label" }, "TODAY"), /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }));
-  function BudgetView({ apiKey = "", isOffline = false, flow, prevYearFlow = [], prevYearConfigured = false, openBal, entries = [], setOverride, clearOverride, categories, categoryColors = {}, setEntries, saveEntryEdit = null, addEntry, pushUndo = () => {
+  export const TodayLine = () => /* @__PURE__ */ React.createElement("tr", { key: "today-marker" }, /* @__PURE__ */ React.createElement("td", { colSpan: 8, className: "today-line-td" }, /* @__PURE__ */ React.createElement("div", { className: "today-line-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }), /* @__PURE__ */ React.createElement("span", { className: "today-label" }, "TODAY"), /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }))));
+  export const TodayLineCard = () => /* @__PURE__ */ React.createElement("div", { key: "today-marker-card", className: "today-line-card-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }), /* @__PURE__ */ React.createElement("span", { className: "today-label" }, "TODAY"), /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }));
+  export function BudgetView({ apiKey = "", isOffline = false, flow, prevYearFlow = [], prevYearConfigured = false, openBal, entries = [], setOverride, clearOverride, categories, categoryColors = {}, setEntries, saveEntryEdit = null, addEntry, pushUndo = () => {
   }, flowSub = "list", showEnvelopes = false, setFlowSub = () => {
   }, monthIdx, setMonthIdx, alertThreshold = DEFAULT_ALERT_THRESHOLD, globalSearch = "", templates = [], setTemplates, budgetTargets = {}, setBudgetTargets, completed = {}, toggleComplete = () => {
   }, markOccurrencesPaid = () => {

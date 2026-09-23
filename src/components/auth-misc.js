@@ -1,4 +1,23 @@
-  function MoneyInput(_a) {
+import { __objRest, __spreadProps, __spreadValues, safeStorage, useEffect, useMemo, useRef, useState } from "../lib/runtime.js";
+import { VAPID_PUBLIC_KEY, isSupabaseConfigured } from "../lib/supabase-config.js";
+import { SCHEMA_VERSION } from "../lib/migrate.js";
+import { computeRegionHolidays, getStoredHolidays, holidayRowsForYear, holidayYearForEditing, holidaysForYear, isYearStored, mergeFetchedHolidays, parseHolidayPayload, setStoredHolidays } from "../lib/holidays.js";
+import { computeFlow, daysInMonth, expandEntries, getMonthSummaries, localDateStr, splitEntryEditFromCurrentMonth, todayStr } from "../lib/dates.js";
+import { fmt, fmtVarRange } from "../lib/format.js";
+import { getBiometricCredId, verifyBiometric } from "../lib/biometric.js";
+import { HOUSEHOLD_BACKUP_FIELDS, HOUSEHOLD_FIELDS, HOUSEHOLD_LOCAL_STORAGE_KEYS, HOUSEHOLD_SYNCED_FIELDS, MEMBER_PREF_FIELDS, houseApply, sbResetPassword, sbSignIn, sbSignUp, useHouseholdState } from "../lib/household-sync.js";
+import { buildNotificationSchedule, vapidKeyLooksValid } from "../lib/push.js";
+import { LOGO_SRC, haptic, matchesAmountQuery, moveEntryAttachmentsToOverrides, prefersReducedMotion, simulateDebtStrategy, useRovingTabs } from "../lib/app-data.js";
+import { HelpTip } from "./primitives.js";
+import { ContextMenu, EntryForm } from "./forms.js";
+import { EntriesView } from "./entries.js";
+import { BottomNav, Icon, OccurrenceEditModal, ReceiptLightbox } from "./misc-ui.js";
+import { BudgetView } from "./budget.js";
+import { ForecastView } from "./forecast-plan.js";
+import { PlanView } from "./plan.js";
+import { DashboardView } from "./dashboard.js";
+import { HolidaySettings } from "./settings.js";
+  export function MoneyInput(_a) {
     var _b = _a, { value, onChange, style, inputRef } = _b, rest = __objRest(_b, ["value", "onChange", "style", "inputRef"]);
     const [focused, setFocused] = useState(false);
     const display = (() => {
@@ -30,7 +49,7 @@
       })
     );
   }
-  function toast(message, kind = "success") {
+  export function toast(message, kind = "success") {
     try {
       window.dispatchEvent(new CustomEvent("cf:toast", { detail: { message, kind } }));
     } catch (err) {
@@ -43,7 +62,7 @@
   // queued message gets its own dwell time before the next one shows.
   // Errors dwell longer and are never dropped to make room; if the queue is
   // full, the oldest non-error message is bumped first.
-  function FeedbackToast() {
+  export function FeedbackToast() {
     const [queue, setQueue] = useState([]);
     const timer = useRef(null);
     useEffect(() => {
@@ -102,7 +121,7 @@
       )
     );
   }
-  function UndoToast({ label, count = 1, onUndo, onDismiss }) {
+  export function UndoToast({ label, count = 1, onUndo, onDismiss }) {
     const [secs, setSecs] = useState(5);
     // Restart the countdown when a further undoable action lands while the
     // toast is still up — the newest one gets the full undo window.
@@ -127,7 +146,7 @@
       "\u21A9 Undo"
     ), /* @__PURE__ */ React.createElement("span", { className: "undo-countdown" }, secs, "s"));
   }
-  function LoginView() {
+  export function LoginView() {
     const configured = isSupabaseConfigured();
     const [mode, setMode] = useState("signin");
     const [email, setEmail] = useState(() => {
@@ -319,7 +338,7 @@
       loading ? mode === "signin" ? "Signing in\u2026" : mode === "signup" ? "Creating account\u2026" : "Sending reset link\u2026" : mode === "signin" ? "Sign in" : mode === "signup" ? "Create account" : "Send reset link"
     ), mode === "forgot" && /* @__PURE__ */ React.createElement("div", { className: "mt-14 text-center" }, /* @__PURE__ */ React.createElement("button", { type: "button", onClick: backToSignIn, className: "ai-settings-link" }, "\u2190 Back to sign in"))), mode !== "forgot" && /* @__PURE__ */ React.createElement("div", { className: "login-footer-note" }, "Your data is stored in your own Supabase project.", /* @__PURE__ */ React.createElement("br", null), "Family members can join your household with an invite code after signing in.")));
   }
-  function LockScreen({ sessionUser, onUnlock, onSignOut }) {
+  export function LockScreen({ sessionUser, onUnlock, onSignOut }) {
     const [hasBiometric] = useState(() => !!getBiometricCredId(sessionUser.id));
     const [mode, setMode] = useState(() => hasBiometric ? "biometric" : "password");
     const [checking, setChecking] = useState(false);
@@ -451,7 +470,7 @@
   // Takes the hook's result rather than mounting a probe of its own:
   // SelfTestView calls the hook, so this runs against a real React render
   // without a second root to flush.
-  function checkHouseholdState(got) {
+  export function checkHouseholdState(got) {
     if (!got || !got.values || !got.setters) throw new Error("the hook returned nothing usable");
     const missing = HOUSEHOLD_FIELDS.filter((f) => !(f.key in got.values));
     if (missing.length) throw new Error("no value for: " + missing.map((f) => f.key).join(", "));
@@ -462,7 +481,7 @@
     }
     return true;
   }
-  function SelfTestView() {
+  export function SelfTestView() {
     // Called here, in a real component, so the check below tests the hook as
     // the app uses it. Reads localStorage and nothing else — this view never
     // touches the setters, so it can't write over the user's data.
@@ -1041,7 +1060,7 @@
     const passed = allResults.filter((r) => r.ok).length;
     return /* @__PURE__ */ React.createElement("div", { className: "selftest-wrap" }, /* @__PURE__ */ React.createElement("h2", { className: "selftest-h2" }, "CashFlow Self-Test"), /* @__PURE__ */ React.createElement("div", { className: "selftest-count", style: { color: passed === allResults.length ? "var(--greenDk)" : "var(--red)" } }, passed, "/", allResults.length, " checks passed"), allResults.map((r, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "selftest-row" }, /* @__PURE__ */ React.createElement("span", { className: "selftest-mark", style: { color: r.ok ? "var(--greenDk)" : "var(--red)" } }, r.ok ? "\u2713" : "\u2717"), /* @__PURE__ */ React.createElement("span", { className: "c-text flex-1" }, r.name), r.detail && !r.ok && /* @__PURE__ */ React.createElement("span", { className: "selftest-detail" }, r.detail))), /* @__PURE__ */ React.createElement("a", { href: location.pathname, className: "selftest-back-link" }, "\u2190 Back to app"));
   }
-  function BudgetSubTabs({ value, onChange }) {
+  export function BudgetSubTabs({ value, onChange }) {
     const ref = useRef(null);
     const roving = useRovingTabs();
     useEffect(() => {
@@ -1087,7 +1106,7 @@
       /* @__PURE__ */ React.createElement("span", { className: "bp-label" }, " ", s.label)
     )));
   }
-  function PlanSubTabs({ value, onChange }) {
+  export function PlanSubTabs({ value, onChange }) {
     const ref = useRef(null);
     const roving = useRovingTabs();
     useEffect(() => {

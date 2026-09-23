@@ -1,23 +1,32 @@
+import { safeStorage, useCallback, useEffect, useMemo, useRef, useState } from "./runtime.js";
+import { supabaseClient } from "./supabase-config.js";
+import { DEFAULT_ACCOUNT_ID, DEFAULT_ACCOUNT_NAME, SCHEMA_VERSION, migrateHouseholdPayload } from "./migrate.js";
+import { DEFAULT_HOLIDAY_REGION } from "./holidays.js";
+import { localDateStr } from "./dates.js";
+import { DEFAULT_CURRENCY, DEFAULT_LOCALE, downloadBlob } from "./format.js";
+import { receiptSig, receiptStoreAll, receiptStoreClear, receiptStoreDelete, receiptStorePut } from "./receipt-store.js";
+import { DEFAULT_ALERT_THRESHOLD, DEFAULT_BUDGET_COLS, DEFAULT_CATEGORIES, DEFAULT_CATEGORY_COLORS, DEFAULT_ENTRIES_COLS, useLS } from "./app-data.js";
+import { toast } from "../components/auth-misc.js";
   // ── Centralized Supabase auth calls ────────────────────────────────
   // Every supabase.auth touchpoint lives in this file (these helpers plus
   // useHousehold below); components never call supabaseClient directly.
-  async function sbSignIn(email, password) {
+  export async function sbSignIn(email, password) {
     if (!supabaseClient) throw new Error("Supabase isn't configured yet.");
     const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
     if (error) throw error;
   }
-  async function sbSignUp(email, password) {
+  export async function sbSignUp(email, password) {
     if (!supabaseClient) throw new Error("Supabase isn't configured yet.");
     const { error } = await supabaseClient.auth.signUp({ email, password, options: { emailRedirectTo: location.origin + location.pathname } });
     if (error) throw error;
   }
-  async function sbResetPassword(email) {
+  export async function sbResetPassword(email) {
     if (!supabaseClient) throw new Error("Supabase isn't configured yet.");
     const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
     if (error) throw error;
   }
   // Verify the current password by re-authenticating, then set the new one.
-  async function sbChangePassword(email, currentPassword, nextPassword) {
+  export async function sbChangePassword(email, currentPassword, nextPassword) {
     try {
       await sbSignIn(email, currentPassword);
     } catch (e) {
@@ -72,7 +81,7 @@
   // Overrides without their receipt images: what goes to the server (receipts
   // travel separately, via put_receipt) and what goes into localStorage
   // (receipts live in IndexedDB — see receipt-store.js).
-  function stripOverrideAttachments(byYr) {
+  export function stripOverrideAttachments(byYr) {
     const out = {};
     Object.keys(byYr || {}).forEach((year) => {
       const yOvs = byYr[year] || {};
@@ -92,7 +101,7 @@
   }
   // String figures to numbers; "" (not filled in) and anything unparseable
   // are left exactly as they were.
-  function normaliseDebtFigures(debts) {
+  export function normaliseDebtFigures(debts) {
     const out = {};
     Object.keys(debts).forEach((k) => {
       const d = debts[k];
@@ -108,7 +117,7 @@
     });
     return out;
   }
-  const HOUSEHOLD_FIELDS = [
+  export const HOUSEHOLD_FIELDS = [
     { key: "entries", storage: "cf_entries", initial: () => [], kind: "array", backup: true },
     { key: "overridesByYr", storage: "cf_overrides", initial: () => ({}), kind: "object", backup: true, toStorage: stripOverrideAttachments },
     { key: "yearConfigs", storage: "cf_years", initial: () => [{ year: (/* @__PURE__ */ new Date()).getFullYear(), openingBalance: 0 }], kind: "array", backup: true },
@@ -201,7 +210,7 @@
   // household's, and these are one person's. The schema declares the same keys
   // in cf_member_pref_keys(), and tests/payload-fields.mjs holds the two
   // together.
-  const MEMBER_PREF_FIELDS = [
+  export const MEMBER_PREF_FIELDS = [
     { key: "darkMode", storage: "cf_darkMode", initial: () => {
       try {
         return window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -236,7 +245,7 @@
   // Long enough to answer "what happened while I was away" across a busy week,
   // short enough that the log never becomes the largest thing in the payload:
   // 200 records at ~120 bytes is ~24 KB against a household of a few hundred KB.
-  const ACTIVITY_LIMIT = 200;
+  export const ACTIVITY_LIMIT = 200;
   // Creates the localStorage-backed state for every field in the table, in
   // table order, and returns the two objects useHouseholdData indexes by field
   // key. Calling useLS in a loop is safe here precisely because
@@ -247,7 +256,7 @@
   // used to repeat every field three more times — one useLS call, one entry in
   // a houseValues literal, one in a houseSetters literal — and omitting either
   // literal produced a field that looked wired but never left the device.
-  function useHouseholdState() {
+  export function useHouseholdState() {
     const values = {};
     const setters = [];
     for (const f of HOUSEHOLD_FIELDS) {
@@ -269,7 +278,7 @@
     );
     return { values, setters: stableSetters };
   }
-  const HOUSEHOLD_GUARDS = {
+  export const HOUSEHOLD_GUARDS = {
     array: (v, set) => {
       if (Array.isArray(v)) set(v);
     },
@@ -283,17 +292,17 @@
       if (v) set(v);
     }
   };
-  const houseApply = (f) => f.apply || HOUSEHOLD_GUARDS[f.kind] || HOUSEHOLD_GUARDS.value;
+  export const houseApply = (f) => f.apply || HOUSEHOLD_GUARDS[f.kind] || HOUSEHOLD_GUARDS.value;
   // What the payload carries, and what a second household's leftovers are
   // cleared from — both were separate hand-written lists.
-  const HOUSEHOLD_SYNCED_FIELDS = HOUSEHOLD_FIELDS.map((f) => ({ key: f.key, apply: houseApply(f) }));
-  const HOUSEHOLD_BACKUP_FIELDS = HOUSEHOLD_FIELDS.filter((f) => f.backup);
+  export const HOUSEHOLD_SYNCED_FIELDS = HOUSEHOLD_FIELDS.map((f) => ({ key: f.key, apply: houseApply(f) }));
+  export const HOUSEHOLD_BACKUP_FIELDS = HOUSEHOLD_FIELDS.filter((f) => f.backup);
   // The one way a backup file is made. There used to be two: Settings built
   // it from the table above, and the 30-day reminder's "Export backup" listed
   // fourteen fields by hand — and missed nine, accounts among them, so a
   // restore from that file left every entry pointing at an account that no
   // longer existed. Both buttons call this now.
-  function buildHouseholdBackup(values) {
+  export function buildHouseholdBackup(values) {
     return HOUSEHOLD_BACKUP_FIELDS.reduce((acc, f) => {
       acc[f.key] = values[f.key];
       return acc;
@@ -301,7 +310,7 @@
   }
   // Downloads it, and records the date only when the download started — the
   // reminder coming back is a far smaller problem than a backup that wasn't.
-  function exportHouseholdBackup(values) {
+  export function exportHouseholdBackup(values) {
     const blob = new Blob([JSON.stringify(buildHouseholdBackup(values), null, 2)], { type: "application/json" });
     if (!downloadBlob(`CashFlow_Backup_${localDateStr(/* @__PURE__ */ new Date())}.json`, blob)) return false;
     safeStorage.set("cf_last_backup", String(Date.now()));
@@ -316,8 +325,8 @@
   // aren't household-scoped (lock timeout, saved email, biometric credential,
   // swipe-coach dismissal) are deliberately left alone, as is cf_ai_key: a
   // personal credential isn't the household's to clear.
-  const HOUSEHOLD_LOCAL_STORAGE_KEYS = HOUSEHOLD_FIELDS.map((f) => f.storage);
-  function clearHouseholdLocalState() {
+  export const HOUSEHOLD_LOCAL_STORAGE_KEYS = HOUSEHOLD_FIELDS.map((f) => f.storage);
+  export function clearHouseholdLocalState() {
     try {
       HOUSEHOLD_LOCAL_STORAGE_KEYS.forEach((k) => localStorage.removeItem(k));
       // The member's own preferences too: they are that person's, kept on the
@@ -336,7 +345,7 @@
       // notifyStorageWriteFailure.
     }
   }
-  function useHousehold() {
+  export function useHousehold() {
     const [session, setSession] = useState(null);
     const [authLoading, setAuthLoading] = useState(true);
     const [household, setHousehold] = useState(null);
@@ -527,10 +536,10 @@
   //                       Comparing it to the server's tells us whether the
   //                       cloud moved on while we were away, which is the
   //                       difference between "safe to push" and "ask the user".
-  const UNSAVED_KEY = "cf_unsaved_since";
-  const SYNCED_AT_KEY = "cf_last_synced_at";
-  const readMarker = (k) => safeStorage.get(k);
-  const writeMarker = (k, v) => v == null ? safeStorage.remove(k) : safeStorage.set(k, v);
+  export const UNSAVED_KEY = "cf_unsaved_since";
+  export const SYNCED_AT_KEY = "cf_last_synced_at";
+  export const readMarker = (k) => safeStorage.get(k);
+  export const writeMarker = (k, v) => v == null ? safeStorage.remove(k) : safeStorage.set(k, v);
 
   // Puts receipt images into the overrides they belong to, for any override
   // that exists and has no image of its own. Never replaces one: an image
@@ -538,7 +547,7 @@
   // arriving from storage or the server. Returns `byYr` itself when nothing
   // changed, so a no-op costs no render.
   // { 'override:<year>:<occId>': dataUrl } for every override carrying an image.
-  function collectAttachmentsOf(byYr) {
+  export function collectAttachmentsOf(byYr) {
     const map = {};
     Object.keys(byYr || {}).forEach((year) => {
       const yOvs = byYr[year] || {};
@@ -548,7 +557,7 @@
     });
     return map;
   }
-  function attachReceiptImages(byYr, images) {
+  export function attachReceiptImages(byYr, images) {
     let out = byYr;
     Object.keys(images || {}).forEach((key) => {
       const m = /^override:(\d+):(.+)$/.exec(key);
@@ -563,7 +572,7 @@
     });
     return out;
   }
-  function useHouseholdData({ household, values, setters }) {
+  export function useHouseholdData({ household, values, setters }) {
     const [status, setStatus] = useState("idle");
     const [msg, setMsg] = useState("");
     // True when this device is holding edits the server hasn't got.
@@ -1146,8 +1155,8 @@
   // this device's values instead of applying the server's, so a preference
   // changed on a train is not replaced by the older copy the next time the app
   // opens.
-  const PREFS_UNSAVED_KEY = "cf_prefs_unsaved";
-  function useMemberPrefs(household) {
+  export const PREFS_UNSAVED_KEY = "cf_prefs_unsaved";
+  export function useMemberPrefs(household) {
     const values = {};
     const setterList = [];
     // useLS in a loop, safe for the same reason as useHouseholdState: the

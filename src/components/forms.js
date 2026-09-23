@@ -1,4 +1,13 @@
-  function EntryForm({ initial, onSave, onCancel, categories, templates = [], onSaveTemplate = null, apiKey = "", isOffline = false }) {
+import { __spreadProps, __spreadValues, useContext, useEffect, useLayoutEffect, useRef, useState } from "../lib/runtime.js";
+import { centsToDollars, dollarsToCents } from "../lib/migrate.js";
+import { parseDate, todayStr } from "../lib/dates.js";
+import { memberName, moneySymbol } from "../lib/format.js";
+import { HouseholdContext, MONTHS, WEEKDAYS, autoFocusOnDesktop, scheduleSentence } from "../lib/app-data.js";
+import { aiCanRun, aiErrorMessage, callClaude } from "../lib/ai.js";
+import { FieldError, FieldLabel, SheetHandle, TemplatePicker, Toggle } from "./primitives.js";
+import { Icon } from "./misc-ui.js";
+import { toast } from "./auth-misc.js";
+  export function EntryForm({ initial, onSave, onCancel, categories, templates = [], onSaveTemplate = null, apiKey = "", isOffline = false }) {
     var _a, _b, _c, _d, _e;
     // Off the household context rather than a prop: the form is opened from
     // six places and threading the account list through all of them is how one
@@ -424,7 +433,7 @@
   // Shared "Add Entry" modal \u2014 wraps EntryForm in the same modal chrome used
   // wherever an explicit Add button (top-right, next to CSV/PDF) needs to
   // open a blank entry form.
-  function AddEntryModal({ show, onClose, onSave, categories, templates = [], setTemplates = null, apiKey = "", isOffline = false }) {
+  export function AddEntryModal({ show, onClose, onSave, categories, templates = [], setTemplates = null, apiKey = "", isOffline = false }) {
     // Escape closes, the backdrop doesn't — the same bargain every other
     // overlay here strikes. It matters more now: this modal is mounted at app
     // level and opens over whatever you were reading, so the way out has to be
@@ -464,7 +473,7 @@
       ))
     );
   }
-  function ContextMenu({ x, y, items, onClose }) {
+  export function ContextMenu({ x, y, items, onClose }) {
     const menuRef = useRef(null);
     useEffect(() => {
       const h = (e) => {
@@ -595,7 +604,7 @@
   // Inside the mobile filter sheet the popover was absolutely positioned in a
   // scrolling card, so it escaped past the bottom of the screen and covered
   // the date fields and the "Show results" button.
-  function FilterPill({ label, allLabel, options, selected, onChange, inline = false }) {
+  export function FilterPill({ label, allLabel, options, selected, onChange, inline = false }) {
     const [open, setOpen] = useState(false);
     const ref = useRef(null);
     useEffect(() => {

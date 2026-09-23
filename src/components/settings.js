@@ -1,8 +1,20 @@
+import { __spreadProps, __spreadValues, genId, useContext, useEffect, useMemo, useRef, useState } from "../lib/runtime.js";
+import { centsToDollars, dollarsToCents, migrateHouseholdPayload } from "../lib/migrate.js";
+import { DEFAULT_HOLIDAY_REGION, HOLIDAY_REGIONS, fetchHolidayYear, holidayRegion, holidayRowsForYear, holidayYearForEditing, isYearStored, mergeFetchedHolidays } from "../lib/holidays.js";
+import { accountIdOf, isInflowEvent, parseDate, signedAmount } from "../lib/dates.js";
+import { applyYearRollforward, planYearRollforward, yearRollforwardParts } from "../lib/year-copy.js";
+import { CURRENCIES, DEFAULT_CURRENCY, DEFAULT_LOCALE, NUMBER_LOCALES, fmt, memberName, moneySymbol, roundMoney } from "../lib/format.js";
+import { clearBiometric, getBiometricCredId, isBiometricAvailable, registerBiometric } from "../lib/biometric.js";
+import { HOUSEHOLD_BACKUP_FIELDS, exportHouseholdBackup, houseApply } from "../lib/household-sync.js";
+import { ACCOUNT_KINDS, ACTIVITY_LABELS, HouseholdContext, MONTHS, WEEKDAYS, accountName, accountOpenings, haptic, lowBalanceEpisodes, moveEntryAttachmentsToOverrides, useIsCoarsePointer } from "../lib/app-data.js";
+import { Card, ConfirmDialog, FieldLabel, HelpTip, SectionTitle, Sparkline, Toggle, getCatColor } from "./primitives.js";
+import { Icon } from "./misc-ui.js";
+import { toast } from "./auth-misc.js";
     // The alerts page. See lowBalanceEpisodes for what an alert is and why it
   // is not one row per event: this page's whole job is to say how many
   // distinct things are wrong, and the old one said sixty when the answer
   // was one.
-  function AlertsPanel({ flow, alertThreshold, setTab, findings = [], gotoForecast = () => {
+  export function AlertsPanel({ flow, alertThreshold, setTab, findings = [], gotoForecast = () => {
   } }) {
     const episodes = lowBalanceEpisodes(flow, alertThreshold);
     const dateLabel = (ev) => MONTHS[ev.month] + " " + ev.day;
@@ -89,7 +101,7 @@
   }
   // Delivery hour choices for background push. Labelled in 12-hour form
   // because that's how the alert time reads on the phone that receives it.
-  const HOUR_OPTIONS = Array.from({ length: 24 }, (_, h) => ({
+  export const HOUR_OPTIONS = Array.from({ length: 24 }, (_, h) => ({
     value: h,
     label: `${h % 12 === 0 ? 12 : h % 12}:00 ${h < 12 ? "AM" : "PM"}`
   }));
@@ -97,7 +109,7 @@
   // One line of plain English about whether alerts can reach a closed app.
   // The distinction matters: "notifications are on" means something quite
   // different when they can only fire in a foreground tab.
-  function pushStatusLine(pushState) {
+  export function pushStatusLine(pushState) {
     const detail = (pushState && pushState.detail) || "";
     switch (pushState && pushState.status) {
       case "subscribed":
@@ -124,7 +136,7 @@
   // to an unstored year materialises the rules into the store so nothing is
   // lost. Rows say where they came from, because "built-in" and "I typed this"
   // are different kinds of trust.
-  function HolidaySettings({ holidays = {}, setHolidays, years = [], activeYear, isOffline = false, holidayRegionCode = DEFAULT_HOLIDAY_REGION, setHolidayRegionCode = () => {
+  export function HolidaySettings({ holidays = {}, setHolidays, years = [], activeYear, isOffline = false, holidayRegionCode = DEFAULT_HOLIDAY_REGION, setHolidayRegionCode = () => {
   } }) {
     const [year, setYear] = useState(() => (years.includes(activeYear) ? activeYear : years[0] || (/* @__PURE__ */ new Date()).getFullYear()));
     const [form, setForm] = useState(null);
@@ -343,7 +355,7 @@
       })
     );
   }
-  function SettingsView({ youSub = null, setYouSub = () => {
+  export function SettingsView({ youSub = null, setYouSub = () => {
   }, categories, setCategories, categoryColors = {}, setCategoryColors = () => {
   }, alertThreshold, setAlertThreshold, darkMode, setDarkMode, notifyEnabled = false, setNotifyEnabled = () => {
   }, enableNotifications = async () => {
@@ -1487,7 +1499,7 @@
               })));
           })));;
   }
-  class ErrorBoundary extends React.Component {
+  export class ErrorBoundary extends React.Component {
     constructor(props) {
       super(props);
       this.state = { err: null };

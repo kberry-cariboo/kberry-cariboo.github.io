@@ -1,3 +1,7 @@
+import { HELP_SHOTS } from "../lib/help-shots.js";
+import { prefersReducedMotion } from "../lib/app-data.js";
+import { Card, SectionTitle } from "./primitives.js";
+import { SectionNav } from "./misc-ui.js";
   // The app's user documentation. It replaces the explanatory paragraphs that
   // used to sit inside the UI — a control's label says what it is, this page
   // says how the feature works — and it is where the keyboard shortcuts live
@@ -7,7 +11,7 @@
   // renderer below turns each block into an element. Editing the docs then
   // means editing English in one place instead of threading text through
   // createElement calls.
-  const HELP_SECTIONS = [
+  export const HELP_SECTIONS = [
     {
       id: "help-start",
       title: "Getting started",
@@ -315,7 +319,7 @@
       ]
     }
   ];
-  function HelpView() {
+  export function HelpView() {
     const renderBlock = (block, i) => {
       if (block.p) return /* @__PURE__ */ React.createElement("p", { key: i, className: "help-p" }, block.p);
       if (block.sub) return /* @__PURE__ */ React.createElement("h3", { key: i, className: "help-sub" }, block.sub);

@@ -1,7 +1,10 @@
+import { useEffect } from "../lib/runtime.js";
+import { prefersReducedMotion } from "../lib/app-data.js";
+import { toast } from "../components/auth-misc.js";
   // The app-wide keyboard shortcuts: tab digits and letters, "/" for search,
   // arrows for the month, Escape, and Ctrl/⌘+Z for the undo toast — never
   // while typing, never under a dialog. Moved out of App as is.
-  function useKeyboardShortcuts({ setTab, setFlowSub, setPlanSub, setBudgetMonth, setGlobalSearch, undoStackRef, undoLast, tab }) {
+  export function useKeyboardShortcuts({ setTab, setFlowSub, setPlanSub, setBudgetMonth, setGlobalSearch, undoStackRef, undoLast, tab }) {
     // Single global shortcut handler — digits, letters, arrows, and search
     // share one guard set: never while typing, never under an open modal or
     // panel (the letter shortcuts used to fire behind confirm dialogs).

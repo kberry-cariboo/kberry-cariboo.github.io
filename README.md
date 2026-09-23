@@ -10,6 +10,7 @@ Personal cash flow and budget tracker, deployed as a single static `index.html` 
 index.template.html       HTML shell (head, manifest links, boot spinner) with
                            __REACT_BUNDLE__ / __MINI_RECHARTS__ / __APP_CODE__
                            placeholders
+src/main.js                The entry point: imports every module, in order
 src/vendor/                Minified React + ReactDOM bundle, a small hand-rolled
                             chart library (not the real Recharts package), and
                             the official @supabase/supabase-js UMD bundle
@@ -85,7 +86,7 @@ project in `supabase-config.js`, Anthropic and the holiday feed. A new
 external host has to be added there, and the regression suite's `csp:` test
 fails on any violation on the main screens.
 
-`build.js` concatenates all of the above (in the fixed order it defines) into `index.html`. Everything still runs as one big shared-scope script — there's no bundler, no JSX, no import/export; components are plain `React.createElement` calls in the same style the whole app already uses. Splitting into files exists purely so changes are reviewable and diffable instead of hand-editing a single ~760KB file.
+The app is **ES modules** under `src/`, entered at `src/main.js`. `build.js` bundles them with esbuild (the build's one dependency, pinned in `package.json` and `package-lock.json`) into a single inline script in `index.html`, between `src/bootstrap-head.js` and `src/bootstrap-tail.js`. The page is still one self-contained file with no runtime dependencies. Each file imports what it uses from the others. They used to be fragments of one shared scope, joined in a fixed order, and a cross-file reference was invisible until the concatenated whole ran. React, ReactDOM and Recharts stay as the vendored globals from `src/vendor/`. Components are `React.createElement` calls; moving to JSX and TypeScript is the next step (see `FULL-APP-AUDIT.md` §2.1).
 
 ## Making a change
 
@@ -102,18 +103,16 @@ npm run check          # build + lint + fast tests: the minimum before a push
 
 `scripts/test.mjs` runs each group suite by suite, prints the output of anything
 that fails and exits non-zero if any did. The groups mirror CI. Running
-`npm install` gives you the pinned Playwright and ESLint locally, and the
-suites find the local Playwright before a global one. The build itself still
-needs nothing installed.
+`npm ci` installs the locked esbuild, ESLint and Playwright. The build needs
+esbuild, so run it once after cloning. The suites find the local Playwright
+before a global one.
 
 Or suite by suite:
 
 ```bash
 # edit files under src/, then:
 node build.js                 # rebuilds index.html + sw.js
-node scripts/lint-bundle.js   # restitches .eslint-bundle.js from src/
-npx --yes eslint@10 "src/lib/**/*.js" "src/components/**/*.js" "src/app/**/*.js" src/App.js \
-  build.js .eslint-bundle.js  # what CI runs
+npm run lint                  # what CI runs
 node tests/dates.mjs          # the schedule engine, browser-free
 node tests/help-ia.mjs        # Help prose vs the real navigation, browser-free
 node tests/drift.mjs          # drifted-bill detection, browser-free
@@ -329,11 +328,9 @@ PLAYWRIGHT_LIB=/tmp/pw/node_modules/playwright/index.mjs \
 itself; every browser suite honours it, and without it a pinned Playwright
 looks for a chromium revision that isn't there.
 
-Both lint arguments matter. `no-unused-vars` and `no-undef` are off for the
-per-file pass — every `src/` file references things defined in its siblings,
-which only resolve once `build.js` concatenates them — so those two rules run
-against the stitched `.eslint-bundle.js` instead. A plain `npx eslint .` passes
-without checking them, and will happily miss a dead declaration that fails CI.
+`no-undef` and `no-unused-vars` run on every module directly, since each file
+imports what it uses. They used to need a stitched copy of the whole app
+(`scripts/lint-bundle.js`, now gone), because the files shared one scope.
 
 Serve the repo root with any static file server to check your change before
 committing. (Opening `index.html` from the filesystem still works for most of
@@ -343,7 +340,7 @@ notifications — needs a real `http://` or `https://` origin.)
 ### Help screenshots
 
 The Help page's screenshots live in `images/help/` and are committed, not built
-— `node build.js` stays dependency-free, and a shot only changes when the UI in
+— the build doesn't drive a browser, and a shot only changes when the UI in
 it changes. They are captured from the shipped bundle driving the same fictional
 household the regression suite uses, so nothing there is mocked-up artwork and
 nothing carries real data.
