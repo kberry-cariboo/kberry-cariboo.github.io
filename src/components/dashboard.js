@@ -1163,69 +1163,14 @@
       onCancel: () => setShowReconcile(false),
       onConfirm: recordReconcile
     }), firstRunPanel,
-    catDetail && /* @__PURE__ */ React.createElement(
-      "div",
-      {
-        className: "modal-overlay",
-        role: "dialog",
-        "aria-modal": "true",
-        "aria-label": `The expenses behind ${catDetail.category}`
-      },
-      /* @__PURE__ */ React.createElement("div", { className: "modal-card catd-card" },
-        /* @__PURE__ */ React.createElement(SheetHandle, { onDismiss: closeCatDetail }),
-        /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg mb-6" }, catDetail.category),
-        // The total again, at the top, because it is the number the reader
-        // pressed and the one every row below has to add up to. Shown even
-        // when the category is empty — "$0.00 across 0 payments" is a clearer
-        // answer than a missing figure.
-        /* @__PURE__ */ React.createElement("div", { className: "catd-summary" },
-          /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 catd-summary-amt" }, fmt(catDetail.total)),
-          /* @__PURE__ */ React.createElement("span", { className: "catd-summary-sub" },
-            `across ${catDetail.count} ${catDetail.count === 1 ? "payment" : "payments"} in ${activeYear}`)
-        ),
-        catDetail.rows.length === 0
-          ? /* @__PURE__ */ React.createElement("div", { className: "catd-none" }, `Nothing in ${activeYear} is filed under ${catDetail.category}. If you were expecting something here, it is filed under another category \u2014 Flow will show you which.`)
-          : /* @__PURE__ */ React.createElement("div", { className: "catd-rows" }, catDetail.rows.map((r) => {
-              const open = !!catOpenRows[r.key];
-              return /* @__PURE__ */ React.createElement("div", { key: r.key, className: "catd-row" },
-                /* @__PURE__ */ React.createElement("button", {
-                  type: "button",
-                  className: "catd-row-head",
-                  "aria-expanded": open ? "true" : "false",
-                  // A recurring line is one row saying "26 payments"; the
-                  // dates are a level down, for when that is the question.
-                  // A line that happened once has nothing to expand to, so it
-                  // says its own date instead of offering an empty drawer.
-                  "aria-label": r.count > 1
-                    ? `${r.desc}, ${fmt(r.total)} over ${r.count} payments \u2014 ${open ? "hide" : "show"} the dates`
-                    : `${r.desc}, ${fmt(r.total)}`,
-                  onClick: () => setCatOpenRows((prev) => __spreadProps(__spreadValues({}, prev), { [r.key]: !prev[r.key] }))
-                },
-                  /* @__PURE__ */ React.createElement("span", { className: "catd-caret", "aria-hidden": "true" }, r.count > 1 ? (open ? "\u25BE" : "\u25B8") : ""),
-                  /* @__PURE__ */ React.createElement("span", { className: "catd-desc", title: r.desc }, r.desc),
-                  /* @__PURE__ */ React.createElement("span", { className: "catd-count" },
-                    r.count > 1 ? `${r.count} payments` : fmtDate(r.occurrences[0] && r.occurrences[0].date, activeYear)),
-                  /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 catd-amt" }, fmt(r.total))
-                ),
-                open && r.count > 1 && /* @__PURE__ */ React.createElement("div", { className: "catd-occs" }, r.occurrences.map((o, oi) => /* @__PURE__ */ React.createElement(
-                  "div",
-                  { key: o.id || oi, className: "catd-occ" },
-                  /* @__PURE__ */ React.createElement("span", { className: "catd-occ-date" }, fmtDate(o.date, activeYear)),
-                  // Why this one is not simply the entry's amount. Without it
-                  // a column of identical figures with one odd number in it
-                  // reads as a mistake rather than as an edit somebody made.
-                  o.edited ? /* @__PURE__ */ React.createElement("span", { className: "catd-occ-tag" }, "Edited") : null,
-                  /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 catd-occ-amt" }, fmt(o.amount))
-                )))
-              );
-            })),
-        /* @__PURE__ */ React.createElement("div", { className: "catd-done-row" }, /* @__PURE__ */ React.createElement(
-          "button",
-          { onClick: closeCatDetail, className: "cf-btn cf-btn--primary fw-700 btn-pad-24" },
-          "Done"
-        ))
-      )
-    ),
+    /* @__PURE__ */ React.createElement(CategoryDetailSheet, {
+      detail: catDetail,
+      openRows: catOpenRows,
+      onToggleRow: (key) => setCatOpenRows((prev) => __spreadProps(__spreadValues({}, prev), { [key]: !prev[key] })),
+      onClose: closeCatDetail,
+      scope: activeYear,
+      year: activeYear
+    }),
     yoyDetail && /* @__PURE__ */ React.createElement(
       "div",
       {

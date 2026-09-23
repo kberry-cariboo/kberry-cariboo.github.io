@@ -1665,9 +1665,45 @@
         /* The category chip is what gives way, not the amounts: the two
            figures are the row's reason for existing, so a long category name
            truncates rather than pushing them toward the edge. */
+        /* Press anywhere on an envelope to see what its total is made of.
+
+           The control is an absolutely-positioned button laid over the row
+           rather than the row itself, for two reasons. A role="button" must
+           not contain a focusable descendant and the row carries the kebab;
+           and at >=1000px the row wrapper *is* a four-column grid, where an
+           out-of-flow child takes no cell — so this adds a control without
+           adding a box to either layout.
+
+           Nothing else needs a z-index or a pointer-events rule, and that is
+           worth saying because four of them were written before any were
+           measured. A positioned element paints above non-positioned content,
+           so the overlay already catches the chip, the amounts and the bar;
+           and the kebab is .cf-checkbtn, which is position:relative for its
+           own tap halo and so comes back above the overlay on its own. Every
+           rule added to arrange that measured as doing nothing, including an
+           explicit z-index on the kebab. The two hit-test probes in
+           tests/regression.mjs — one per layout, because >=1000px makes the
+           wrapper a grid and the phone does not — are what says this still
+           holds. */
+        .bva-body>.context-menu-cursor{position:relative;}
+        .bva-row-open{position:absolute;inset:0;z-index:0;width:100%;padding:0;margin:0;
+          border:none;background:transparent;cursor:pointer;font:inherit;color:inherit;}
+        /* Offset only. A border-radius in a :focus rule rounds the element,
+           not the ring — the same mistake the global focus rule carried, and
+           this line reintroduced it two commits after it was removed.
+           tests/focus-ring.mjs failed on it, which is what it is for. */
+        .bva-row-open:focus-visible{outline-offset:-2px;}
         .bva-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-4);gap:var(--space-6);flex-wrap:nowrap;min-width:0;}
         .bva-row>.cat-chip{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-        .bva-amounts{display:flex;align-items:center;gap:var(--space-6);flex-wrap:nowrap;flex:1;justify-content:flex-end;min-width:0;}
+        /* Wraps at every width, where it used to wrap only on a phone. The
+           group carried a third item — the overage — on the rows that were
+           over, and a 768px query was enough for that. Every row with a
+           target now says what is left in it, so at 200% text "Fully spent"
+           and the kebab were being pushed off the end of the row on a
+           desktop. Wrapping costs nothing at ordinary sizes, where these rows
+           are one 24px line that never reaches it; it engages only under the
+           pressure that was dropping content on the floor. */
+        .bva-amounts{display:flex;align-items:center;gap:var(--space-6);flex-wrap:wrap;row-gap:0;flex:1;justify-content:flex-end;min-width:0;}
         .bva-target{color:var(--textMid);white-space:nowrap;flex-shrink:0;}
         /* ── plan-dashboard.js ── */
         .goal-header-row{display:flex;justify-content:space-between;align-items:center;}
@@ -2866,6 +2902,15 @@
            enforces that. And a native smooth scroll is not a CSS animation
            at all, which is why app-data.js checks the media query itself
            before asking for one. */
+        /* An envelope row is 34px of text, which was fine while the only way
+           to act on it was a long-press. It is a tap target now, and 44px is
+           the floor — tests/layout-sweep.mjs measures every control on every
+           touch pass and would have said so. Padding rather than a negative
+           -inset halo: adjacent rows have no gap between them, so overlapping
+           halos would hand a tap in the margin to whichever row painted last. */
+        @media(pointer:coarse){
+          .bva-body>.context-menu-cursor{padding-top:var(--space-6);padding-bottom:var(--space-6);}
+        }
         @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:var(--dur-instant);transition-duration:var(--dur-instant);}}
         /* Fixed layout hands every spare pixel to the one auto column, so on a
            1440px page Description ran ~550px wide for entries rarely over
@@ -3250,9 +3295,10 @@
              Actual" simply vanished on phones: a category with no target read
              the same as one comfortably under it. It's back, and the row
              wraps instead of being pinned to one line, because chip + actual
-             + target + overage genuinely doesn't fit at 320px. */
+             + target + overage genuinely doesn't fit at 320px. (The wrap
+             itself is on .bva-amounts' base rule now — a desktop at 200% text
+             needs it too — so only the alignment is left here.) */
           .bva-row{flex-wrap:nowrap;align-items:flex-start;}
-          .bva-amounts{flex-wrap:wrap;justify-content:flex-end;row-gap:0;}
           /* A 140px term column leaves ~190px for a sentence at 393px, which
              turns every definition into a tall two-column sliver. Stack them:
              the term reads as a heading for the paragraph under it. */

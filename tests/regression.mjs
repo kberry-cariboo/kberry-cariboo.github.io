@@ -347,6 +347,151 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
     if (!report.totalNote) throw new Error('the totals row carried no over/left note to check');
   });
 
+  // Today's category widget grew this first and Envelopes had the same gap one
+  // scope down. The scope is the whole risk: the sheet and the row read the
+  // same `flow`, and a sheet that answered for the year would look entirely
+  // correct beside a row that means one month — $19,800 of Housing under a row
+  // saying $1,650, with every line in it true.
+  await test('envelopes: a row opens onto the payments behind it, for that month only', async () => {
+    await page.goto(BASE + '#/envelopes', { waitUntil: 'load' });
+    await page.waitForTimeout(900);
+    const nudge = page.getByRole('button', { name: 'Remind me later' });
+    if (await nudge.count() > 0) await nudge.click().catch(() => {});
+    await page.waitForTimeout(250);
+
+    const cents = (t) => {
+      const m = String(t).replace(/[^0-9.]/g, '');
+      return m ? Math.round(parseFloat(m) * 100) : 0;
+    };
+    const row = page.locator('.bva-body>.context-menu-cursor').first();
+    const rowCat = (await row.locator('.cat-chip').innerText()).trim();
+    const rowActual = cents(await row.locator('.bva-actual-amt').innerText());
+    // Where a press actually lands, across the row. The bar matters most: it
+    // is the part that looks most like the thing you would press, and it is a
+    // sibling of the row that paints above the trigger — the chip and the
+    // amounts are inside a row that has to let the press through. Hit-tested
+    // rather than clicked, because the parts that pass the press through are
+    // by definition not clickable themselves.
+    const landings = await page.evaluate(() => {
+      const w = document.querySelector('.bva-body>.context-menu-cursor');
+      const r = w.getBoundingClientRect();
+      const land = (x, y) => {
+        const el = document.elementFromPoint(x, y);
+        if (!el) return 'nothing';
+        return el.closest('.bva-row-open') ? 'opens'
+          : el.closest('.row-menu-btn') ? 'kebab' : 'dead';
+      };
+      // Each part is probed at the centre of its own box, not at a fraction
+      // of the row's. A guessed fraction found the gap above the bar rather
+      // than the bar, and passed while the bar was swallowing every press.
+      const mid = (sel) => {
+        const e = w.querySelector(sel);
+        if (!e) return null;
+        const b = e.getBoundingClientRect();
+        return [b.left + b.width / 2, b.top + b.height / 2];
+      };
+      const probe = (sel) => { const m = mid(sel); return m ? land(m[0], m[1]) : 'missing'; };
+      return { chip: probe('.cat-chip'), bar: probe('.bva-progress-track'),
+               amounts: probe('.bva-actual-amt'), kebab: probe('.row-menu-btn') };
+    });
+    for (const part of ['chip', 'bar', 'amounts']) {
+      if (landings[part] !== 'opens') {
+        throw new Error(`a press on the ${part} lands on "${landings[part]}", not the row trigger`);
+      }
+    }
+    if (landings.kebab !== 'kebab') {
+      throw new Error(`a press on the kebab lands on "${landings.kebab}"`);
+    }
+
+    await row.locator('.bva-row-open').click();
+    await page.locator('.catd-card').waitFor(V);
+
+    const sheet = await page.evaluate(() => {
+      const c = (t) => { const m = String(t).replace(/[^0-9.]/g, ''); return m ? Math.round(parseFloat(m) * 100) : 0; };
+      const card = document.querySelector('.catd-card');
+      const rows = [...card.querySelectorAll('.catd-row-head')]
+        .map((r) => ({ desc: r.querySelector('.catd-desc').textContent.trim(),
+                       amt: c(r.querySelector('.catd-amt').textContent) }));
+      return {
+        title: card.querySelector('.modal-title-lg').textContent.trim(),
+        sub: card.querySelector('.catd-summary-sub').textContent.trim(),
+        total: c(card.querySelector('.catd-summary-amt').textContent),
+        rows,
+      };
+    });
+
+    if (sheet.title !== rowCat) {
+      throw new Error(`pressed ${rowCat} and got a sheet for ${sheet.title}`);
+    }
+    if (sheet.total !== rowActual) {
+      throw new Error(`the sheet says ${sheet.total} and the row it opened from says ${rowActual}`
+        + ` — the breakdown is not scoped to the month the row means`);
+    }
+    const sum = sheet.rows.reduce((s2, r) => s2 + r.amt, 0);
+    if (sum !== sheet.total) {
+      throw new Error(`the lines add to ${sum} and the total says ${sheet.total}: `
+        + sheet.rows.map((r) => `${r.desc} ${r.amt}`).join(', '));
+    }
+    if (!sheet.rows.length) throw new Error('the sheet opened with no lines in it');
+    // "in Sep 2026", not "in 2026". A sheet that names the year is the failure
+    // above wearing the right number by luck.
+    if (!/ in [A-Z][a-z]{2} \d{4}$/.test(sheet.sub)) {
+      throw new Error(`the sheet does not say which month it is answering for: "${sheet.sub}"`);
+    }
+
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(300);
+    if (await page.locator('.catd-card').count() !== 0) throw new Error('Escape did not close the breakdown');
+
+    // The kebab keeps its own job: it sits above the trigger, not under it.
+    await row.locator('.row-menu-btn').click();
+    await page.waitForTimeout(300);
+    if (await page.locator('.catd-card').count() !== 0) {
+      throw new Error('the kebab opened the breakdown instead of the row menu');
+    }
+    await page.getByText('Show the expenses', { exact: false }).first().waitFor(V);
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(200);
+
+    // The same row on a phone, which is a different layout and not a smaller
+    // one: >=1000px makes the wrapper a grid and the kebab one of its items,
+    // where it paints above the overlay on its own. On a phone the row is an
+    // ordinary flex box and the kebab needs to be told. Probing only the wide
+    // layout passed with that rule deleted.
+    const { ctx: pctx, page: phone } = await ctxPage({ touch: true });
+    try {
+      await phone.goto(BASE + '#/envelopes', { waitUntil: 'load' });
+      await phone.waitForTimeout(900);
+      const pn = phone.getByRole('button', { name: 'Remind me later' });
+      if (await pn.count() > 0) await pn.click().catch(() => {});
+      await phone.waitForTimeout(250);
+      const small = await phone.evaluate(() => {
+        const w = document.querySelector('.bva-body>.context-menu-cursor');
+        if (!w) return { err: 'no envelope rows on the phone layout' };
+        const land = (sel) => {
+          const e = w.querySelector(sel);
+          if (!e) return 'missing';
+          const b = e.getBoundingClientRect();
+          const el = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
+          if (!el) return 'nothing';
+          return el.closest('.bva-row-open') ? 'opens'
+            : el.closest('.row-menu-btn') ? 'kebab' : 'dead';
+        };
+        // A row is a tap target now; 44px is the floor and these rows were 34.
+        const short = [...document.querySelectorAll('.bva-row-open')]
+          .filter((b) => b.getBoundingClientRect().height < 44)
+          .map((b) => Math.round(b.getBoundingClientRect().height) + 'px');
+        return { chip: land('.cat-chip'), kebab: land('.row-menu-btn'), short };
+      });
+      if (small.err) throw new Error(small.err);
+      if (small.chip !== 'opens') throw new Error(`on a phone, a press on the chip lands on "${small.chip}"`);
+      if (small.kebab !== 'kebab') throw new Error(`on a phone, the overlay covers the kebab (press lands on "${small.kebab}")`);
+      if (small.short.length) {
+        throw new Error(`${small.short.length} envelope rows are under the 44px tap floor: ${small.short.join(', ')}`);
+      }
+    } finally { await pctx.close(); }
+  });
+
   await test('budget forecast: the horizon toggle switches between 30 and 90 days', async () => {
     await page.goto(BASE + '#/flow/curve', { waitUntil: 'load' });
     await page.waitForTimeout(800);
@@ -2708,6 +2853,99 @@ await test('every notice bar in the app resolves to one of two shapes', async ()
 // figure and the same date in two differently sized red boxes, 238px of banner
 // before the first real content — and they only rarely appeared together
 // because each had its own dismiss.
+// Dismissing the low-balance banner used to mean "for today" — the stored
+// value was a date, so the same warning about the same dip came back every
+// morning. What is stored now is which warning was dismissed: the day the
+// balance bottoms out, and whether that bottom is below zero or merely under
+// the alert threshold.
+//
+// Both halves have to be tested against a reload. A banner that stays gone
+// for the rest of the session and returns on the next visit is exactly the
+// bug, and it looks fixed right up until you reload.
+await test('notices: a dismissed low-balance warning stays dismissed, and a different one does not', async () => {
+  const { ctx, page } = await ctxPage({ stub: (t) => t
+    .replace(/openingBalance: 1250000/g, 'openingBalance: -4200000')
+    .replace(/alertThreshold: 50000/g, 'alertThreshold: 150000') });
+  try {
+    await page.clock.setFixedTime(new Date('2026-09-01T12:00:00'));
+    const banner = () => page.getByText('forecast to dip to', { exact: false });
+    const open = async () => {
+      // goto() to a URL that differs only in its hash is a same-document
+      // navigation: React never remounts and useLS never re-reads storage.
+      // An earlier version of this test used it and proved nothing — the
+      // banner stayed gone because the component had not been rebuilt, which
+      // is precisely the state the bug hides in. reload() is the only thing
+      // here that asks the question.
+      await page.goto(BASE + '#/today', { waitUntil: 'load' });
+      await page.reload({ waitUntil: 'load' });
+      await page.waitForTimeout(1200);
+      // The stack collapses to a summary line when more than one notice is
+      // up, and the banner's own words are only in the open state. Expand it
+      // when it is closed so this test is about dismissal and not about which
+      // other notices happened to be raised alongside it.
+      const sum = page.locator('.notice-summary');
+      if (await sum.count() > 0) await sum.first().click().catch(() => {});
+      await page.waitForTimeout(300);
+    };
+
+    await open();
+    if (await banner().count() === 0) throw new Error('the low-balance banner never appeared to be dismissed');
+    await page.getByRole('button', { name: 'Dismiss this alert' }).first().click();
+    await page.waitForTimeout(300);
+    if (await banner().count() !== 0) throw new Error('Dismiss did not take the banner off the page');
+
+    const stored = await page.evaluate(() => {
+      try { return localStorage.getItem('cf_lowbal_dismissed'); } catch (e) { return null; }
+    });
+    // useLS stores JSON, so this is a quoted string. What is inside it has to
+    // name the dip: the day it lands on and how bad it is. A date is the old
+    // snooze; a bare number is the forecast figure, which moves by a few cents
+    // on any edit and would resurface the same warning for no reason.
+    if (!stored || /^"?\d{4}-\d{2}-\d{2}"?$/.test(stored)) {
+      throw new Error(`what was remembered is ${stored} — a date is a snooze, not a dismissal`);
+    }
+    if (!/^"\d+-\d+:(below-zero|under-threshold)"$/.test(stored)) {
+      throw new Error(`what was remembered is ${stored}, which does not identify which dip was dismissed`);
+    }
+
+    // The part that matters: it is still gone after a reload.
+    await open();
+    if (await banner().count() !== 0) {
+      throw new Error('the dismissed warning came back on the next visit');
+    }
+    // And on the day after, which is what the old behaviour turned on. Moving
+    // the clock a day forward also makes the app think it has been idle for a
+    // day, so the idle lock takes the screen and every notice with it — the
+    // last-active marker is in sessionStorage, and it moves with the clock.
+    await page.clock.setFixedTime(new Date('2026-09-02T12:00:00'));
+    await page.evaluate(() => {
+      try { sessionStorage.setItem('cf_last_active_at', String(Date.now())); } catch (e) {}
+    });
+    await open();
+    if (await banner().count() === 0 && await page.locator('.lockscreen-wrap').count() > 0) {
+      throw new Error('the idle lock took the screen, so nothing about notices was tested');
+    }
+    if (await banner().count() !== 0) throw new Error('the dismissed warning came back the next day');
+
+    // A different warning is news again. Pushing the threshold up moves the
+    // dip from "below zero" to a shallower one the household still wants to
+    // hear about — a different identity, so it speaks.
+    await page.evaluate(() => {
+      try {
+        // Written the way useLS writes it. An unquoted string fails
+        // JSON.parse, useLS falls back to its default, and the assertion below
+        // then passes for the wrong reason — it did, until this line was JSON.
+        localStorage.setItem('cf_lowbal_dismissed', JSON.stringify('99-99:below-zero'));
+        sessionStorage.setItem('cf_last_active_at', String(Date.now()));
+      } catch (e) {}
+    });
+    await open();
+    if (await banner().count() === 0) {
+      throw new Error('a warning about a different dip stayed hidden behind an old dismissal');
+    }
+  } finally { await ctx.close(); }
+});
+
 await test('every notice comes through one stack, collapsed when there is more than one', async () => {
   // Overdrawn, a backup overdue, and sample data: all three at once.
   const { ctx, page } = await ctxPage({ touch: true, stub: (t) => t

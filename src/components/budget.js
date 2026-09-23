@@ -292,6 +292,30 @@
     }, [monthIdx, flowSub, activeYear]);
     const [bvaModalData, setBvaModalData] = useState({ cat: "", target: "", editCat: null });
     const [bvaCtxMenu, setBvaCtxMenu] = useState(null);
+    // Which envelope's breakdown is open. The row says Housing is $4,183.32
+    // of $4,183.32 and stops there; the payments behind it were two screens
+    // away, in Flow, behind a filter set by hand — the same gap Today's
+    // category widget had, one scope down.
+    const [bvaDetailCat, setBvaDetailCat] = useState(null);
+    const [bvaOpenRows, setBvaOpenRows] = useState({});
+    const openBvaDetail = (cat) => { setBvaOpenRows({}); setBvaDetailCat(cat); };
+    const closeBvaDetail = () => { setBvaOpenRows({}); setBvaDetailCat(null); };
+    // Escape closes it, as it does every other reading surface in the app.
+    useEffect(() => {
+      if (bvaDetailCat === null) return;
+      const h = (e) => { if (e.key === "Escape") closeBvaDetail(); };
+      window.addEventListener("keydown", h);
+      return () => window.removeEventListener("keydown", h);
+    }, [bvaDetailCat]);
+    // Scoped to the month on screen, and scoped the same way the row's own
+    // total is: monthCatExpense sums `flow` by ev.month, so this filters
+    // `flow` by ev.month and nothing else. A breakdown that does not add up
+    // to the figure the reader pressed is worse than no breakdown.
+    const bvaDetail = useMemo(
+      () => (bvaDetailCat === null ? null
+        : categoryDetail(flow.filter((ev) => ev.month === monthIdx), bvaDetailCat)),
+      [flow, monthIdx, bvaDetailCat]
+    );
     const monthEvents = useMemo(() => flow.filter((ev) => ev.month === monthIdx && eventMatchesSearch(ev, gq)), [flow, monthIdx, gq]);
     // Skipped occurrences never enter `flow` at all, so this is the only way
     // to find (and undo) one — surfaced only for the currently-viewed month
@@ -927,6 +951,7 @@
           y: bvaCtxMenu.y,
           onClose: () => setBvaCtxMenu(null),
           items: [
+            { icon: "\u{1F50D}", label: "Show the expenses", action: () => openBvaDetail(bvaCtxMenu.cat) },
             { icon: "\u270E", label: "Edit target", action: () => {
               setBvaModalData({ cat: bvaCtxMenu.cat, target: bvaCtxMenu.target ? String(centsToDollars(bvaCtxMenu.target)) : "", editCat: bvaCtxMenu.cat, rollover: !!(budgetTargets._rollover || {})[bvaCtxMenu.cat] });
               setShowBvaModal(true);
@@ -952,7 +977,16 @@
             }, danger: true }
           ]
         }
-      ), showBvaModal && (() => {
+      ), /* @__PURE__ */ React.createElement(CategoryDetailSheet, {
+        detail: bvaDetail,
+        openRows: bvaOpenRows,
+        onToggleRow: (key) => setBvaOpenRows((prev) => __spreadProps(__spreadValues({}, prev), { [key]: !prev[key] })),
+        onClose: closeBvaDetail,
+        // A month, where Today's widget asks about a year. Same sheet, and
+        // the only thing that changes is the sentence under the total.
+        scope: `${MONTHS[monthIdx]} ${activeYear || (/* @__PURE__ */ new Date()).getFullYear()}`,
+        year: activeYear
+      }), showBvaModal && (() => {
         const bKey = `${activeYear || (/* @__PURE__ */ new Date()).getFullYear()}:${monthIdx}`;
         const availCats = !bvaModalData.editCat ? [...categories].sort((a, b) => a.localeCompare(b)).filter((c) => !(c in (budgetTargets[bKey] || {}))) : null;
         const saveBva = () => {
@@ -1077,6 +1111,12 @@
               },
               className: "context-menu-cursor"
             },
+            /* @__PURE__ */ React.createElement("button", {
+              type: "button",
+              className: "bva-row-open",
+              onClick: () => openBvaDetail(cat),
+              "aria-label": `${cat}, ${fmt(actual)}${target > 0 ? " of " + fmt(target) : ""} \u2014 show the expenses behind it`
+            }),
             /* @__PURE__ */ React.createElement("div", { className: "bva-row" }, /* @__PURE__ */ React.createElement(CatChip, { category: cat, categories, categoryColors, style: { fontSize: 9, flexShrink: 1, minWidth: 0 } }), /* @__PURE__ */ React.createElement("div", { className: "bva-amounts" }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 bva-actual-amt", style: {
               color: over ? color : "var(--text)"
             } }, fmt(actual)), target > 0 ? /* @__PURE__ */ React.createElement("span", { className: "bva-target cf-text-mono-13" }, "/ ", fmt(target)) : /* @__PURE__ */ React.createElement("button", {
