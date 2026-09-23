@@ -738,6 +738,12 @@
           font-size:var(--fs-xs);display:flex;align-items:center;gap:var(--space-8);transition:opacity var(--dur-slow);
           pointer-events:none;box-shadow:var(--shadowLg);}
         .ptr-spinner{display:inline-block;font-size:var(--fs-md);}
+        /* Spinning was an inline style in App.js carrying a raw 0.8s, which
+           an inline style puts beyond the reach of the reduced-motion rule —
+           the one place in the app still doing what the progress bar was
+           doing. It is a class now, at --dur-loop, which is what .ai-spinner
+           two hundred lines up has always used: one spinner speed, not two. */
+        .ptr-spinner--on{animation:spin var(--dur-loop) var(--ease-linear) infinite;}
         .content-area{padding:var(--space-28) var(--container-gutter);margin-top:0;outline:none;}
         .app-footer{text-align:center;padding:var(--space-18) var(--space-16) var(--space-28);font-size:var(--fs-2xs);
           color:var(--on-dark-30);background:var(--headerBg);margin-top:auto;}
@@ -2879,8 +2885,12 @@
           .header-inner{height:44px;}
           .header-logo-img,.logo-area img{height:22px;}
           .cf-bottomnav{padding-top:var(--space-2);}
-          .content-area{padding-top:var(--space-14);padding-bottom:var(--space-14);}
-          .content-area{padding-bottom:var(--space-20);}
+          /* 20px at the bottom, not 14: the bottom nav is restored in
+             landscape and the last row has to clear it. Two rules used to say
+             this, one after the other, and the second silently threw away the
+             first's padding-bottom — which is the kind of thing that reads as
+             deliberate right up until someone edits the wrong one. */
+          .content-area{padding-top:var(--space-14);padding-bottom:var(--space-20);}
         }
         @media (pointer:coarse){.attach-camera{display:inline-flex;}}
         /* Touch/no-hover devices: simple press feedback (hover handled by the pointer:fine block above) */
@@ -3033,8 +3043,6 @@
           .entry-form-row2{grid-template-columns:1fr;}
           /* Entries: switch to cards on mobile — table hidden */
           .entries-cards{display:block;}
-          /* Prevent focus zoom on Android/iOS: inputs must render ≥16px */
-          input,select,textarea{font-size:max(1rem, 16px);}
           .wm-arrow{width:44px;height:44px;line-height:42px;font-size:var(--fs-xl);}
           .entries-table-wrap{display:none;}
           /* No mobile max-width: the column fills the window all the way to

@@ -91,7 +91,12 @@ check('every duration in the stylesheet comes from a --dur token',
 const jsFiles = [];
 const walk = (dir) => {
   for (const e of readdirSync(join(ROOT, dir), { withFileTypes: true })) {
-    if (e.isDirectory()) walk(join(dir, e.name));
+    // src/vendor holds minified third-party bundles — React and the Supabase
+    // client. They are not ours to restyle, and a minified file is one long
+    // line in which almost any pattern eventually appears: widening the
+    // inline-motion check to accept an expression made React's bundle match
+    // it on the first try.
+    if (e.isDirectory()) { if (e.name !== 'vendor') walk(join(dir, e.name)); }
     else if (e.name.endsWith('.js')) jsFiles.push(join(dir, e.name));
   }
 };
@@ -104,7 +109,13 @@ for (const rel of jsFiles) {
     .split('\n').map((l) => l.replace(/\/\/.*$/, ''));
   src.forEach((line, i) => {
     // `transition:` / `animation:` as an object key — a React style prop.
-    if (/(?:^|[{,\s])(transition|animation)(?:Duration|Delay|Property|Name|Timing[\w]*)?\s*:\s*["'`]/.test(line)) {
+    // The value may be any expression, not just a quoted literal. The first
+    // version of this required a quote after the colon and so walked straight
+    // past `animation: pullActive ? "spin 0.8s linear infinite" : "none"` —
+    // an inline animation with a raw duration, which is the exact pair of
+    // defects this file was written for.
+    if (/(?:^|[{,\s])(transition|animation)(?:Duration|Delay|Property|Name|Timing[\w]*)?\s*:\s*\S/.test(line)
+        && !/^\s*(transition|animation)[\w-]*\s*:/.test(line)) {
       inlineMotion.push(`${rel}:${i + 1}  ${line.trim().slice(0, 100)}`);
     }
     if (/["']smooth["']/.test(line) && !/prefersReducedMotion\s*\(\s*\)/.test(line)) {

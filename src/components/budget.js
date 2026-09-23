@@ -230,7 +230,7 @@
     const [monthSummaryOpen, setMonthSummaryOpen] = useLS("cf_month_summary", false);
     const [selIds, setSelIds] = useState(() => /* @__PURE__ */ new Set());
     const [pgPage, setPgPage] = useState(0);
-    const [pgSize, setPgSize] = useState("all");
+    const [pgSize, setPgSize] = useLS("cf_budgetPageSize", "all");
     const [mobileLoaded, setMobileLoaded] = useState(1);
     const changePageSize = (v) => {
       setPgSize(v);

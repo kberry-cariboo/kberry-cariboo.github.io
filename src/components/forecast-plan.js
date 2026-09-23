@@ -5,7 +5,7 @@
   }, scenarioFlows = null }) {
     const isMobile = useIsMobile();
     const [showAddEntry, setShowAddEntry] = useState(false);
-    const [pgSize, setPgSize] = useState(20);
+    const [pgSize, setPgSize] = useLS("cf_forecastPageSize", 20);
     // How many pages' worth have been revealed so far. Not a page *number*:
     // the forecast loads cumulatively at every width (see pgInfo).
     const [loaded, setLoaded] = useState(1);
