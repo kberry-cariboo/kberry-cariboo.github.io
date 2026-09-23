@@ -17,28 +17,45 @@ Severity scale:
 - **S2**: wrong output or data at risk.
 - **S3**: an inconsistency or papercut.
 
+**Status marks** (added as work landed; §5 has the detail and the tests for each):
+- ✅ **Resolved**, with the build it shipped in.
+- 🟡 **Partly resolved**: what's still open is named.
+- ⬜ **Open**.
+
+### Status at a glance
+
+| Area | Resolved | Partly | Open |
+|---|---|---|---|
+| §0 Top ten | All 10 | — | — |
+| §1 Bugs and defects | All 4 S1s; all 5 S2s (§1.7 on the device); 10 of 11 S3s | §1.7 server copy; the S3 index keys | — |
+| §2 Architecture | §2.1, §2.2, §2.6 | §2.3, §2.4, §2.5, §2.7, §2.8, §2.9 | — |
+| §3 UI and usability | Most of §3.3; the contrast items (via §1.1) | §3.6, §3.7 | §3.1, §3.2, §3.4, §3.5, §3.8 |
+| §4 New features | #12 leave/remove/delete | #2 live sync (no presence), #15 per-row clash dialog | the other 12 |
+
+Found and fixed along the way, not in the original audit: the dashboard's "My entries" filter never filtered (v194); the header search icon's class and the "What changed" heading margin, both found by the typechecker (v195). Found and still open: the in-app self-test "renders" checks cannot fail (§5, batch 5).
+
 ---
 
 ## 0. The ten things to do first
 
-| # | What | Sev | Where |
-|---|---|---|---|
-| 1 | Every `--on-dark-*` colour token refers to itself, so it's invalid. The sign-in tagline, footer, header search, chart tooltips and avatar ring all render near-black on dark green. | S1 | `src/styles.css:237-239` |
-| 2 | A **view-only member can mint an invite that grants full write access** | S1 | `supabase/schema.sql:2274` |
-| 3 | The service worker caches **Supabase API reads**, so member lists, roles and "am I in a household" are always one response stale | S1 | `src/sw.js:132` |
-| 4 | Any account at all can use `ai-proxy` to spend your Anthropic credit, because sign-up is open and household membership is never checked | S1 | `supabase/functions/ai-proxy/index.ts:94` |
-| 5 | The backup-nudge "Export backup" writes an **incomplete backup**, missing accounts, holidays, currency and six more fields | S2 | `src/App.js:554` |
-| 6 | The "Car loan ends — frees $288.75/mo" figure for a $385/mo loan is wrong | S2 | `src/components/dashboard.js:700` |
-| 7 | ~~Receipt images in `localStorage`~~ **Fixed in v194:** IndexedDB plus a manifest load | S2 | `src/lib/household-sync.js:74` |
-| 8 | ~~Device preferences are synced to the whole household~~ **Fixed in v193:** they're per-member now | S2 | `src/lib/household-sync.js:82-130` |
-| 9 | ~~Envelopes grade themselves~~ **Fixed in v194:** spent vs scheduled, and no silent targets | S2 | `src/App.js:863`, `src/components/budget.js:1129` |
-| 10 | There's no build step, types or modules: 20k lines of hand-maintained esbuild output in one shared scope | Arch | whole `src/` |
+| # | What | Sev | Where | Status |
+|---|---|---|---|---|
+| 1 | Every `--on-dark-*` colour token refers to itself, so it's invalid. The sign-in tagline, footer, header search, chart tooltips and avatar ring all render near-black on dark green. | S1 | `src/styles.css:237-239` | ✅ v191 |
+| 2 | A **view-only member can mint an invite that grants full write access** | S1 | `supabase/schema.sql:2274` | ✅ v191 |
+| 3 | The service worker caches **Supabase API reads**, so member lists, roles and "am I in a household" are always one response stale | S1 | `src/sw.js:132` | ✅ v191 |
+| 4 | Any account at all can use `ai-proxy` to spend your Anthropic credit, because sign-up is open and household membership is never checked | S1 | `supabase/functions/ai-proxy/index.ts:94` | ✅ v191 (membership), v195 (daily allowance) |
+| 5 | The backup-nudge "Export backup" writes an **incomplete backup**, missing accounts, holidays, currency and six more fields | S2 | `src/App.js:554` | ✅ v192 |
+| 6 | The "Car loan ends — frees $288.75/mo" figure for a $385/mo loan is wrong | S2 | `src/components/dashboard.js:700` | ✅ v192 |
+| 7 | Receipt images in `localStorage` | S2 | `src/lib/household-sync.js:74` | ✅ v194: IndexedDB plus a manifest load |
+| 8 | Device preferences are synced to the whole household | S2 | `src/lib/household-sync.js:82-130` | ✅ v193: per member now |
+| 9 | Envelopes grade themselves | S2 | `src/App.js:863`, `src/components/budget.js:1129` | ✅ v194: spent vs scheduled, and no silent targets |
+| 10 | There's no build step, types or modules: 20k lines of hand-maintained esbuild output in one shared scope | Arch | whole `src/` | ✅ v195: ES modules, JSX, TypeScript (strict mode still to do) |
 
 ---
 
 ## 1. Bugs and defects
 
-### 1.1 S1: the whole `--on-dark-*` token family is invalid (regression from yesterday)
+### 1.1 S1: the whole `--on-dark-*` token family is invalid (regression from yesterday) — ✅ Resolved (v191)
 
 `src/styles.css:237-239`:
 
@@ -60,7 +77,7 @@ In a browser, the footer computes to `rgb(19,26,23)` on `#14413A`, about 1.6:1. 
 
 **Fix:** restore the literal values (`rgba(255,255,255,.08/.16/.30/.45/.60/.85)`). **Test gap:** `tests/theme-tokens.mjs` and `tests/contrast.mjs` read tokens as text and never resolve them. A one-line check that fails on any `--x: var(--x)`, plus a computed-style probe of the footer, would have caught this.
 
-### 1.2 S1: a view-only member can grant themselves write access
+### 1.2 S1: a view-only member can grant themselves write access — ✅ Resolved (v191), including the concurrent-redemption race
 
 `create_invite()` (`supabase/schema.sql:2284`) only requires that the caller isn't disabled. `join_household()` inserts the new member with the column default, `role = 'member'`, which is a writer.
 
@@ -76,7 +93,7 @@ Bob-alt member  ← Bob's second account, joined with Bob's invite: can write
 
 Related: `join_household` redeems a code with a separate `update ... where code = ...` and no `used_by is null` guard or row lock. Two concurrent redemptions can both succeed. Use `update ... where code = $1 and used_by is null returning household_id`.
 
-### 1.3 S1: the service worker caches cross-origin API GETs
+### 1.3 S1: the service worker caches cross-origin API GETs — ✅ Resolved (v191)
 
 The non-navigation branch of `src/sw.js:132` answers **every** GET cache-first and revalidates behind it. That includes cross-origin requests to `*.supabase.co/rest/v1/...`.
 
@@ -88,13 +105,13 @@ A harness against a counting endpoint showed the first fetch returning `call 1`,
 
 **Fix:** only handle same-origin requests (`if (new URL(e.request.url).origin !== self.location.origin) return;`) and let the network own everything else. If some external responses should be cached, list them explicitly.
 
-### 1.4 S1: `ai-proxy` is a relay for anyone who can sign up
+### 1.4 S1: `ai-proxy` is a relay for anyone who can sign up — ✅ Resolved (membership check v191; per-member daily allowance and origin allow-list v195)
 
 The function checks that a JWT belongs to *some* user (`index.ts:94`). It never checks household membership, and there's no rate limit. The app's sign-in screen offers "Create account" to anyone, so anyone can create an account and use your Anthropic key. The README says "It only answers signed-in household members", which isn't true.
 
 **Fix:** call `is_household_member(cf_my_household())` through an RPC first, or query `household_members`. Add a per-user daily counter, which the code already sketches as a comment. Consider turning off open sign-up in Supabase Auth and relying on invites.
 
-### 1.5 S2: the backup nudge exports a partial backup
+### 1.5 S2: the backup nudge exports a partial backup — ✅ Resolved (v192)
 
 `dismissBackup(true)` (`src/App.js:554`) builds the export by hand. Its comment claims it's the "same full field set as Settings' Export Backup", but the list is missing `assets`, `accounts`, `holidays`, `holidayRegion`, `currency`, `locale`, `activity`, `debtExtra` and `debtSimExcluded`.
 
@@ -105,53 +122,53 @@ When that file is restored:
 
 **Fix:** build it from `HOUSEHOLD_BACKUP_FIELDS` the way `settings.js:1117` does, and put that in one shared `buildBackup()` helper.
 
-### 1.6 S2: the "frees $X/mo" figure divides by twelve
+### 1.6 S2: the "frees $X/mo" figure divides by twelve — ✅ Resolved (v192)
 
 `src/components/dashboard.js:700` computes `monthly` as *this year's total of the entry ÷ 12*. The car loan runs nine months at $385, so the card reads "frees $288.75/mo". Any entry that starts or ends mid-year is understated, and a bi-weekly one is off as well.
 
 **Fix:** use the entry's own monthly equivalent (amount × occurrences per month, from `recurUnit`/`recurEvery`). The drift and anomaly code already reason about this.
 
-### 1.7 S2: receipts are stored in `localStorage`
+### 1.7 S2: receipts are stored in `localStorage` — ✅ Resolved on the device (v194); 🟡 the server copy is still `bytea`, not Supabase Storage
 
 `overridesByYr` is a `useLS` field (`cf_overrides`) and still carries each receipt's `attachment` data URL. The payload strips it, but the local copy doesn't. A few dozen photos will hit the ~5 MB origin quota. After that, **every** field's write fails, because they share the quota, and the only feedback is `notifyStorageWriteFailure`. `load_household` also returns every receipt, base64-encoded, on every load.
 
 **Fix:** keep receipts out of React state and `localStorage`. Store them in IndexedDB locally, and move the server copy from `bytea` to Supabase Storage with signed URLs, loaded when an occurrence is opened.
 
-### 1.8 S2: per-device view preferences are synced to everyone
+### 1.8 S2: per-device view preferences are synced to everyone — ✅ Resolved (v193)
 
 `HOUSEHOLD_FIELDS` includes `darkMode`, `forecastHorizon`, `dashHidden`, `dashOrder`, `colOrder`, `budgetColOrder` and the four `regFilter*` fields. If you switch to dark mode, or filter Entries to "Unpaid", your partner's device changes on its next load. The README says the opposite ("where you happen to be looking … is not synced"), and the account filter was made device-local for exactly this reason.
 
 **Fix:** move these to plain `useLS`, keep the payload keys in `cf_payload_retired_keys()` so older tabs keep saving, and add a "System" option to Appearance.
 
-### 1.9 S2: Envelopes grade themselves
+### 1.9 S2: Envelopes grade themselves — ✅ Resolved (v194)
 
 - `addEntry` (`src/App.js:863`) adds every new expense's scheduled amount to that category's budget target, for every configured year. Deleting the entry doesn't take it back out.
 - The Envelopes view compares *scheduled* expenses against those targets and labels the result "spent" and "Fully spent" (`budget.js:1129`). On 3 September the fixture shows Food "$520 spent" while most of that month's groceries haven't happened yet.
 
 The net effect is that nearly every envelope reads "Fully spent" and the feature can't tell you anything. **Fix:** see §3.3. Show *spent so far* (completed and past occurrences, including `actualAmount`) separately from *still scheduled*, and ask before touching a target.
 
-### 1.10 S3: smaller defects
+### 1.10 S3: smaller defects — ✅ Resolved (v192, v194), one finding retracted, index keys partly
 
-| Defect | Where |
-|---|---|
-| The low-balance banner hard-codes `$` ("under your $500 alert threshold") and ignores the currency setting | `src/App.js:1266` |
-| The entry form's label reads "Amount ($)" whatever the currency | `src/components/forms.js:264` |
-| The AI assessment prompt hard-codes `$` and `toLocaleString()` with no locale | `src/components/forecast-plan.js:640-664` |
-| The restore confirmation says "This cannot be undone", then offers Undo | `src/components/settings.js:1163` / `1217` |
-| Ctrl/⌘+Z's comment says it never fires under a modal, but the modal guard comes *after* it, so it undoes behind an open form | `src/App.js:1054` vs `1066` |
-| The low-balance scan (`navLowInfo`) stops at 31 Dec, so a January dip is never flagged in late November or December | `src/App.js:1144` |
-| `addEntry` falls back to `userId: 1` when signed out, a number in a field that otherwise holds UUIDs | `src/App.js:864` |
-| The boot splash uses `Inter` and `IBM Plex Mono`, which aren't shipped (the app uses Schibsted Grotesk and Spline Sans Mono), plus a 💰 emoji instead of the brand mark | `index.template.html:29,35,46` |
-| ~~The desktop header stops about 15 px short of the right edge~~ **Retracted:** that strip is html's stable scrollbar gutter, which a real browser fills with the scrollbar; headless screenshots leave it blank. The redundant `body` declaration was removed anyway. | `index.template.html:28-29` |
-| `tests/layout-sweep.mjs` never visits `plan/networth`, although it's a published route | `tests/layout-sweep.mjs` ROUTES |
-| README drift: it names Inter/IBM Plex, quotes "387 KB gzipped" (the bundle is now 511 KB), and says `ai-proxy` answers "household members" only | `README.md:44,574,671` |
-| 24 list renders use the array index as `key` | `src/components/*.js` |
+| Defect | Where | Status |
+|---|---|---|
+| The low-balance banner hard-codes `$` ("under your $500 alert threshold") and ignores the currency setting | `src/App.js:1266` | ✅ v192 |
+| The entry form's label reads "Amount ($)" whatever the currency | `src/components/forms.js:264` | ✅ v192 |
+| The AI assessment prompt hard-codes `$` and `toLocaleString()` with no locale | `src/components/forecast-plan.js:640-664` | ✅ v192 |
+| The restore confirmation says "This cannot be undone", then offers Undo | `src/components/settings.js:1163` / `1217` | ✅ v192 |
+| Ctrl/⌘+Z's comment says it never fires under a modal, but the modal guard comes *after* it, so it undoes behind an open form | `src/App.js:1054` vs `1066` | ✅ v192 |
+| The low-balance scan (`navLowInfo`) stops at 31 Dec, so a January dip is never flagged in late November or December | `src/App.js:1144` | ✅ v192 |
+| `addEntry` falls back to `userId: 1` when signed out, a number in a field that otherwise holds UUIDs | `src/App.js:864` | ✅ v194 |
+| The boot splash uses `Inter` and `IBM Plex Mono`, which aren't shipped (the app uses Schibsted Grotesk and Spline Sans Mono), plus a 💰 emoji instead of the brand mark | `index.template.html:29,35,46` | ✅ v192 |
+| ~~The desktop header stops about 15 px short of the right edge~~ **Retracted:** that strip is html's stable scrollbar gutter, which a real browser fills with the scrollbar; headless screenshots leave it blank. The redundant `body` declaration was removed anyway. | `index.template.html:28-29` | Retracted |
+| `tests/layout-sweep.mjs` never visits `plan/networth`, although it's a published route | `tests/layout-sweep.mjs` ROUTES | ✅ v192 |
+| README drift: it names Inter/IBM Plex, quotes "387 KB gzipped" (the bundle is now 511 KB), and says `ai-proxy` answers "household members" only | `README.md:44,574,671` | ✅ v192 |
+| 24 list renders use the array index as `key` | `src/components/*.js` | 🟡 v194: the two reorderable lists fixed; ~20 static lists left deliberately |
 
 ---
 
 ## 2. Architecture: best practices and consistency
 
-### 2.1 The source is compiled output being edited by hand
+### 2.1 The source is compiled output being edited by hand — ✅ Resolved (v195): ES modules, JSX, TypeScript in CI. Open: `strict` mode
 
 Every file under `src/` has esbuild fingerprints: `/* @__PURE__ */`, `__spreadValues`, `var _a; (_a = x) == null ? void 0 : _a.y`, and `React.createElement` nested twelve deep on one 3,000-character line (`budget.js:490`, `budget.js:817`). There are no modules. `build.js` concatenates 31 files into one scope, so:
 
@@ -166,7 +183,7 @@ What you get:
 - types on the money model: cents vs dollars is currently only a comment, and `debtData` still holds *strings of cents*,
 - readable diffs, and tree-shaking.
 
-### 2.2 `App.js` is a 2,000-line god component
+### 2.2 `App.js` is a 2,000-line god component — ✅ Resolved (v195): 17 hooks, 802 lines. Open: per-view data subscriptions (a store with selectors)
 
 `App` holds routing, the idle lock, biometrics, service-worker and install prompts, keyboard shortcuts, pull-to-refresh, notification scheduling, undo, the activity log, the what-if scenario, account filtering, year flows, alert findings and notices. It destructures 32 fields and 32 setters by hand, and every screen re-renders on every edit.
 
@@ -176,7 +193,7 @@ Split it by concern:
 - **Derived money:** a `useFlows()` hook. `yearFlows`, `scenarioFlows` and `accountYearFlows` currently repeat the carry-forward loop three times.
 - **Chrome:** `useIdleLock`, `useKeyboardShortcuts`, `usePullToRefresh` and `useInstallPrompt` as separate hooks.
 
-### 2.3 Sync is one whole-household document at a time
+### 2.3 Sync is one whole-household document at a time — 🟡 Mostly resolved (v195): steps 2 and 3 done; step 1 sends changed *fields*, not rows; step 4 (IndexedDB as the working copy) open
 
 Every edit re-sends the entire household through `save_household`, guarded by a single `updated_at`. Two members editing different things at once trigger a CONFLICT, and the loser gets "Please redo your last change". Nothing is pushed between devices: other members' edits only show up after a reload or pull-to-refresh.
 
@@ -186,46 +203,46 @@ Every edit re-sends the entire household through `save_household`, guarded by a 
 3. Add a **Supabase Realtime** subscription on the household's tables so a partner's edit appears within seconds.
 4. Longer term, a local-first store (IndexedDB) replaces `localStorage` as the working copy. It fixes §1.7 and the quota ceiling as well.
 
-### 2.4 State storage is inconsistent
+### 2.4 State storage is inconsistent — 🟡 Partly resolved: receipts and preferences moved (v193, v194); the `scope` column is open
 
-| Kind of state | Where it lives now | Where it belongs |
-|---|---|---|
-| Household data | `useLS` + payload | IndexedDB + server rows |
-| Device preferences (theme, filters, column order) | **payload** (§1.8) | `useLS` |
-| Receipts | React state + `localStorage` (§1.7) | IndexedDB / Storage |
-| Session UI (tab, lock marker) | `sessionStorage` | fine as is |
-| Idle-lock timeout, AI key | `localStorage` | fine; AI key should get a CSP (§2.6) |
+| Kind of state | Where it lived | Where it belongs | Status |
+|---|---|---|---|
+| Household data | `useLS` + payload | IndexedDB + server rows | 🟡 server rows and per-field saves; the merge base is in IndexedDB, the working copy still `useLS` |
+| Device preferences (theme, filters, column order) | **payload** (§1.8) | `useLS` | ✅ per member (v193) |
+| Receipts | React state + `localStorage` (§1.7) | IndexedDB / Storage | ✅ IndexedDB (v194); server still `bytea` |
+| Session UI (tab, lock marker) | `sessionStorage` | fine as is | — |
+| Idle-lock timeout, AI key | `localStorage` | fine; AI key should get a CSP (§2.6) | ✅ CSP (v195) |
 
 Adopt one rule: *if it describes the household it syncs, and if it describes this screen it doesn't*. Enforce it in `HOUSEHOLD_FIELDS` with a `scope: "household" | "device"` column.
 
-### 2.5 The schema and client disagree
+### 2.5 The schema and client disagree — 🟡 Mostly resolved: debts are numbers and leave/remove/delete exist (v195); TypeScript types cover the client, but nothing validates nested fields on the server
 
 - Debts: the database has typed `numeric` columns (README), but the client stores `balance`/`payment` as **strings of cents** and runs `parseFloat` 18 times in `plan.js`. Normalise to integer cents at the edge.
 - Nested fields inside entries and overrides are only protected by the round-trip test (README §"Data model"). Generate a JSON Schema (or TypeScript types) from one declaration and validate in both `cf_apply_household_payload` and the client.
 - There's no **leave household**, **remove member** or **delete my account** path. Members can only be disabled, and `privacy.html` tells users to delete their account themselves, which the app can't do. PIPEDA and GDPR expect a working deletion path.
 
-### 2.6 Security hardening
+### 2.6 Security hardening — ✅ Resolved (v195): CSP, proxy origin allow-list and allowance, vendor hashes in CI
 
 - Add a **Content-Security-Policy** `<meta>`. The page holds a browser-side Anthropic key and a Supabase session in `localStorage`, and a CSP is the cheapest defence against injected script: `default-src 'self'; connect-src 'self' https://*.supabase.co https://api.anthropic.com https://canada-holidays.ca; img-src 'self' data: blob:; script-src 'self' 'sha256-…'`. `build.js` can hash the inline blocks.
 - On `ai-proxy`: add `Access-Control-Allow-Origin: *` → your Pages origin, the membership check (§1.4), and a quota.
 - Treat the supabase-js UMD (218 KB) as a supply-chain dependency: record its SHA-256 in the README table and check it in CI.
 
-### 2.7 Tests: large, but blind in two places
+### 2.7 Tests: large, but blind in two places — 🟡 Partly resolved: see each point below
 
 The suite is unusually thorough: 174 browser tests, a layout sweep, SQL round-trips and three Postgres layouts. All three S1 regressions above still got through, for structural reasons:
 
-1. **Nothing resolves CSS at runtime for colour.** The contrast test reads the palette as text, and `theme-tokens` compares names. A computed-style contrast sweep inside `layout-sweep.mjs` (sampling text nodes against their effective background) would have caught §1.1 on every screen.
-2. **Every browser test stubs `window.supabase`**, so the service worker never sees a real cross-origin response (§1.3), and role and permission paths are only tested as SQL files covering the paths someone thought of (§1.2).
-3. `tests/regression.mjs` is one 7,279-line file that takes 20 minutes. Split it by feature and run the shards in parallel (a CI matrix), so a failure points at a feature.
-4. There's no `package.json`. A minimal one with `"scripts": {"build", "lint", "test:fast", "test:browser"}` and pinned `devDependencies` (Playwright 1.63, ESLint 10) would replace the README's copy-paste recipes and make `npx` reproducible.
+1. 🟡 *Partly: a browser test now checks the dark chrome's painted colour (v191), but there is no page-wide computed-contrast sweep.* **Nothing resolves CSS at runtime for colour.** The contrast test reads the palette as text, and `theme-tokens` compares names. A computed-style contrast sweep inside `layout-sweep.mjs` (sampling text nodes against their effective background) would have caught §1.1 on every screen.
+2. 🟡 *Partly: `sync-sql` drives real SQL for saves, loads, receipts and concurrent merges (v194, v195).* **Every browser test stubs `window.supabase`**, so the service worker never sees a real cross-origin response (§1.3), and role and permission paths are only tested as SQL files covering the paths someone thought of (§1.2).
+3. ⬜ *Open.* `tests/regression.mjs` is one 7,279-line file that takes 20 minutes. Split it by feature and run the shards in parallel (a CI matrix), so a failure points at a feature.
+4. ✅ *Resolved (v195).* There's no `package.json`. A minimal one with `"scripts": {"build", "lint", "test:fast", "test:browser"}` and pinned `devDependencies` (Playwright 1.63, ESLint 10) would replace the README's copy-paste recipes and make `npx` reproducible.
 
-### 2.8 Performance
+### 2.8 Performance — 🟡 Partly resolved: recompute 2.5× cheaper (v195); lazy-loading and `navigationPreload` open
 
 - The bundle is 1.88 MB raw and **511 KB gzipped**, and every screen and all 3,650 lines of CSS load up front. Once §2.1 is done, lazy-load Help, Settings, CSV import, the Plan tab and the chart library. Keep Today plus the entry form in the first chunk.
 - `expandEntries` → `computeFlow` runs for every configured year on every edit, and again for the scenario and account views. Memoise per year on `(entries, overrides[year])` and pass it through a Web Worker once households get large.
 - The cache-first service worker is good. Also consider `navigationPreload` for first visits.
 
-### 2.9 Consistency papercuts
+### 2.9 Consistency papercuts — 🟡 Partly resolved: `safeStorage` (v195); naming, component vocabulary and inline styles open
 
 - Three names for one area: routes say `flow`, storage keys say `budget` (`cf_budget_subtab`), and payload keys say `reg` (`regFilter`). This is documented, but each new contributor has to learn it.
 - Try/catch comment boilerplate ("Storage can throw outright in private/partitioned modes…") appears about 40 times. A `safeStorage.get/set` helper removes most of it.
@@ -238,7 +255,7 @@ The suite is unusually thorough: 174 browser tests, a layout sweep, SQL round-tr
 
 The foundations are good: tokens, focus rings, reduced motion, 44 px targets, landmarks, and hash routes for every screen. The opportunities are hierarchy, information density and making the app feel alive. They're grouped from largest to smallest.
 
-### 3.1 A design-system pass
+### 3.1 A design-system pass — ⬜ Open
 
 - **Type scale and weight.** In Envelopes, the **category name is 10 px grey and the amount is 16 px bold**, which is backwards: the name is what you scan for. The same inversion shows in the desktop Upcoming list, where the category chip is smaller than the date. Use a 4-step scale (12/14/16/20 plus a 28–32 display size for balances) and make the *thing* primary and the *number* secondary in lists.
 - **Numbers.** Monospace for every amount makes the ledger read like a terminal. Use the sans face with `font-variant-numeric: tabular-nums` for alignment, and keep mono only for the build tag. It's calmer and still aligned.
@@ -246,7 +263,7 @@ The foundations are good: tokens, focus rings, reduced motion, 44 px targets, la
 - **Components.** Replace native `<select>`s for Type, Category and Schedule with a **segmented control** (Income / Expense / Transfer) and a **searchable combobox** showing category colour dots. Replace `mm/dd/yyyy` date inputs with a date field that follows `locale` (en-CA shows `yyyy-mm-dd`).
 - **Elevation.** Cards currently rely on 1 px borders. Use one soft shadow token and a 12–16 px radius throughout, with fewer nested borders.
 
-### 3.2 Today: make it a real home screen
+### 3.2 Today: make it a real home screen — ⬜ Open
 
 - **Hero balance.** "Balance today $40,685.00" is the same size as every other tile. Make it the hero (32 px), with a small trend delta ("+$3,090 this month") and the 90-day sparkline directly underneath.
 - **The 90-day strip is a flat grey block.** Its y-axis starts at 0 while the balance moves between $40k and $44k, so it carries no information. Scale the domain to the data (with padding), shade the band below the alert threshold, and mark paydays and big bills with dots you can tap.
@@ -254,14 +271,14 @@ The foundations are good: tokens, focus rings, reduced motion, 44 px targets, la
 - Show a **"Safe to spend until payday"** figure: balance minus scheduled bills before the next income, minus the threshold. It's the one number most people open a budgeting app for, and all the data is already computed.
 - The "mark paid" circles have no visible affordance until you learn them. Add a **swipe-to-pay** (the mobile redesign in `design/` already sketches it), plus a short "Paid ✓" confirmation with undo.
 
-### 3.3 Envelopes
+### 3.3 Envelopes — 🟡 Mostly resolved (v194)
 
-- Show a **two-tone progress bar**: solid for spent so far, hatched for still scheduled, with a marker for "today" in the month. Change the labels to "$240 spent · $280 scheduled · $40 free".
-- Stop auto-raising targets (§1.9). Offer **"Set targets from this month's plan"** as an explicit action instead.
-- Tap an envelope to open its payments. This already exists (commit `c3ddd46`), so make it visible with a chevron.
-- Add **"Move money"** between envelopes for YNAB-style rebalancing.
+- ✅ Show a **two-tone progress bar**: solid for spent so far, hatched for still scheduled, with a marker for "today" in the month. Change the labels to "$240 spent · $280 scheduled · $40 free".
+- ✅ Stop auto-raising targets (§1.9). Offer **"Set targets from this month's plan"** as an explicit action instead.
+- ⬜ Tap an envelope to open its payments. This already exists (commit `c3ddd46`), so make it visible with a chevron.
+- ⬜ Add **"Move money"** between envelopes for YNAB-style rebalancing.
 
-### 3.4 Flow
+### 3.4 Flow — ⬜ Open
 
 - **Mobile chrome.** Before the first row come sub-tabs, a month strip, the swipe tip, a surplus card and an opening-balance row, about 330 px. Merge the month strip into the header (`‹ Sep 2026 ›`, swipe to change), collapse the tip into first-run onboarding, and make the surplus row sticky and compact.
 - **The month strip** doesn't show the year and clips "May" at the edge. Include the year when it differs from today's, and snap-scroll the selected month to centre.
@@ -273,7 +290,7 @@ The foundations are good: tokens, focus rings, reduced motion, 44 px targets, la
 - **Calendar.** Add daily net and balance on each cell, and a heat tint for heavy days.
 - **Curve.** Auto-scale the y-axis (as in §3.2), label the low point outside the plot, and add **drag-to-compare** across two dates.
 
-### 3.5 Entry form
+### 3.5 Entry form — ⬜ Open
 
 - Put **"Describe it"** (the natural-language fill) first and make it prominent: a single field with a sparkle button, which expands to the structured fields. That's the modern pattern, and the feature already exists.
 - Add a larger **amount keypad** on mobile. `inputMode: "decimal"` is already set; a big calculator-style pad with `+`/`−` makes splitting a bill quick.
@@ -281,7 +298,7 @@ The foundations are good: tokens, focus rings, reduced motion, 44 px targets, la
 - **"Repeats"** is a toggle that opens a second screen. Use inline chips instead: *Once · Weekly · Every 2 weeks · Monthly · Custom…*, with a plain-language preview ("Every second Tuesday, next: Sep 8").
 - The footer puts **Template, Cancel and Save** side by side. Move Template into an overflow menu, because three competing buttons slow the main action down.
 
-### 3.6 Navigation and shell
+### 3.6 Navigation and shell — 🟡 Search is visible again (§1.1); the rest is open
 
 - **Desktop:** the 1120 px max-width leaves about 320 px empty at 1440 px. Use a **left sidebar** at ≥1280 px (Today, Flow, Envelopes, Plan, Alerts, Settings, plus a year switcher and account filter), which frees the header for search and sync status.
 - **Search** is a faint pill on dark green (and invisible right now, §1.1). Make it a **⌘K command palette**: jump to screens, find entries, "add expense…", "switch year…". The shortcut system and route table are already in place.
@@ -289,13 +306,13 @@ The foundations are good: tokens, focus rings, reduced motion, 44 px targets, la
 - **Settings** is already a clean list; add a search field at the top once it has more than 17 pages.
 - The **avatar "DU"** menu hides profile, household and sign-out. Show the member's name and household on desktop.
 
-### 3.7 Sign-in and onboarding
+### 3.7 Sign-in and onboarding — 🟡 Contrast fixed (§1.1); the rest is open
 
-- Fix the contrast (§1.1).
+- ✅ Fix the contrast (§1.1).
 - Add **magic-link** and **passkey** sign-in (Supabase supports both). The app already uses WebAuthn for its lock screen, so passkeys are a natural step.
 - First-run: a three-step setup (opening balance → income → the three biggest bills) that ends on a Today screen with real data. The current path is either create an empty household or load sample data.
 
-### 3.8 Micro-polish (no change is too small)
+### 3.8 Micro-polish (no change is too small) — ⬜ Open
 
 - Show all amounts as `−$55.00` with a true minus sign (U+2212), not a hyphen.
 - The "Reconcile…" link under the balance looks like body text. Make it a small outline button.
@@ -313,23 +330,23 @@ The foundations are good: tokens, focus rings, reduced motion, 44 px targets, la
 
 Ranked by value to a household budgeting app, given what already exists:
 
-| # | Feature | Why now | Size |
-|---|---|---|---|
-| 1 | **Bank import via open-banking** (Flinks or Plaid in Canada), or at least an **OFX/QFX importer** beside the CSV one | Reconciling actuals by hand is the biggest chore; the drift and anomaly engines get much better with real transactions | L |
-| 2 | **Real-time household sync** (Realtime channel) plus a **"who's viewing" presence** dot | Removes the conflict/redo toast; partners see edits live | M |
-| 3 | **Safe-to-spend** and **payday view** (§3.2) | The single most useful number, and all the data already exists | S |
-| 4 | **Receipt inbox**: Android share-target and email-in, AI-read into a draft occurrence | The receipt OCR already exists; this makes capture effortless | M |
-| 5 | **Subscriptions audit**: detect recurring small debits, show the annual cost, flag price rises | The drift detector already does the maths | S |
-| 6 | **Bill calendar export** (ICS feed per household) | Puts bills in the calendar people already use; notifications only reach one device each | S |
-| 7 | **Split and shared expenses** between members ("who paid, who owes") | Natural for a multi-member household | M |
-| 8 | **Goals v2**: auto-fund from surplus, projected completion on the curve, celebratory milestones | Goals are currently static | M |
-| 9 | **Tax helpers (Canada)**: RRSP/TFSA/FHSA room tracker, tax-deductible tagging, a year-end summary PDF | The categories already include RRSP; strong local fit | M |
-| 10 | **Ask your budget**: a chat panel over the household's data through `ai-proxy` ("Can we afford a $2k trip in March?"), answering with the what-if engine | The scenario engine and AI transport both exist | M |
-| 11 | **Multi-currency accounts** (a USD account with an FX rate) | The currency setting is per household today | M |
-| 12 | **Leave / remove member / delete account** (§2.5) | A compliance gap as well as a feature | S |
-| 13 | **Widgets**: an Android home-screen widget via a TWA, or a PWA widget (Chromium's experimental API), showing the balance and next bill | Glanceable, the way Today is meant to be | M |
-| 14 | **Audit trail per entry**: activity log entries link to the thing they changed, with a "restore this version" button | The activity log and override history already exist | S |
-| 15 | **Offline-first conflict merge UI**: a side-by-side of local and cloud per changed row, instead of keep-mine/keep-theirs for the whole household | Pairs with §2.3 | M |
+| # | Feature | Why now | Size | Status |
+|---|---|---|---|---|
+| 1 | **Bank import via open-banking** (Flinks or Plaid in Canada), or at least an **OFX/QFX importer** beside the CSV one | Reconciling actuals by hand is the biggest chore; the drift and anomaly engines get much better with real transactions | L | ⬜ |
+| 2 | **Real-time household sync** (Realtime channel) plus a **"who's viewing" presence** dot | Removes the conflict/redo toast; partners see edits live | M | 🟡 live sync (v195); presence open |
+| 3 | **Safe-to-spend** and **payday view** (§3.2) | The single most useful number, and all the data already exists | S | ⬜ |
+| 4 | **Receipt inbox**: Android share-target and email-in, AI-read into a draft occurrence | The receipt OCR already exists; this makes capture effortless | M | ⬜ |
+| 5 | **Subscriptions audit**: detect recurring small debits, show the annual cost, flag price rises | The drift detector already does the maths | S | ⬜ |
+| 6 | **Bill calendar export** (ICS feed per household) | Puts bills in the calendar people already use; notifications only reach one device each | S | ⬜ |
+| 7 | **Split and shared expenses** between members ("who paid, who owes") | Natural for a multi-member household | M | ⬜ |
+| 8 | **Goals v2**: auto-fund from surplus, projected completion on the curve, celebratory milestones | Goals are currently static | M | ⬜ |
+| 9 | **Tax helpers (Canada)**: RRSP/TFSA/FHSA room tracker, tax-deductible tagging, a year-end summary PDF | The categories already include RRSP; strong local fit | M | ⬜ |
+| 10 | **Ask your budget**: a chat panel over the household's data through `ai-proxy` ("Can we afford a $2k trip in March?"), answering with the what-if engine | The scenario engine and AI transport both exist | M | ⬜ |
+| 11 | **Multi-currency accounts** (a USD account with an FX rate) | The currency setting is per household today | M | ⬜ |
+| 12 | **Leave / remove member / delete account** (§2.5) | A compliance gap as well as a feature | S | ✅ v195 |
+| 13 | **Widgets**: an Android home-screen widget via a TWA, or a PWA widget (Chromium's experimental API), showing the balance and next bill | Glanceable, the way Today is meant to be | M | ⬜ |
+| 14 | **Audit trail per entry**: activity log entries link to the thing they changed, with a "restore this version" button | The activity log and override history already exist | S | ⬜ |
+| 15 | **Offline-first conflict merge UI**: a side-by-side of local and cloud per changed row, instead of keep-mine/keep-theirs for the whole household | Pairs with §2.3 | M | 🟡 per-row clash dialog (v195); no side-by-side view |
 
 ---
 
@@ -438,9 +455,9 @@ Each commit was validated before it was pushed: fast suites, the SQL suites agai
 
 ## 6. Suggested order
 
-1. **Today (hotfix):** §1.1 tokens, §1.3 service worker, §1.2 invite role, §1.4 proxy membership. Bump `CF_VERSION`. Add the self-reference lint and a computed-contrast probe.
-2. **This week:** §1.5–§1.10 and the README drift. Move device preferences out of the payload (§1.8).
-3. **Next:** the build migration (§2.1: ESM, JSX, TypeScript, Vite single-file), then split `App.js` (§2.2).
-4. **Then:** row-level sync plus Realtime (§2.3), receipts to Storage and IndexedDB (§1.7), a CSP (§2.6).
-5. **UI program:** the design-system pass (§3.1), Today and Envelopes (§3.2–3.3), then the sidebar and command palette (§3.6).
-6. **Features:** safe-to-spend, subscriptions audit, ICS feed (small wins); then bank import and household sharing features.
+1. ✅ **Today (hotfix):** §1.1 tokens, §1.3 service worker, §1.2 invite role, §1.4 proxy membership. Bump `CF_VERSION`. Add the self-reference lint and a computed-contrast probe.
+2. ✅ **This week:** §1.5–§1.10 and the README drift. Move device preferences out of the payload (§1.8).
+3. ✅ **Next:** the build migration (§2.1: ESM, JSX, TypeScript; esbuild rather than Vite), then split `App.js` (§2.2).
+4. 🟡 **Then:** row-level sync plus Realtime (§2.3), receipts to Storage and IndexedDB (§1.7), a CSP (§2.6). All done except moving receipts to Supabase Storage.
+5. ⬜ **UI program:** the design-system pass (§3.1), Today and Envelopes (§3.2–3.3), then the sidebar and command palette (§3.6).
+6. ⬜ **Features:** safe-to-spend, subscriptions audit, ICS feed (small wins); then bank import and household sharing features.
