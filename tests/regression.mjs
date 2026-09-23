@@ -3253,6 +3253,74 @@ await test('auth: the login screen switches to create-account mode', async () =>
   await ctx.close();
 });
 
+// The app's chrome — header, footer, sign-in, dark sheets — is dark in both
+// themes, and its ink is the --on-dark-* family: white at six strengths. When
+// those tokens were declared as themselves (`--on-dark-30:var(--on-dark-30)`)
+// every rule using one fell back to inherited ink, and the sign-in tagline,
+// the footer and the header search went near-black on dark green. The token
+// tests read the stylesheet as text and passed. This asks the browser what it
+// actually painted: no text on a dark surface may be darker than the surface.
+const DARK_INK_PROBE = () => {
+  const rgba = (s) => { const m = s.match(/[\d.]+/g) || []; return { r: +m[0], g: +m[1], b: +m[2], a: m[3] === undefined ? 1 : +m[3] }; };
+  const lum = ({ r, g, b }) => {
+    const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+    return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+  };
+  const bgOf = (el) => {
+    for (let n = el; n; n = n.parentElement) {
+      const c = rgba(getComputedStyle(n).backgroundColor);
+      if (c.a > 0.5) return c;
+    }
+    return { r: 255, g: 255, b: 255, a: 1 };
+  };
+  const bad = [];
+  for (const el of document.querySelectorAll('body *')) {
+    const own = [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim());
+    if (!own || !el.getClientRects().length) continue;
+    const cs = getComputedStyle(el);
+    if (cs.visibility === 'hidden' || +cs.opacity === 0) continue;
+    const bg = bgOf(el);
+    if (lum(bg) > 0.1) continue; // only dark surfaces
+    const c = rgba(cs.color);
+    const ink = { r: c.r * c.a + bg.r * (1 - c.a), g: c.g * c.a + bg.g * (1 - c.a), b: c.b * c.a + bg.b * (1 - c.a) };
+    if (lum(ink) <= lum(bg)) bad.push(`"${el.textContent.trim().slice(0, 40)}" ${cs.color} on rgb(${bg.r},${bg.g},${bg.b})`);
+  }
+  return bad;
+};
+await test('auth: text on the dark chrome is lighter than the chrome, signed out and in', async () => {
+  const { ctx, page } = await ctxPage({ loggedIn: false });
+  await page.goto(BASE, { waitUntil: 'load' });
+  await page.getByText('Sign in to your account', V).waitFor(V);
+  const signedOut = await page.evaluate(DARK_INK_PROBE);
+  await ctx.close();
+  const { ctx: ctx2, page: page2 } = await ctxPage();
+  await page2.goto(BASE + '#/plan/goals', { waitUntil: 'load' });
+  await page2.locator('.app-footer').waitFor(V);
+  const signedIn = await page2.evaluate(DARK_INK_PROBE);
+  await ctx2.close();
+  const bad = [...signedOut.map((s) => 'sign-in: ' + s), ...signedIn.map((s) => 'app: ' + s)];
+  if (bad.length) throw new Error(`dark ink on dark chrome — ${bad.slice(0, 3).join('; ')}`);
+});
+
+// The server now refuses create_invite() from a view-only member (it would
+// seat a writer — tests/viewer-role.sql). The button should say so before it
+// is pressed, and an ordinary owner's button must be untouched.
+await test('household: a view-only member cannot generate an invite code', async () => {
+  const { ctx, page } = await ctxPage({ stub: (x) => x.replace("role: 'owner'", "role: 'viewer'") });
+  await page.goto(BASE + '#/you/household', { waitUntil: 'load' });
+  const btn = page.getByRole('button', { name: 'Generate invite code' });
+  await btn.waitFor(V);
+  if (!(await btn.isDisabled())) throw new Error('a viewer is offered an active "Generate invite code" button');
+  await page.getByText("View-only members can't invite people", V).waitFor(V);
+  await ctx.close();
+  const { ctx: ctx2, page: page2 } = await ctxPage();
+  await page2.goto(BASE + '#/you/household', { waitUntil: 'load' });
+  const ownerBtn = page2.getByRole('button', { name: 'Generate invite code' });
+  await ownerBtn.waitFor(V);
+  if (await ownerBtn.isDisabled()) throw new Error('the owner can no longer generate an invite code');
+  await ctx2.close();
+});
+
 // ── Money schema migration (schema v8: dollars -> cents) ────────────────
 // Every other test's fixture payload declares schemaVersion: 999, so it's
 // taken as already-cents and never exercises the upgrade path. This test
@@ -4637,6 +4705,46 @@ await test('service worker: a repeat launch is served from cache, and a deploy s
   await ctx.close();
 });
 
+
+// The worker is for the app's own files. It used to answer every GET
+// cache-first, cross-origin ones included — so each Supabase REST read came
+// back as the response to the read before it. Every other test replaces
+// window.supabase with a stub, so no request of that shape ever reached the
+// worker and nothing noticed. This one sends real cross-origin reads through a
+// controlled page and counts what the server actually answered.
+await test('service worker: cross-origin reads (the Supabase API) always reach the network', async () => {
+  let hits = 0;
+  const api = createServer((req, res) => {
+    hits++;
+    res.writeHead(200, { 'content-type': 'application/json', 'access-control-allow-origin': '*' });
+    res.end(JSON.stringify({ call: hits }));
+  });
+  await new Promise((r) => api.listen(PORT - 1, '127.0.0.1', r));
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  try {
+    const page = await ctx.newPage();
+    await page.addInitScript(mkStub(false, true));
+    await page.goto(BASE, { waitUntil: 'load' });
+    await page.waitForFunction(() => !!navigator.serviceWorker.controller, null, { timeout: 15000 });
+    // "localhost" against a page on 127.0.0.1: a different origin, as the
+    // Supabase project is.
+    const url = `http://localhost:${PORT - 1}/rest/v1/household_members?user_id=eq.x`;
+    const seen = [];
+    for (let i = 0; i < 3; i++) seen.push(await page.evaluate((u) => fetch(u).then((r) => r.json()).then((j) => j.call), url));
+    if (seen.join() !== '1,2,3') {
+      throw new Error(`three reads came back as calls ${seen.join(', ')} — the worker answered from its cache instead of the network`);
+    }
+    const cached = await page.evaluate(async () => {
+      const out = [];
+      for (const k of await caches.keys()) for (const r of await (await caches.open(k)).keys()) out.push(r.url);
+      return out.filter((u) => new URL(u).origin !== location.origin);
+    });
+    if (cached.length) throw new Error('cross-origin responses are in the cache: ' + cached.join(', '));
+  } finally {
+    await ctx.close();
+    await new Promise((r) => api.close(r));
+  }
+});
 
 // ── Worth building ───────────────────────────────────────────────────────────
 

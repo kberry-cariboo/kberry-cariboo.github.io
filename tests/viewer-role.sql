@@ -16,7 +16,9 @@ do $$
 declare
   owner_id uuid := gen_random_uuid();
   viewer_id uuid := gen_random_uuid();
+  guest_id uuid := gen_random_uuid();
   hid uuid;
+  code text;
   loaded jsonb;
   failed boolean;
   checks int := 0;
@@ -24,6 +26,7 @@ begin
   -- An owner with a household and one entry in it.
   insert into auth.users (id, email) values (owner_id, 'owner@example.com');
   insert into auth.users (id, email) values (viewer_id, 'viewer@example.com');
+  insert into auth.users (id, email) values (guest_id, 'guest@example.com');
   perform set_config('request.jwt.claim.sub', owner_id::text, true);
   hid := create_household('Owner');
   perform save_household(jsonb_build_object(
@@ -105,6 +108,43 @@ begin
   end if;
   checks := checks + 1;
 
+  -- Inviting is writing by another route. join_household() seats the
+  -- newcomer as an ordinary member, so a viewer's invite would hand write
+  -- access to a second account of their own.
+  failed := false;
+  begin
+    perform create_invite();
+  exception when insufficient_privilege then failed := true;
+  end;
+  if not failed then
+    raise exception 'viewer-role: a viewer created an invite — and whoever redeems it can write';
+  end if;
+  checks := checks + 1;
+
+  -- A code made while the viewer could still write, redeemed after they were
+  -- made view-only, must not seat anyone either: the inviter is checked when
+  -- the code is used, not only when it was made.
+  perform set_config('request.jwt.claim.sub', owner_id::text, true);
+  update household_members set role = 'member' where user_id = viewer_id;
+  perform set_config('request.jwt.claim.sub', viewer_id::text, true);
+  code := create_invite();
+  perform set_config('request.jwt.claim.sub', owner_id::text, true);
+  update household_members set role = 'viewer' where user_id = viewer_id;
+  perform set_config('request.jwt.claim.sub', guest_id::text, true);
+  failed := false;
+  begin
+    perform join_household(code, 'Guest');
+  exception when others then failed := true;
+  end;
+  if not failed then
+    raise exception 'viewer-role: a code from a member later made view-only still let someone join';
+  end if;
+  if exists (select 1 from household_members where user_id = guest_id) then
+    raise exception 'viewer-role: the refused join left a membership row behind';
+  end if;
+  checks := checks + 1;
+  perform set_config('request.jwt.claim.sub', viewer_id::text, true);
+
   -- And nothing the viewer tried left a mark.
   perform set_config('request.jwt.claim.sub', owner_id::text, true);
   loaded := (load_household())->'data';
@@ -126,6 +166,26 @@ begin
   loaded := (load_household())->'data';
   if (loaded->'entries'->0->>'desc') is distinct from 'Hydro' then
     raise exception 'viewer-role: an ordinary member was blocked from writing';
+  end if;
+  checks := checks + 1;
+
+  -- ...and may still invite, once, with a code that is spent after one use.
+  code := create_invite();
+  perform set_config('request.jwt.claim.sub', guest_id::text, true);
+  if join_household(code, 'Guest') is distinct from hid then
+    raise exception 'viewer-role: an ordinary member''s invite did not seat the guest in the household';
+  end if;
+  checks := checks + 1;
+  perform set_config('request.jwt.claim.sub', owner_id::text, true);
+  delete from household_members where user_id = guest_id;
+  perform set_config('request.jwt.claim.sub', guest_id::text, true);
+  failed := false;
+  begin
+    perform join_household(code, 'Guest again');
+  exception when others then failed := true;
+  end;
+  if not failed then
+    raise exception 'viewer-role: an invite code was redeemed twice';
   end if;
   checks := checks + 1;
 

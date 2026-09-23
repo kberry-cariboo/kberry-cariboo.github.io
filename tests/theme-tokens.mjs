@@ -191,6 +191,54 @@ check('both palettes are readable from their files',
     bootStyle.slice(0, 260));
 }
 
+// ── Every token resolves to something ────────────────────────────────────────
+// A custom property that refers to itself — directly (`--a:var(--a)`) or round
+// a loop (`--a:var(--b)`, `--b:var(--a)`) — is invalid at computed-value time,
+// and so is var() of a name nothing declares. Neither throws: every rule that
+// reads one quietly falls back to inherited ink. That is how the six
+// --on-dark-* tokens shipped as `--on-dark-30:var(--on-dark-30)` and painted the
+// footer, the sign-in tagline and the header search near-black on dark green,
+// while every check above passed — they compare values as text and never ask
+// whether a value leads anywhere.
+{
+  const sheets = css + '\n' + read('index.template.html');
+  const refsOf = (v) => [...v.matchAll(/var\(\s*--([A-Za-z][\w-]*)/g)].map((m) => m[1]);
+  // Every declaration of every name, from every block: a name's references
+  // are the union across themes and media queries, since any of them can be
+  // the one that applies.
+  const graph = new Map();
+  for (const m of sheets.matchAll(/(?:^|[{;\s])--([A-Za-z][\w-]*)\s*:\s*([^;}]+)/g)) {
+    if (!graph.has(m[1])) graph.set(m[1], new Set());
+    refsOf(m[2]).forEach((r) => graph.get(m[1]).add(r));
+  }
+  check('the stylesheets declare custom properties at all', graph.size > 50, 'found ' + graph.size);
+
+  const cycles = [];
+  const state = new Map(); // 1 = on the current path, 2 = finished
+  const visit = (n, path) => {
+    if (state.get(n) === 2 || !graph.has(n)) return;
+    if (state.get(n) === 1) {
+      cycles.push(path.slice(path.indexOf(n)).concat(n).map((x) => '--' + x).join(' → '));
+      return;
+    }
+    state.set(n, 1);
+    for (const r of graph.get(n)) visit(r, path.concat(n));
+    state.set(n, 2);
+  };
+  for (const n of graph.keys()) visit(n, []);
+  check('no custom property refers to itself, directly or round a loop',
+    cycles.length === 0, cycles.join('\n     '));
+
+  // var(--x, fallback) is allowed to name something undeclared — that is what
+  // the fallback is for — so only references without one are held to this.
+  const undeclared = new Set();
+  for (const m of sheets.matchAll(/var\(\s*--([A-Za-z][\w-]*)\s*\)/g)) {
+    if (!graph.has(m[1])) undeclared.add('--' + m[1]);
+  }
+  check('every var() without a fallback names a declared custom property',
+    undeclared.size === 0, [...undeclared].join(', '));
+}
+
 const failed = results.filter((r) => !r.ok).length;
 console.log(`\n${results.length - failed}/${results.length} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

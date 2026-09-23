@@ -2285,6 +2285,14 @@ begin
   if hid is null then
     raise exception 'You must belong to a household first.';
   end if;
+  -- Only someone who can write may bring someone in. join_household() seats
+  -- the newcomer as an ordinary member, which is a writer, so an invite from a
+  -- view-only member was a way for them to grant write access to a second
+  -- account of their own — a viewer promoting themselves by proxy.
+  if not is_household_writer(hid) then
+    raise exception 'View-only members cannot invite people to the household.'
+      using errcode = '42501';
+  end if;
   -- Randomness from gen_random_uuid(), which is core Postgres from 13 on and
   -- is a CSPRNG. It used to come from pgcrypto's gen_random_bytes(), and that
   -- is what broke inviting in production: Supabase installs pgcrypto in the
@@ -2325,14 +2333,26 @@ begin
   if exists (select 1 from household_members where user_id = auth.uid()) then
     raise exception 'You already belong to a household.';
   end if;
-  select household_id into hid from household_invites
-    where code = upper(p_code) and used_by is null and expires_at > now();
+  -- Claim the code and read its household in one statement. A select and a
+  -- later update let two people redeem the same code at once: both read it
+  -- unused, both joined. The `used_by is null` guard on the update itself is
+  -- what makes a code single-use.
+  --
+  -- The inviter has to still be able to write *now*, not only when the code
+  -- was made: a code minted by a member who has since been made view-only or
+  -- disabled would otherwise still seat a writer (see create_invite).
+  update household_invites i set used_by = auth.uid(), used_at = now()
+    where i.code = upper(p_code) and i.used_by is null and i.expires_at > now()
+      and exists (
+        select 1 from household_members m
+        where m.household_id = i.household_id and m.user_id = i.created_by
+          and m.role is distinct from 'viewer' and not m.disabled)
+    returning i.household_id into hid;
   if hid is null then
     raise exception 'Invite code not found or expired.';
   end if;
   insert into household_members(household_id, user_id, full_name)
     values (hid, auth.uid(), coalesce(p_full_name, ''));
-  update household_invites set used_by = auth.uid(), used_at = now() where code = upper(p_code);
   return hid;
 end;
 $$;

@@ -386,7 +386,7 @@
     // What each account's name was when its field took focus, so a rename is
     // logged once on blur rather than once per keystroke.
     const renamedFrom = useRef({});
-    const { logActivity } = useContext(HouseholdContext);
+    const { logActivity, canWrite } = useContext(HouseholdContext);
     // What each account opens the first budget year with. Derived, never
     // stored for the first account: it takes the remainder, so the shares can
     // never drift from the one opening balance the user actually sets.
@@ -1105,11 +1105,14 @@
           }
           setInviteBusy(false);
         },
-        disabled: inviteBusy,
+        // Inviting seats the newcomer as a writer, so the server refuses a
+        // view-only member; say so here rather than after the press.
+        disabled: inviteBusy || !canWrite,
+        "aria-describedby": canWrite ? void 0 : "invite-viewonly-note",
         className: "cf-btn cf-btn--primary cf-btn--md"
       },
       inviteBusy ? "Generating…" : "Generate invite code"
-    ), inviteCode && /* @__PURE__ */ React.createElement("div", { className: "invite-code-display" }, inviteCode))) },
+    ), !canWrite && /* @__PURE__ */ React.createElement("p", { id: "invite-viewonly-note", className: "c-textMid mt-8" }, "View-only members can't invite people. Ask the household owner for a code."), inviteCode && /* @__PURE__ */ React.createElement("div", { className: "invite-code-display" }, inviteCode))) },
       backup: { title: "Backup & restore", value: () => "", render: () => React.createElement(React.Fragment, null, React.createElement(Card, { id: "sec-backup", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Data Backup & Restore"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("button", { onClick: () => {
       // Built from the household-field table, so a new field is in the backup
       // the moment it is marked `backup: true` — this list used to be written

@@ -49,6 +49,15 @@
           return false;
         }
         const { data, error } = await supabaseClient.functions.invoke(AI_PROXY_FN, { body: { ping: true } });
+        // 403 is the function answering about *this account*, not about
+        // itself: it serves household members only, and someone still on the
+        // create-or-join screen is not one yet. Like signed-out above, that
+        // is an answer about right now, so it is not remembered — the probe
+        // runs again once they have a household.
+        if (error && error.context && error.context.status === 403) {
+          _aiProxyProbe = null;
+          return false;
+        }
         _aiProxyAvailable = !error && !!(data && data.ok);
       } catch (e) {
         _aiProxyAvailable = false;

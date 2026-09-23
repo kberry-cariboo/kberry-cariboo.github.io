@@ -44,6 +44,14 @@ self.addEventListener('activate', (e) => {
 
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
+  // Only this app's own files. Everything cross-origin — Supabase's REST reads
+  // above all — goes straight to the network, untouched. The cache-first branch
+  // at the bottom used to take them too, which answered every API read with
+  // the *previous* response: an owner changed a member's role and the list
+  // came back showing the old one, and a new member who had just redeemed an
+  // invite was told, from the cache, that they still had no household. Live
+  // data is not an app shell; it has no business in this cache.
+  if (new URL(e.request.url).origin !== self.location.origin) return;
 
   // Everything below reads and writes through `caches.open(CACHE)` rather than
   // the global `caches.match()`. That distinction is load-bearing: the global

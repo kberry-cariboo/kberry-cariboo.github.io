@@ -234,9 +234,16 @@
              LIGHT/DARK mirror in app-data.js, which is keyed that way. */
           --inkOnDanger:#FFFFFF;
           --inkOnSuccess:#FFFFFF;
-          --on-dark-08:var(--on-dark-08); --on-dark-16:var(--on-dark-16);
-          --on-dark-30:var(--on-dark-30); --on-dark-45:var(--on-dark-45);
-          --on-dark-60:var(--on-dark-60); --on-dark-85:var(--on-dark-85);
+          /* White at six strengths, for ink and hairlines on the dark
+             chrome (header, footer, sign-in, sheets, chart tooltips), which
+             is dark in both themes. Literal values: these are the bottom of
+             the chain. They once read `--on-dark-30:var(--on-dark-30)` — a
+             self-reference, which CSS treats as invalid, so every rule using
+             one fell back to inherited ink and painted near-black text on the
+             dark green. tests/theme-tokens.mjs now fails on any cycle. */
+          --on-dark-08:rgba(255,255,255,0.08); --on-dark-16:rgba(255,255,255,0.16);
+          --on-dark-30:rgba(255,255,255,0.30); --on-dark-45:rgba(255,255,255,0.45);
+          --on-dark-60:rgba(255,255,255,0.60); --on-dark-85:rgba(255,255,255,0.85);
           /* Scrims and the shadow ink used by the handful of bespoke,
              directional box-shadows the --shadow* tokens do not cover. These
              keep one value across both themes, as they did before; making

@@ -94,6 +94,7 @@ node tests/cat-detail.mjs     # the category drill-down's grouping, browser-free
 node tests/theme-tokens.mjs   # CSS palette vs its JS mirror, browser-free
 node tests/breakpoints.mjs    # one ladder of media widths, browser-free
 node tests/contrast.mjs       # WCAG contrast in both themes, browser-free
+node --experimental-strip-types tests/ai-proxy.mjs  # who the AI proxy serves, browser-free
 node tests/regression.mjs     # the browser suite
 node tests/layout-sweep.mjs   # every route at every width
 ```
@@ -571,7 +572,9 @@ supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
 
 Deploy it **without** `--no-verify-jwt` (unlike `send-notifications`): the JWT
 check is what stops the function being an open relay to your Anthropic account.
-It only answers signed-in household members, rebuilds each request from an
+It only answers signed-in, active household members — sign-up is open, so a
+login alone proves nothing, and before this was checked any account could spend
+your key — rebuilds each request from an
 allowlist — so a caller can't choose its own model or ask for a 128k-token
 reply on your bill — and caps request size.
 

@@ -522,7 +522,9 @@
       return () => {
         live = false;
       };
-    }, [session]);
+      // household too: the proxy answers members only, so a probe made before
+      // joining one has to be asked again after.
+    }, [session, household]);
     const [showBackupNudge, setShowBackupNudge] = useState(false);
     useEffect(() => {
       try {

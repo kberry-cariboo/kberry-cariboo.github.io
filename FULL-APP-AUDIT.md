@@ -333,7 +333,20 @@ Ranked by value to a household budgeting app, given what already exists:
 
 ---
 
-## 5. Suggested order
+## 5. Outcome: the four S1s (build v191)
+
+| Item | Fix | Test that now guards it |
+|---|---|---|
+| §1.1 `--on-dark-*` tokens | Literal values restored in `src/styles.css` | `tests/theme-tokens.mjs` fails on any custom-property cycle, and on `var()` of an undeclared name with no fallback. `tests/regression.mjs` "text on the dark chrome is lighter than the chrome" asks the browser what it painted, signed out and in. |
+| §1.2 viewer invites | `create_invite()` requires a writer. `join_household()` claims the code in one guarded `update … where used_by is null`, and refuses a code whose inviter is no longer a writer. `supabase/fix-invite.sql` carries the same check. Settings disables the button for viewers and says why. | `tests/viewer-role.sql` (14 checks, up from 9), plus the browser test "a view-only member cannot generate an invite code" |
+| §1.3 service worker | Cross-origin requests bypass the worker entirely | `tests/regression.mjs` "cross-origin reads (the Supabase API) always reach the network" (three reads must come back 1, 2, 3, and nothing cross-origin may be cached) |
+| §1.4 `ai-proxy` | Logic moved to `handler.ts` (dependency-injected). `index.ts` checks, as the caller under RLS, for an active membership row. Non-members get 403, and the probe too. The client doesn't cache a 403 probe and re-probes when the household changes. | `tests/ai-proxy.mjs` (10 checks, runs under Node type-stripping, wired into CI) |
+
+Each new test was run against the pre-fix code and failed there. **Deploy note:** the SQL and the Edge Function aren't deployed by the site. Re-run `supabase/schema.sql` (or just the two functions) and `supabase functions deploy ai-proxy`.
+
+Still open from §1.4: a per-user rate limit on the proxy.
+
+## 6. Suggested order
 
 1. **Today (hotfix):** §1.1 tokens, §1.3 service worker, §1.2 invite role, §1.4 proxy membership. Bump `CF_VERSION`. Add the self-reference lint and a computed-contrast probe.
 2. **This week:** §1.5–§1.10 and the README drift. Move device preferences out of the payload (§1.8).
