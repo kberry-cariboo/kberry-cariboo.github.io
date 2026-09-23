@@ -279,8 +279,18 @@ console.log('\n── 7. Receipts ──');
   p.overridesByYr = { 2026: { 'e1-2026-0-1': { amount: 170000 } } };
   const { ctx, page } = await open({ payload: p, opts: { receipts: [{ ownerKey:'override:2026:e1-2026-0-1', b64: PNG, mime:'image/png' }] } });
   const ovs = await ls(page, 'cf_overrides');
-  const att = ((ovs['2026']||{})['e1-2026-0-1']||{}).attachment;
+  // Receipt images are kept in IndexedDB now, not in localStorage (whose
+  // ~5 MB every field shares). An image only reaches that store by being
+  // attached to its occurrence in the app's state, so finding it there is
+  // the re-attachment; finding it in localStorage would be the old bug.
+  await page.waitForTimeout(800);
+  const att = await page.evaluate(() => new Promise((res) => {
+    const r = indexedDB.open('cf-receipts');
+    r.onsuccess = () => { const g = r.result.transaction('receipts').objectStore('receipts').get('override:2026:e1-2026-0-1'); g.onsuccess = () => res(g.result && g.result.dataUrl); g.onerror = () => res(null); };
+    r.onerror = () => res(null);
+  }));
   check('a receipt is re-attached to its occurrence on load', typeof att === 'string' && att.startsWith('data:image/png;base64,'), String(att).slice(0,40));
+  check('and is not written into localStorage', !JSON.stringify(ovs).includes('data:image'), JSON.stringify(ovs).slice(0, 80));
   check('the override itself survives', ((ovs['2026']||{})['e1-2026-0-1']||{}).amount === 170000, JSON.stringify(ovs));
   await ctx.close();
 }
