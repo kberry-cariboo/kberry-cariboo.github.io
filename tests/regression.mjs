@@ -3321,6 +3321,39 @@ await test('household: a view-only member cannot generate an invite code', async
   await ctx2.close();
 });
 
+// The fixture's car loan is $385 a month from January to 18 September. The
+// "ends soon" line used to divide the year's nine payments by twelve and say
+// it freed $288.75 a month. Pinned to early September, when it is ending soon.
+await test('today: a bill that is ending says what it frees per month, not a twelfth of the year', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.clock.setFixedTime(new Date('2026-09-03T12:00:00'));
+  await page.goto(BASE + '#/today', { waitUntil: 'load' });
+  const line = page.getByText(/Car loan/).locator('xpath=ancestor::*[contains(., "ends")][1]').filter({ hasText: 'frees' }).first();
+  await line.waitFor(V);
+  const text = (await line.textContent()) || '';
+  if (!/frees \$385\.00\/mo/.test(text)) throw new Error('expected "frees $385.00/mo", got: ' + text.trim().slice(0, 80));
+  await ctx.close();
+});
+
+// The low-balance warning looks sixty days ahead, which from November on runs
+// into January. It used to read only the active year's flow, so a dip in the
+// first week of the new year was never mentioned until the year had turned.
+await test('today: the low-balance warning sees a dip just past the new year', async () => {
+  const bigJanBill = (t) => spansYearEnd(t).replace('const monthTargets',
+    `entries.push({ id: 900, desc: 'Roof', type: 'expense', amount: 9000000, category: 'Housing', repeats: false, recurUnit: 'month', recurEvery: 1, startDate: '${FIXTURE_YEAR + 1}-01-08', notes: '' }); const monthTargets`);
+  const { ctx, page } = await ctxPage({ stub: bigJanBill });
+  await page.clock.setFixedTime(new Date(`${FIXTURE_YEAR}-12-10T12:00:00`));
+  await page.goto(BASE + '#/today', { waitUntil: 'load' });
+  const banner = page.getByText(/forecast to dip to/).first();
+  await banner.waitFor({ timeout: 6000 }).catch(() => {
+    throw new Error('no low-balance warning for a dip on 8 January, 29 days away');
+  });
+  const text = (await banner.locator('xpath=..').textContent()) || '';
+  // The bottom is a few days after the bill, once the next ones land too.
+  if (!new RegExp(`Jan \\d+, ${FIXTURE_YEAR + 1}`).test(text)) throw new Error('the warning does not name a January date in the new year: ' + text.slice(0, 120));
+  await ctx.close();
+});
+
 // ── Money schema migration (schema v8: dollars -> cents) ────────────────
 // Every other test's fixture payload declares schemaVersion: 999, so it's
 // taken as already-cents and never exercises the upgrade path. This test
@@ -4068,6 +4101,33 @@ await test('sync: editing a holiday schedules a save of its own', async () => {
     await page.waitForTimeout(800);
     return true;
   };
+
+  // Two buttons make a backup: Settings → Export Backup, and the 30-day
+  // reminder's "Export backup". The reminder's used to list its fields by hand
+  // and missed nine — accounts, currency, holidays among them — so a restore
+  // from that file left entries pointing at accounts that no longer existed.
+  await test('backup: the 30-day reminder exports the same fields as Settings', async () => {
+    const { ctx, page } = await openSettings();
+    const fromSettings = await exportBackup(page);
+    await ctx.close();
+    const { ctx: ctx2, page: page2 } = await ctxPage();
+    await page2.addInitScript(CAPTURE_DOWNLOADS);
+    await page2.addInitScript("try{localStorage.removeItem('cf_last_backup')}catch(e){}");
+    await page2.goto(BASE + '#/today', { waitUntil: 'load' });
+    // The reminder waits five seconds before it speaks.
+    const btn = page2.getByRole('button', { name: /Export backup/ });
+    await btn.waitFor({ timeout: 9000 });
+    await btn.click();
+    await page2.waitForTimeout(700);
+    const d = await page2.evaluate(() => window.__downloads[0] || null);
+    await ctx2.close();
+    if (!d) throw new Error('the reminder\'s Export backup produced no file');
+    const want = Object.keys(fromSettings.json).filter((k) => k !== 'exportedAt').sort();
+    const got = Object.keys(JSON.parse(d.text)).filter((k) => k !== 'exportedAt').sort();
+    const missing = want.filter((k) => !got.includes(k));
+    if (missing.length) throw new Error('the reminder\'s backup is missing: ' + missing.join(', '));
+    if (got.length !== want.length) throw new Error('the two backups differ: ' + got.filter((k) => !want.includes(k)).join(', '));
+  });
   const stored = (page) => page.evaluate(() => {
     const g = (k) => { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } };
     return { entries: g('cf_entries'), overrides: g('cf_overrides'), years: g('cf_years'),
@@ -4126,7 +4186,8 @@ await test('sync: editing a holiday schedules a save of its own', async () => {
     await ctx.close();
   });
 
-  // The dialog says the file replaces the current data and cannot be undone.
+  // The dialog says the file replaces the current data (undoable only from the
+  // notice straight afterwards).
   // A field the file does not carry used to be left alone, so restoring a
   // backup taken before a goal existed left that goal in place — the user is
   // handed a blend of two points in time and told it is the backup.
@@ -5888,6 +5949,35 @@ await test('settings: renaming a category takes its entries and targets with it'
   await page.waitForTimeout(1000);
   const undo = page.getByRole('button', { name: /Undo/i }).first();
   if (await undo.count() === 0) throw new Error('a rename that moves entries offers no undo');
+  await ctx.close();
+});
+
+// Ctrl/⌘+Z is the undo toast's button under a keyboard. Its comment said it
+// never fired under an open dialog, but the guard sat below it, so pressing it
+// with a form open reverted the last action behind the form.
+await test('undo: Ctrl+Z does nothing under an open dialog, and undoes once it is closed', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.goto(BASE + '#/you/categories', { waitUntil: 'load' });
+  await settled(page);
+  const cats = () => page.evaluate(() => JSON.parse(localStorage.getItem('cf_categories') || '[]'));
+  await page.locator('.cat-row', { hasText: 'Subscriptions' }).first().click();
+  await page.waitForTimeout(400);
+  await page.locator('main').getByRole('button', { name: 'Remove', exact: true }).first().click();
+  await page.waitForTimeout(400);
+  if ((await cats()).includes('Subscriptions')) throw new Error('setup: the category was not removed');
+  // Open the entry form (the "n" shortcut) and press Ctrl+Z on the dialog.
+  await page.locator('body').click({ position: { x: 5, y: 5 } }).catch(() => {});
+  await page.keyboard.press('n');
+  await page.locator('.modal-overlay').first().waitFor(V);
+  await page.locator('.modal-overlay button').first().focus();
+  await page.keyboard.press('ControlOrMeta+z');
+  await page.waitForTimeout(300);
+  if ((await cats()).includes('Subscriptions')) throw new Error('Ctrl+Z undid the removal behind the open dialog');
+  await page.keyboard.press('Escape');
+  await page.locator('.modal-overlay').first().waitFor({ state: 'detached', timeout: 4000 });
+  await page.keyboard.press('ControlOrMeta+z');
+  await page.waitForTimeout(300);
+  if (!(await cats()).includes('Subscriptions')) throw new Error('Ctrl+Z did not undo once the dialog was closed');
   await ctx.close();
 });
 

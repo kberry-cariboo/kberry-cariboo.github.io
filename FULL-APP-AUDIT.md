@@ -142,7 +142,7 @@ The net effect is that nearly every envelope reads "Fully spent" and the feature
 | The low-balance scan (`navLowInfo`) stops at 31 Dec, so a January dip is never flagged in late November or December | `src/App.js:1144` |
 | `addEntry` falls back to `userId: 1` when signed out, a number in a field that otherwise holds UUIDs | `src/App.js:864` |
 | The boot splash uses `Inter` and `IBM Plex Mono`, which aren't shipped (the app uses Schibsted Grotesk and Spline Sans Mono), plus a 💰 emoji instead of the brand mark | `index.template.html:29,35,46` |
-| The desktop header stops about 15 px short of the right edge because `scrollbar-gutter: stable` is on both `html` and `body` | `index.template.html:28-29` |
+| ~~The desktop header stops about 15 px short of the right edge~~ **Retracted:** that strip is html's stable scrollbar gutter, which a real browser fills with the scrollbar; headless screenshots leave it blank. The redundant `body` declaration was removed anyway. | `index.template.html:28-29` |
 | `tests/layout-sweep.mjs` never visits `plan/networth`, although it's a published route | `tests/layout-sweep.mjs` ROUTES |
 | README drift: it names Inter/IBM Plex, quotes "387 KB gzipped" (the bundle is now 511 KB), and says `ai-proxy` answers "household members" only | `README.md:44,574,671` |
 | 24 list renders use the array index as `key` | `src/components/*.js` |
@@ -345,6 +345,20 @@ Ranked by value to a household budgeting app, given what already exists:
 Each new test was run against the pre-fix code and failed there. **Deploy note:** the SQL and the Edge Function aren't deployed by the site. Re-run `supabase/schema.sql` (or just the two functions) and `supabase functions deploy ai-proxy`.
 
 Still open from §1.4: a per-user rate limit on the proxy.
+
+### Batch 2 (build v192)
+
+- **§1.5** Both backup buttons now call one `buildHouseholdBackup()`, built from the field table. Test: "the 30-day reminder exports the same fields as Settings".
+- **§1.6** The new `monthlyEquivalent(entry)` in `dates.js` works from the schedule. The car loan now reads "frees $385.00/mo". Covered by 10 new checks in `tests/dates.mjs` (including agreement with `expandEntries`) and a pinned-clock browser test.
+- **§1.10:**
+  - The low-balance banner, the entry form's amount label and the AI assessment prompt now use the currency formatter.
+  - The restore dialog's copy now matches the Undo it offers.
+  - Ctrl/⌘+Z is inert under an open dialog (browser test added).
+  - The low-balance scan reads into next year and names it (browser test added).
+  - The boot splash uses the shipped fonts and the app icon.
+  - `plan/networth` is in the layout sweep (217 screens, clean).
+  - README drift fixed.
+  - The header "gap" finding is retracted (see its row above).
 
 ## 6. Suggested order
 

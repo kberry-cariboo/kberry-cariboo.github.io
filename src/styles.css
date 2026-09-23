@@ -2268,7 +2268,9 @@
         .month-picker-fade{position:absolute;top:0;bottom:0;width:20px;pointer-events:none;z-index:1;}
         .month-picker-fade--left{left:0;background:linear-gradient(to right,var(--bg),transparent);}
         .month-picker-fade--right{right:0;background:linear-gradient(to left,var(--bg),transparent);}
-        body{margin:0;background:var(--bg);scrollbar-gutter:stable;
+        /* The scrollbar gutter is declared on html, which owns the page's
+           scrollbar; the copy that used to sit here on body had no effect. */
+        body{margin:0;background:var(--bg);
           -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;}
         /* Stray horizontal overflow must never widen the mobile layout viewport —
            that zooms the page out and scales/displaces position:fixed chrome

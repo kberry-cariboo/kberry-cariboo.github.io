@@ -696,8 +696,7 @@
           const d = /* @__PURE__ */ new Date(e.recurEnd + "T00:00:00");
           return d >= today && d <= horizon;
         }).map((e) => {
-          const evs = flow.filter((ev) => ev.entryId === e.id);
-          const monthly = evs.length ? roundMoney(evs.reduce((s, ev) => s + (ev.amount || 0), 0) / 12) : e.amount;
+          const monthly = monthlyEquivalent(e);
           const d = /* @__PURE__ */ new Date(e.recurEnd + "T00:00:00");
           return __spreadProps(__spreadValues({}, e), { monthly, endLabel: MONTHS[d.getMonth()] + " " + d.getDate() });
         }).sort((a, b) => a.recurEnd.localeCompare(b.recurEnd)).slice(0, 4);

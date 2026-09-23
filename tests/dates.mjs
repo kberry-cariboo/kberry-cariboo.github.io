@@ -37,7 +37,7 @@ const load = new Function('React', 'localStorage', 'window', `
   ${read('src/lib/format.js')}
   ${read('src/lib/dates.js')}
   return { expandEntries, nthWeekdayInMonth, priorBankingDay, isPayrollDeposit,
-           isLeapYear, daysInMonth, localDateStr, computeFlow, getMonthSummaries };
+           isLeapYear, daysInMonth, localDateStr, computeFlow, getMonthSummaries, monthlyEquivalent };
 `);
 const store = new Map();
 const localStorage = {
@@ -47,7 +47,7 @@ const localStorage = {
 };
 const {
   expandEntries, nthWeekdayInMonth, priorBankingDay, isPayrollDeposit,
-  isLeapYear, daysInMonth, localDateStr, computeFlow,
+  isLeapYear, daysInMonth, localDateStr, computeFlow, monthlyEquivalent,
 } = load(new Proxy({}, { get: () => noHook }), localStorage, { matchMedia: () => ({ matches: false }) });
 
 const results = [];
@@ -256,6 +256,34 @@ const dates = (e, year = 2026, overrides = {}) =>
   // Twelve months of +3000 and -1650 on a 1000 opening.
   check('flow: the running balance is the opening plus every event so far',
     last.balance === 100000 + 12 * (300000 - 165000), J(last && last.balance));
+}
+
+// ── monthlyEquivalent ────────────────────────────────────────────────────────
+// What an entry costs in an ordinary month, from its schedule. Today's "ends
+// soon — frees $X/mo" used to divide the year's occurrences by twelve, which
+// made a nine-month $385 car loan free $288.75.
+{
+  const me = (unit, every, amount, extra = {}) =>
+    monthlyEquivalent({ repeats: true, recurUnit: unit, recurEvery: every, amount, ...extra });
+  check('monthlyEquivalent: a monthly entry is its own amount, however many months it runs',
+    monthlyEquivalent({ repeats: true, recurUnit: 'month', amount: 38500, startDate: '2026-01-18', recurEnd: '2026-09-18' }) === 38500);
+  check('monthlyEquivalent: every two weeks is 26 a year over 12 months',
+    me('week', 2, 325000) === Math.round(325000 * 26 / 12), String(me('week', 2, 325000)));
+  check('monthlyEquivalent: a weekly entry on two weekdays counts both',
+    me('week', 1, 5000, { recurDays: [1, 3] }) === Math.round(5000 * 52 / 12 * 2), String(me('week', 1, 5000, { recurDays: [1, 3] })));
+  check('monthlyEquivalent: semi-monthly is twice a month', me('semimonth', 1, 50000) === 100000);
+  check('monthlyEquivalent: yearly is a twelfth', me('year', 1, 120000) === 10000);
+  check('monthlyEquivalent: every third month is a third', me('month', 3, 30000) === 10000);
+  check('monthlyEquivalent: a one-off is just its amount',
+    monthlyEquivalent({ repeats: false, amount: 95000 }) === 95000);
+  // Agrees with the schedule engine for entries that run the whole year.
+  for (const [unit, every] of [['month', 1], ['semimonth', 1], ['monthend', 1]]) {
+    const e = { id: 'x', desc: 'x', type: 'expense', category: 'c', amount: 12000, repeats: true,
+      recurUnit: unit, recurEvery: every, startDate: '2026-01-01' };
+    const year = expandEntries([e], 2026, {}).reduce((s, ev) => s + ev.amount, 0);
+    check(`monthlyEquivalent: ${unit} agrees with a full year of expandEntries ÷ 12`,
+      monthlyEquivalent(e) === Math.round(year / 12), `${monthlyEquivalent(e)} vs ${year / 12}`);
+  }
 }
 
 const failed = results.filter((r) => !r.ok).length;

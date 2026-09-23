@@ -1114,22 +1114,7 @@
       inviteBusy ? "Generating…" : "Generate invite code"
     ), !canWrite && /* @__PURE__ */ React.createElement("p", { id: "invite-viewonly-note", className: "c-textMid mt-8" }, "View-only members can't invite people. Ask the household owner for a code."), inviteCode && /* @__PURE__ */ React.createElement("div", { className: "invite-code-display" }, inviteCode))) },
       backup: { title: "Backup & restore", value: () => "", render: () => React.createElement(React.Fragment, null, React.createElement(Card, { id: "sec-backup", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Data Backup & Restore"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("button", { onClick: () => {
-      // Built from the household-field table, so a new field is in the backup
-      // the moment it is marked `backup: true` — this list used to be written
-      // out by hand and drifted from what the app actually stores.
-      const data = HOUSEHOLD_BACKUP_FIELDS.reduce((acc, f) => {
-        acc[f.key] = houseValues[f.key];
-        return acc;
-      }, { schemaVersion: SCHEMA_VERSION, exportedAt: (/* @__PURE__ */ new Date()).toISOString() });
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-      if (downloadBlob(`CashFlow_Backup_${localDateStr(/* @__PURE__ */ new Date())}.json`, blob)) {
-        try {
-          localStorage.setItem("cf_last_backup", String(Date.now()));
-        } catch (e) {
-          // The nudge re-appearing is a far smaller problem than a failed
-          // export, and the export itself already succeeded.
-        }
-      }
+      exportHouseholdBackup(houseValues);
     }, className: "cf-btn cf-btn--primary cf-btn--md cf-btn--iconrow" }, /* @__PURE__ */ React.createElement(Icon, { name: "download", size: 14 }), "Export Backup"), /* @__PURE__ */ React.createElement("label", { className: "cf-btn cf-btn--secondary cf-btn--md cf-btn--iconrow" }, /* @__PURE__ */ React.createElement(Icon, { name: "upload", size: 14 }), "Import Backup", /* @__PURE__ */ React.createElement("input", { type: "file", accept: ".json", className: "hidden", onChange: (e) => {
       const file = e.target.files[0];
       if (!file) return;
@@ -1163,7 +1148,7 @@
       ConfirmDialog,
       {
         title: "Restore backup?",
-        message: `Restoring "${pendingRestore.fileName}" replaces everything this app stores for your household \u2014 entries, overrides, budget targets, goals, categories, debts and the rest \u2014 with what's in this file. Anything the file doesn't carry goes back to its default. This cannot be undone.`,
+        message: `Restoring "${pendingRestore.fileName}" replaces everything this app stores for your household \u2014 entries, overrides, budget targets, goals, categories, debts and the rest \u2014 with what's in this file. Anything the file doesn't carry goes back to its default. You can undo it from the notice that appears straight afterwards; after that, it's permanent.`,
         confirmLabel: "Restore",
         confirmVariant: "danger",
         onCancel: () => setPendingRestore(null),

@@ -71,7 +71,7 @@ if (FAKE_TODAY.getFullYear() !== FIXTURE_YEAR) {
 // from, which makes each of them a screen that can be wrong on its own.
 const ROUTES = [
   'today', 'flow/list', 'flow/calendar', 'flow/curve', 'flow/entries', 'envelopes',
-  'plan/goals', 'plan/strategy', 'plan/debt', 'plan/insights',
+  'plan/goals', 'plan/strategy', 'plan/debt', 'plan/networth', 'plan/insights',
   'alerts', 'help', 'you',
   'you/accounts', 'you/years', 'you/categories', 'you/money', 'you/holidays',
   'you/appearance', 'you/threshold', 'you/notifications', 'you/household',

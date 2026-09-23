@@ -41,7 +41,7 @@ The worker serves navigations **cache-first with background revalidation**: a
 launch paints the cached shell immediately and the network request goes out
 behind it. Before, navigations were network-first with `cache: 'no-store'`,
 which made the cache an offline fallback and nothing else — every launch
-re-downloaded the whole app (387 KB gzipped), not just the first.
+re-downloaded the whole app (387 KB gzipped then, about 510 KB now), not just the first.
 
 That makes the background request the thing that delivers an update, so it
 reports what it found: when the revalidated page carries a different
@@ -199,9 +199,9 @@ an hour:
 ### The layout sweep
 
 `tests/regression.mjs` goes where a test author thought to send it.
-`tests/layout-sweep.mjs` goes everywhere: all thirty routes — the seventeen
+`tests/layout-sweep.mjs` goes everywhere: all thirty-one routes — the seventeen
 Settings pages included — at five widths plus two of them again in dark mode,
-210 screens in about four and a half minutes. On each one it asserts only the
+217 screens in about four and a half minutes. On each one it asserts only the
 things that have to be true of *every* screen:
 
 - the page does not scroll sideways, and nothing hangs off either edge
@@ -671,7 +671,7 @@ notification entirely if everything due that day is settled).
 
 ## Fonts, icons, manifest
 
-- `fonts/*.woff2` — self-hosted Inter and IBM Plex Mono (latin subset), so the installed PWA has real fonts offline.
+- `fonts/*.woff2` — self-hosted Schibsted Grotesk (UI) and Spline Sans Mono (figures), variable, latin and latin-ext subsets, so the installed PWA has real fonts offline.
 - `icon-192.png` / `icon-512.png` — generated from the app's own logo mark on its navy brand color.
 - `manifest.json` — real PWA manifest (not a data: URI).
 

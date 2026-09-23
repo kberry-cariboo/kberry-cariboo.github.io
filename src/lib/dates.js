@@ -119,6 +119,24 @@
   // shows up twice: out of one, into the other. Anything else — an old
   // transfer, or one with no destination — keeps its single-sided meaning.
   const isInterAccountTransfer = (e) => !!(e && e.type === "transfer" && e.toAccountId && e.toAccountId !== accountIdOf(e));
+  // What a repeating entry costs (or brings in) in an ordinary month, from its
+  // schedule rather than from a year's total. Dividing the year's occurrences
+  // by twelve — which is what "Car loan ends — frees $X/mo" used to do — is
+  // only right for an entry that runs all twelve months: a nine-month loan at
+  // $385 read as freeing $288.75. Units mirror expandEntries below; a
+  // multi-weekday weekly entry counts each of its days, as that loop does.
+  function monthlyEquivalent(e) {
+    if (!e || !e.repeats) return (e && e.amount) || 0;
+    const every = Math.max(1, e.recurEvery || 1);
+    const unit = e.recurUnit || "month";
+    const wdays = (e.recurDays || []).length;
+    const perMonth = unit === "day" ? 365 / 12 / every
+      : unit === "week" ? (52 / 12) / every * (every === 1 && wdays > 1 ? wdays : 1)
+      : unit === "semimonth" ? 2 / every
+      : unit === "year" ? 1 / (12 * every)
+      : 1 / every; // month, monthend, monthweekday
+    return roundMoney((e.amount || 0) * perMonth);
+  }
   function expandEntries(entries, year, overrides = {}) {
     const events = [];
     const yearStart = new Date(year, 0, 1);

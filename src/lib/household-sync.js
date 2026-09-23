@@ -230,6 +230,29 @@
   // cleared from — both were separate hand-written lists.
   const HOUSEHOLD_SYNCED_FIELDS = HOUSEHOLD_FIELDS.map((f) => ({ key: f.key, apply: houseApply(f) }));
   const HOUSEHOLD_BACKUP_FIELDS = HOUSEHOLD_FIELDS.filter((f) => f.backup);
+  // The one way a backup file is made. There used to be two: Settings built
+  // it from the table above, and the 30-day reminder's "Export backup" listed
+  // fourteen fields by hand — and missed nine, accounts among them, so a
+  // restore from that file left every entry pointing at an account that no
+  // longer existed. Both buttons call this now.
+  function buildHouseholdBackup(values) {
+    return HOUSEHOLD_BACKUP_FIELDS.reduce((acc, f) => {
+      acc[f.key] = values[f.key];
+      return acc;
+    }, { schemaVersion: SCHEMA_VERSION, exportedAt: (/* @__PURE__ */ new Date()).toISOString() });
+  }
+  // Downloads it, and records the date only when the download started — the
+  // reminder coming back is a far smaller problem than a backup that wasn't.
+  function exportHouseholdBackup(values) {
+    const blob = new Blob([JSON.stringify(buildHouseholdBackup(values), null, 2)], { type: "application/json" });
+    if (!downloadBlob(`CashFlow_Backup_${localDateStr(/* @__PURE__ */ new Date())}.json`, blob)) return false;
+    try {
+      localStorage.setItem("cf_last_backup", String(Date.now()));
+    } catch (e) {
+      // The export itself already succeeded.
+    }
+    return true;
+  }
   // Every synced field's localStorage key, plus the per-year AI report cache.
   // On a shared device, a field's apply() only overwrites local state when the
   // newly-loaded household actually has a value for it — so without clearing

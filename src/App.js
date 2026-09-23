@@ -548,15 +548,8 @@
         // genuinely ignorable — real save failures surface via
         // notifyStorageWriteFailure.
       }
-      if (doExport) {
-        // Same full field set (and schemaVersion stamp) as Settings' Export
-        // Backup — a partial payload here would restore with fields silently
-        // missing, and an unstamped one gets misread as pre-v8 dollar-scale
-        // data and re-centsified (100x-inflated) on import.
-        const data = { entries, overridesByYr, yearConfigs, categories, categoryColors, budgetTargets, templates, completed, goals, debtData, deletedCopyIds, activeYear, alertThreshold: alertThresh, darkMode, schemaVersion: SCHEMA_VERSION, exportedAt: (/* @__PURE__ */ new Date()).toISOString() };
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-        downloadBlob(`CashFlow_Backup_${todayStr()}.json`, blob);
-      }
+      // The same file Settings → Backup makes, from the same builder.
+      if (doExport) exportHouseholdBackup(houseValues);
     };
     // Not household fields: which month the Budget tab is showing and how its
     // columns are ordered are per-device view preferences.
@@ -1049,6 +1042,10 @@
           setGlobalSearch("");
           return;
         }
+        // Nothing below runs under an open dialog. Undo used to sit above
+        // this line despite its comment, so Ctrl+Z reverted the last action
+        // behind a form the user was still looking at.
+        if (document.querySelector(".modal-overlay")) return;
         // Undo the last undoable action. Guarded the same way the letter
         // shortcuts are (never while typing, never under a modal), and it only
         // does anything while the toast is up — this is the toast's button
@@ -1065,7 +1062,6 @@
           undoLast();
           return;
         }
-        if (document.querySelector(".modal-overlay")) return;
         if (TAB_KEYS[e.key]) {
           e.preventDefault();
           setTab(TAB_KEYS[e.key]);
@@ -1147,24 +1143,30 @@
       try {
         const now = /* @__PURE__ */ new Date();
         if (now.getFullYear() !== activeYear || !activeFlow.length) return null;
-        const tm = now.getMonth(), td = now.getDate();
-        const end = new Date(activeYear, tm, td);
+        const today = new Date(activeYear, now.getMonth(), now.getDate());
+        const end = new Date(today);
         end.setDate(end.getDate() + 60);
-        let min = null, minEv = null;
-        activeFlow.forEach((ev) => {
-          if (ev.month < tm || ev.month === tm && ev.day < td) return;
-          const d = new Date(activeYear, ev.month, ev.day);
-          if (d > end) return;
-          if (min === null || ev.balance < min) {
-            min = ev.balance;
-            minEv = ev;
-          }
+        // The sixty days run into January from November on, and next year's
+        // flow opens on this year's closing balance — so a dip in the first
+        // week of January is as much this warning's business as one in
+        // December. Reading only the active year used to miss it entirely.
+        let min = null, minEv = null, minYear = null;
+        [[activeYear, activeFlow], [activeYear + 1, viewFlows[activeYear + 1] || []]].forEach(([y, fl]) => {
+          fl.forEach((ev) => {
+            const d = new Date(y, ev.month, ev.day);
+            if (d < today || d > end) return;
+            if (min === null || ev.balance < min) {
+              min = ev.balance;
+              minEv = ev;
+              minYear = y;
+            }
+          });
         });
-        return min !== null && min < alertThresh ? { min, month: minEv.month, day: minEv.day } : null;
+        return min !== null && min < alertThresh ? { min, month: minEv.month, day: minEv.day, year: minYear } : null;
       } catch (err) {
         return null;
       }
-    }, [activeFlow, activeYear, alertThresh]);
+    }, [activeFlow, viewFlows, activeYear, alertThresh]);
     const navLowAlert = !!navLowInfo;
     // Dismissing the low-balance banner used to mean "for today": the stored
     // value was a date, so the same warning about the same dip announced
@@ -1185,8 +1187,10 @@
     // identity, so a reader who had it snoozed sees the banner once more and
     // then dismisses it for good.
     const [lowBannerDismissed, setLowBannerDismissed] = useLS("cf_lowbal_dismissed", "");
+    // A dip in next year carries its year; one in this year keeps the key it
+    // always had, so a warning already dismissed stays dismissed.
     const lowBannerKey = navLowInfo
-      ? `${navLowInfo.month}-${navLowInfo.day}:${navLowInfo.min < 0 ? "below-zero" : "under-threshold"}`
+      ? `${navLowInfo.year !== activeYear ? navLowInfo.year + "-" : ""}${navLowInfo.month}-${navLowInfo.day}:${navLowInfo.min < 0 ? "below-zero" : "under-threshold"}`
       : "";
     const showLowBanner = navLowInfo && lowBannerDismissed !== lowBannerKey;
     // The calendar day *here*, not in UTC. toISOString() was returning the UTC
@@ -1265,14 +1269,15 @@
       // page under it, and its "View alerts" action goes nowhere.
       if (showLowBanner && tab !== "alerts") {
         const under = navLowInfo.min < 0
-          ? " \u2014 below zero." : ` \u2014 under your $${centsToDollars(alertThresh)} alert threshold.`;
+          ? " \u2014 below zero." : ` \u2014 under your ${fmt(alertThresh)} alert threshold.`;
         out.push({
           id: "lowbal", tone: navLowInfo.min < 0 ? "critical" : "warn", icon: "alert-triangle",
           plain: `Balance dips to ${fmt(navLowInfo.min)} on ${MONTHS[navLowInfo.month]} ${navLowInfo.day}`,
           msg: React.createElement(React.Fragment, null,
             "Heads-up: your balance is forecast to dip to ",
             React.createElement("strong", { className: "cf-text-mono-13" }, fmt(navLowInfo.min)),
-            " around ", MONTHS[navLowInfo.month], " ", navLowInfo.day, under),
+            " around ", MONTHS[navLowInfo.month], " ", navLowInfo.day,
+            navLowInfo.year !== activeYear ? ", " + navLowInfo.year : "", under),
           actions: [
             { label: "View alerts", onClick: () => setTab("alerts") },
             { label: "Dismiss", ariaLabel: "Dismiss this alert", onClick: () => setLowBannerDismissed(lowBannerKey) }

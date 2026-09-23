@@ -26,13 +26,13 @@
   @layer boot {
   *{box-sizing:border-box;margin:0;padding:0;}
   html{height:100%;-webkit-text-size-adjust:100%;scrollbar-gutter:stable;}
-  body{height:100%;background:var(--bg);font-family:Inter,sans-serif;overflow-x:hidden;scrollbar-gutter:stable;}
+  body{height:100%;background:var(--bg);font-family:var(--font-ui);overflow-x:hidden;}
   #boot{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:14px;
         background:var(--headerBg);}
   .bbar{width:180px;height:3px;background:var(--navyMid);border-radius:2px;overflow:hidden;}
   .bfill{height:100%;background:var(--headerText);border-radius:2px;animation:bload 1.2s ease-in-out infinite;}
-  .bicon{font-size:36px;margin-bottom:4px;}
-  .bname{font-family:'IBM Plex Mono',monospace;font-weight:700;color:var(--headerText);font-size:16px;letter-spacing:0.04em;}
+  .bicon{display:block;border-radius:12px;margin-bottom:4px;}
+  .bname{font-family:var(--font-mono);font-weight:700;color:var(--headerText);font-size:16px;letter-spacing:0.04em;}
   .bmsg{font-size:11px;color:rgba(255,255,255,0.4);}
   @keyframes bload{0%{width:0%}60%{width:80%}100%{width:100%}}
   svg{max-width:100%;}
@@ -2308,7 +2308,9 @@
         .month-picker-fade{position:absolute;top:0;bottom:0;width:20px;pointer-events:none;z-index:1;}
         .month-picker-fade--left{left:0;background:linear-gradient(to right,var(--bg),transparent);}
         .month-picker-fade--right{right:0;background:linear-gradient(to left,var(--bg),transparent);}
-        body{margin:0;background:var(--bg);scrollbar-gutter:stable;
+        /* The scrollbar gutter is declared on html, which owns the page's
+           scrollbar; the copy that used to sit here on body had no effect. */
+        body{margin:0;background:var(--bg);
           -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;}
         /* Stray horizontal overflow must never widen the mobile layout viewport —
            that zooms the page out and scales/displaces position:fixed chrome
@@ -3700,7 +3702,7 @@
 <body>
 <div id="root">
   <div id="boot">
-    <div class="bicon">💰</div>
+    <img class="bicon" src="icon-192.png" width="48" height="48" alt=""/>
     <div class="bname">CashFlow</div>
     <div class="bbar"><div class="bfill"></div></div>
     <div class="bmsg">Loading…</div>
@@ -4374,7 +4376,7 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
 // is exactly what happened across the notification work: four rounds of
 // changes all shipped under v177, and the app kept showing the old Settings
 // copy after the new one was live.)
-const CF_VERSION='v191';
+const CF_VERSION='v192';
 if('serviceWorker'in navigator){
 try{
   const hadController=!!navigator.serviceWorker.controller;
@@ -5324,6 +5326,24 @@ document.addEventListener('DOMContentLoaded',function(){
   // shows up twice: out of one, into the other. Anything else — an old
   // transfer, or one with no destination — keeps its single-sided meaning.
   const isInterAccountTransfer = (e) => !!(e && e.type === "transfer" && e.toAccountId && e.toAccountId !== accountIdOf(e));
+  // What a repeating entry costs (or brings in) in an ordinary month, from its
+  // schedule rather than from a year's total. Dividing the year's occurrences
+  // by twelve — which is what "Car loan ends — frees $X/mo" used to do — is
+  // only right for an entry that runs all twelve months: a nine-month loan at
+  // $385 read as freeing $288.75. Units mirror expandEntries below; a
+  // multi-weekday weekly entry counts each of its days, as that loop does.
+  function monthlyEquivalent(e) {
+    if (!e || !e.repeats) return (e && e.amount) || 0;
+    const every = Math.max(1, e.recurEvery || 1);
+    const unit = e.recurUnit || "month";
+    const wdays = (e.recurDays || []).length;
+    const perMonth = unit === "day" ? 365 / 12 / every
+      : unit === "week" ? (52 / 12) / every * (every === 1 && wdays > 1 ? wdays : 1)
+      : unit === "semimonth" ? 2 / every
+      : unit === "year" ? 1 / (12 * every)
+      : 1 / every; // month, monthend, monthweekday
+    return roundMoney((e.amount || 0) * perMonth);
+  }
   function expandEntries(entries, year, overrides = {}) {
     const events = [];
     const yearStart = new Date(year, 0, 1);
@@ -7246,6 +7266,29 @@ document.addEventListener('DOMContentLoaded',function(){
   // cleared from — both were separate hand-written lists.
   const HOUSEHOLD_SYNCED_FIELDS = HOUSEHOLD_FIELDS.map((f) => ({ key: f.key, apply: houseApply(f) }));
   const HOUSEHOLD_BACKUP_FIELDS = HOUSEHOLD_FIELDS.filter((f) => f.backup);
+  // The one way a backup file is made. There used to be two: Settings built
+  // it from the table above, and the 30-day reminder's "Export backup" listed
+  // fourteen fields by hand — and missed nine, accounts among them, so a
+  // restore from that file left every entry pointing at an account that no
+  // longer existed. Both buttons call this now.
+  function buildHouseholdBackup(values) {
+    return HOUSEHOLD_BACKUP_FIELDS.reduce((acc, f) => {
+      acc[f.key] = values[f.key];
+      return acc;
+    }, { schemaVersion: SCHEMA_VERSION, exportedAt: (/* @__PURE__ */ new Date()).toISOString() });
+  }
+  // Downloads it, and records the date only when the download started — the
+  // reminder coming back is a far smaller problem than a backup that wasn't.
+  function exportHouseholdBackup(values) {
+    const blob = new Blob([JSON.stringify(buildHouseholdBackup(values), null, 2)], { type: "application/json" });
+    if (!downloadBlob(`CashFlow_Backup_${localDateStr(/* @__PURE__ */ new Date())}.json`, blob)) return false;
+    try {
+      localStorage.setItem("cf_last_backup", String(Date.now()));
+    } catch (e) {
+      // The export itself already succeeded.
+    }
+    return true;
+  }
   // Every synced field's localStorage key, plus the per-year AI report cache.
   // On a shared device, a field's apply() only overwrites local state when the
   // newly-loaded household actually has a value for it — so without clearing
@@ -10493,7 +10536,7 @@ const RUNWAY_DAYS = 90;
           if (errors.desc) setErrors((p) => __spreadProps(__spreadValues({}, p), { desc: void 0 }));
         }
       }
-    ), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.desc })), /* @__PURE__ */ React.createElement("div", { className: "entry-form-row2" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-type" }, "Type"), /* @__PURE__ */ React.createElement("select", { id: "ef-type", className: inpCls(false), value: f.type, onChange: (e) => set({ type: e.target.value }) }, /* @__PURE__ */ React.createElement("option", { value: "income" }, "Income"), /* @__PURE__ */ React.createElement("option", { value: "expense" }, "Expense"), /* @__PURE__ */ React.createElement("option", { value: "transfer" }, "Transfer")), f.type === "transfer" && !f.toAccountId && /* @__PURE__ */ React.createElement("select", { "aria-label": "Transfer direction", className: inpCls(false) + " mt-6", value: f.transferDirection, onChange: (e) => set({ transferDirection: e.target.value }) }, /* @__PURE__ */ React.createElement("option", { value: "out" }, "Money out of this account"), /* @__PURE__ */ React.createElement("option", { value: "in" }, "Money into this account"))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-amount" }, "Amount ($)", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement(
+    ), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.desc })), /* @__PURE__ */ React.createElement("div", { className: "entry-form-row2" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-type" }, "Type"), /* @__PURE__ */ React.createElement("select", { id: "ef-type", className: inpCls(false), value: f.type, onChange: (e) => set({ type: e.target.value }) }, /* @__PURE__ */ React.createElement("option", { value: "income" }, "Income"), /* @__PURE__ */ React.createElement("option", { value: "expense" }, "Expense"), /* @__PURE__ */ React.createElement("option", { value: "transfer" }, "Transfer")), f.type === "transfer" && !f.toAccountId && /* @__PURE__ */ React.createElement("select", { "aria-label": "Transfer direction", className: inpCls(false) + " mt-6", value: f.transferDirection, onChange: (e) => set({ transferDirection: e.target.value }) }, /* @__PURE__ */ React.createElement("option", { value: "out" }, "Money out of this account"), /* @__PURE__ */ React.createElement("option", { value: "in" }, "Money into this account"))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-amount" }, "Amount (" + moneySymbol().trim() + ")", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement(
       "input",
       {
         id: "ef-amount",
@@ -14658,31 +14701,31 @@ const RUNWAY_DAYS = 90;
       const prompt = `You are a certified financial planner reviewing a personal budget for ${ctx.year}. Analyse the financial data below and provide a comprehensive, actionable assessment. Be specific \u2014 reference actual dollar amounts and category names from the data.
 
 FINANCIAL DATA (${ctx.reportingWindow}):
-Opening Balance: $${centsToDollars(ctx.openingBalance).toLocaleString()}
-Closing Balance: $${centsToDollars(ctx.closingBalance).toLocaleString()}
-Total Income: $${centsToDollars(ctx.totalIncome).toLocaleString()}
-Total Expenses: $${centsToDollars(ctx.totalExpenses).toLocaleString()}
-Net Surplus/Shortfall: $${centsToDollars(ctx.totalSurplus).toLocaleString()} (${ctx.totalSurplus >= 0 ? "+" : ""}${ctx.savingsRatePct}% savings rate)
-Lowest Balance This Period: $${centsToDollars(ctx.lowestBalance).toLocaleString()}
-Average Monthly Expenses: $${centsToDollars(ctx.avgMonthlyExpense).toLocaleString()}
+Opening Balance: ${fmt(ctx.openingBalance)}
+Closing Balance: ${fmt(ctx.closingBalance)}
+Total Income: ${fmt(ctx.totalIncome)}
+Total Expenses: ${fmt(ctx.totalExpenses)}
+Net Surplus/Shortfall: ${fmt(ctx.totalSurplus)} (${ctx.totalSurplus >= 0 ? "+" : ""}${ctx.savingsRatePct}% savings rate)
+Lowest Balance This Period: ${fmt(ctx.lowestBalance)}
+Average Monthly Expenses: ${fmt(ctx.avgMonthlyExpense)}
 
 MONTHLY BREAKDOWN:
-${ctx.monthlyBreakdown.map((m) => `  ${m.month}: Income $${centsToDollars(m.income).toLocaleString()}, Expenses $${centsToDollars(m.expenses).toLocaleString()}, ${m.surplus >= 0 ? "Surplus" : "Shortfall"} $${Math.abs(centsToDollars(m.surplus)).toLocaleString()}, Balance $${centsToDollars(m.closingBalance).toLocaleString()}`).join("\n")}
+${ctx.monthlyBreakdown.map((m) => `  ${m.month}: Income ${fmt(m.income)}, Expenses ${fmt(m.expenses)}, ${m.surplus >= 0 ? "Surplus" : "Shortfall"} ${fmt(Math.abs(m.surplus))}, Balance ${fmt(m.closingBalance)}`).join("\n")}
 
 TOP EXPENSE CATEGORIES (YTD):
-${ctx.topExpenseCategories.map((c) => `  ${c.category}: $${centsToDollars(c.total).toLocaleString()} (${c.pctOfExpenses}% of expenses)`).join("\n")}
+${ctx.topExpenseCategories.map((c) => `  ${c.category}: ${fmt(c.total)} (${c.pctOfExpenses}% of expenses)`).join("\n")}
 
 INCOME SOURCES:
-${ctx.incomeCategories.map((c) => `  ${c.category}: $${centsToDollars(c.total).toLocaleString()}`).join("\n")}
+${ctx.incomeCategories.map((c) => `  ${c.category}: ${fmt(c.total)}`).join("\n")}
 
 ${ctx.debtObligations.length ? `DEBT / CREDIT OBLIGATIONS (YTD paid):
-${ctx.debtObligations.map((d) => `  ${d.category}: $${centsToDollars(d.ytdPaid).toLocaleString()}`).join("\n")}` : "No debt categories identified."}
+${ctx.debtObligations.map((d) => `  ${d.category}: ${fmt(d.ytdPaid)}`).join("\n")}` : "No debt categories identified."}
 
 ${((_a = ctx.debtTrackerItems) == null ? void 0 : _a.length) ? `DEBT TRACKER (user-entered balances & rates):
-${ctx.debtTrackerItems.map((d) => `  ${d.name}: Balance $${centsToDollars(d.balance).toLocaleString()}, Rate ${d.rate}%, Payment $${centsToDollars(d.monthlyPayment).toLocaleString()}/mo`).join("\n")}` : "No debt balances entered in tracker yet."}
+${ctx.debtTrackerItems.map((d) => `  ${d.name}: Balance ${fmt(d.balance)}, Rate ${d.rate}%, Payment ${fmt(d.monthlyPayment)}/mo`).join("\n")}` : "No debt balances entered in tracker yet."}
 
 ${ctx.hasBudgetTargets ? `BUDGET VS ACTUAL (top variances):
-${ctx.budgetVsActual.map((r) => `  ${r.category}: Actual $${centsToDollars(r.actual).toLocaleString()} vs Target $${centsToDollars(r.target).toLocaleString()} (${r.variance >= 0 ? "over" : "under"} by $${Math.abs(centsToDollars(r.variance)).toLocaleString()})`).join("\n")}` : "No budget targets have been set yet."}
+${ctx.budgetVsActual.map((r) => `  ${r.category}: Actual ${fmt(r.actual)} vs Target ${fmt(r.target)} (${r.variance >= 0 ? "over" : "under"} by ${fmt(Math.abs(r.variance))})`).join("\n")}` : "No budget targets have been set yet."}
 
 Fill every field of the response schema. Rules:
 - Each bullet is one short sentence (under ~18 words), anchored to a specific dollar amount or category from the data above.
@@ -16864,8 +16907,7 @@ Fill every field of the response schema. Rules:
           const d = /* @__PURE__ */ new Date(e.recurEnd + "T00:00:00");
           return d >= today && d <= horizon;
         }).map((e) => {
-          const evs = flow.filter((ev) => ev.entryId === e.id);
-          const monthly = evs.length ? roundMoney(evs.reduce((s, ev) => s + (ev.amount || 0), 0) / 12) : e.amount;
+          const monthly = monthlyEquivalent(e);
           const d = /* @__PURE__ */ new Date(e.recurEnd + "T00:00:00");
           return __spreadProps(__spreadValues({}, e), { monthly, endLabel: MONTHS[d.getMonth()] + " " + d.getDate() });
         }).sort((a, b) => a.recurEnd.localeCompare(b.recurEnd)).slice(0, 4);
@@ -19122,22 +19164,7 @@ Fill every field of the response schema. Rules:
       inviteBusy ? "Generating…" : "Generate invite code"
     ), !canWrite && /* @__PURE__ */ React.createElement("p", { id: "invite-viewonly-note", className: "c-textMid mt-8" }, "View-only members can't invite people. Ask the household owner for a code."), inviteCode && /* @__PURE__ */ React.createElement("div", { className: "invite-code-display" }, inviteCode))) },
       backup: { title: "Backup & restore", value: () => "", render: () => React.createElement(React.Fragment, null, React.createElement(Card, { id: "sec-backup", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Data Backup & Restore"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("button", { onClick: () => {
-      // Built from the household-field table, so a new field is in the backup
-      // the moment it is marked `backup: true` — this list used to be written
-      // out by hand and drifted from what the app actually stores.
-      const data = HOUSEHOLD_BACKUP_FIELDS.reduce((acc, f) => {
-        acc[f.key] = houseValues[f.key];
-        return acc;
-      }, { schemaVersion: SCHEMA_VERSION, exportedAt: (/* @__PURE__ */ new Date()).toISOString() });
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-      if (downloadBlob(`CashFlow_Backup_${localDateStr(/* @__PURE__ */ new Date())}.json`, blob)) {
-        try {
-          localStorage.setItem("cf_last_backup", String(Date.now()));
-        } catch (e) {
-          // The nudge re-appearing is a far smaller problem than a failed
-          // export, and the export itself already succeeded.
-        }
-      }
+      exportHouseholdBackup(houseValues);
     }, className: "cf-btn cf-btn--primary cf-btn--md cf-btn--iconrow" }, /* @__PURE__ */ React.createElement(Icon, { name: "download", size: 14 }), "Export Backup"), /* @__PURE__ */ React.createElement("label", { className: "cf-btn cf-btn--secondary cf-btn--md cf-btn--iconrow" }, /* @__PURE__ */ React.createElement(Icon, { name: "upload", size: 14 }), "Import Backup", /* @__PURE__ */ React.createElement("input", { type: "file", accept: ".json", className: "hidden", onChange: (e) => {
       const file = e.target.files[0];
       if (!file) return;
@@ -19171,7 +19198,7 @@ Fill every field of the response schema. Rules:
       ConfirmDialog,
       {
         title: "Restore backup?",
-        message: `Restoring "${pendingRestore.fileName}" replaces everything this app stores for your household \u2014 entries, overrides, budget targets, goals, categories, debts and the rest \u2014 with what's in this file. Anything the file doesn't carry goes back to its default. This cannot be undone.`,
+        message: `Restoring "${pendingRestore.fileName}" replaces everything this app stores for your household \u2014 entries, overrides, budget targets, goals, categories, debts and the rest \u2014 with what's in this file. Anything the file doesn't carry goes back to its default. You can undo it from the notice that appears straight afterwards; after that, it's permanent.`,
         confirmLabel: "Restore",
         confirmVariant: "danger",
         onCancel: () => setPendingRestore(null),
@@ -21164,15 +21191,8 @@ Fill every field of the response schema. Rules:
         // genuinely ignorable — real save failures surface via
         // notifyStorageWriteFailure.
       }
-      if (doExport) {
-        // Same full field set (and schemaVersion stamp) as Settings' Export
-        // Backup — a partial payload here would restore with fields silently
-        // missing, and an unstamped one gets misread as pre-v8 dollar-scale
-        // data and re-centsified (100x-inflated) on import.
-        const data = { entries, overridesByYr, yearConfigs, categories, categoryColors, budgetTargets, templates, completed, goals, debtData, deletedCopyIds, activeYear, alertThreshold: alertThresh, darkMode, schemaVersion: SCHEMA_VERSION, exportedAt: (/* @__PURE__ */ new Date()).toISOString() };
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-        downloadBlob(`CashFlow_Backup_${todayStr()}.json`, blob);
-      }
+      // The same file Settings → Backup makes, from the same builder.
+      if (doExport) exportHouseholdBackup(houseValues);
     };
     // Not household fields: which month the Budget tab is showing and how its
     // columns are ordered are per-device view preferences.
@@ -21665,6 +21685,10 @@ Fill every field of the response schema. Rules:
           setGlobalSearch("");
           return;
         }
+        // Nothing below runs under an open dialog. Undo used to sit above
+        // this line despite its comment, so Ctrl+Z reverted the last action
+        // behind a form the user was still looking at.
+        if (document.querySelector(".modal-overlay")) return;
         // Undo the last undoable action. Guarded the same way the letter
         // shortcuts are (never while typing, never under a modal), and it only
         // does anything while the toast is up — this is the toast's button
@@ -21681,7 +21705,6 @@ Fill every field of the response schema. Rules:
           undoLast();
           return;
         }
-        if (document.querySelector(".modal-overlay")) return;
         if (TAB_KEYS[e.key]) {
           e.preventDefault();
           setTab(TAB_KEYS[e.key]);
@@ -21763,24 +21786,30 @@ Fill every field of the response schema. Rules:
       try {
         const now = /* @__PURE__ */ new Date();
         if (now.getFullYear() !== activeYear || !activeFlow.length) return null;
-        const tm = now.getMonth(), td = now.getDate();
-        const end = new Date(activeYear, tm, td);
+        const today = new Date(activeYear, now.getMonth(), now.getDate());
+        const end = new Date(today);
         end.setDate(end.getDate() + 60);
-        let min = null, minEv = null;
-        activeFlow.forEach((ev) => {
-          if (ev.month < tm || ev.month === tm && ev.day < td) return;
-          const d = new Date(activeYear, ev.month, ev.day);
-          if (d > end) return;
-          if (min === null || ev.balance < min) {
-            min = ev.balance;
-            minEv = ev;
-          }
+        // The sixty days run into January from November on, and next year's
+        // flow opens on this year's closing balance — so a dip in the first
+        // week of January is as much this warning's business as one in
+        // December. Reading only the active year used to miss it entirely.
+        let min = null, minEv = null, minYear = null;
+        [[activeYear, activeFlow], [activeYear + 1, viewFlows[activeYear + 1] || []]].forEach(([y, fl]) => {
+          fl.forEach((ev) => {
+            const d = new Date(y, ev.month, ev.day);
+            if (d < today || d > end) return;
+            if (min === null || ev.balance < min) {
+              min = ev.balance;
+              minEv = ev;
+              minYear = y;
+            }
+          });
         });
-        return min !== null && min < alertThresh ? { min, month: minEv.month, day: minEv.day } : null;
+        return min !== null && min < alertThresh ? { min, month: minEv.month, day: minEv.day, year: minYear } : null;
       } catch (err) {
         return null;
       }
-    }, [activeFlow, activeYear, alertThresh]);
+    }, [activeFlow, viewFlows, activeYear, alertThresh]);
     const navLowAlert = !!navLowInfo;
     // Dismissing the low-balance banner used to mean "for today": the stored
     // value was a date, so the same warning about the same dip announced
@@ -21801,8 +21830,10 @@ Fill every field of the response schema. Rules:
     // identity, so a reader who had it snoozed sees the banner once more and
     // then dismisses it for good.
     const [lowBannerDismissed, setLowBannerDismissed] = useLS("cf_lowbal_dismissed", "");
+    // A dip in next year carries its year; one in this year keeps the key it
+    // always had, so a warning already dismissed stays dismissed.
     const lowBannerKey = navLowInfo
-      ? `${navLowInfo.month}-${navLowInfo.day}:${navLowInfo.min < 0 ? "below-zero" : "under-threshold"}`
+      ? `${navLowInfo.year !== activeYear ? navLowInfo.year + "-" : ""}${navLowInfo.month}-${navLowInfo.day}:${navLowInfo.min < 0 ? "below-zero" : "under-threshold"}`
       : "";
     const showLowBanner = navLowInfo && lowBannerDismissed !== lowBannerKey;
     // The calendar day *here*, not in UTC. toISOString() was returning the UTC
@@ -21881,14 +21912,15 @@ Fill every field of the response schema. Rules:
       // page under it, and its "View alerts" action goes nowhere.
       if (showLowBanner && tab !== "alerts") {
         const under = navLowInfo.min < 0
-          ? " \u2014 below zero." : ` \u2014 under your $${centsToDollars(alertThresh)} alert threshold.`;
+          ? " \u2014 below zero." : ` \u2014 under your ${fmt(alertThresh)} alert threshold.`;
         out.push({
           id: "lowbal", tone: navLowInfo.min < 0 ? "critical" : "warn", icon: "alert-triangle",
           plain: `Balance dips to ${fmt(navLowInfo.min)} on ${MONTHS[navLowInfo.month]} ${navLowInfo.day}`,
           msg: React.createElement(React.Fragment, null,
             "Heads-up: your balance is forecast to dip to ",
             React.createElement("strong", { className: "cf-text-mono-13" }, fmt(navLowInfo.min)),
-            " around ", MONTHS[navLowInfo.month], " ", navLowInfo.day, under),
+            " around ", MONTHS[navLowInfo.month], " ", navLowInfo.day,
+            navLowInfo.year !== activeYear ? ", " + navLowInfo.year : "", under),
           actions: [
             { label: "View alerts", onClick: () => setTab("alerts") },
             { label: "Dismiss", ariaLabel: "Dismiss this alert", onClick: () => setLowBannerDismissed(lowBannerKey) }
