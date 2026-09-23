@@ -3560,6 +3560,33 @@ await test('envelopes: "Use the plan as targets" fills the empty months only, an
   });
 }
 
+// The dashboard's "My entries / All users" toggle filtered occurrences by
+// ev.userId, which expandEntries never set — so "My entries" showed everyone's
+// and the toggle did nothing. Two members; the summer vacation is the other
+// member's. "All users" stays the default, which is what everyone saw.
+await test('dashboard: "My entries" leaves out another member\'s entries, and "All users" is the default', async () => {
+  const twoMembers = (t) => t
+    .replace("const members = [{ user_id: 'u-demo', full_name: 'Demo User', disabled: false, role: 'owner', joined_at: '${Y}-01-01T00:00:00Z' }];".replace('${Y}', FIXTURE_YEAR),
+      `const members = [{ user_id: 'u-demo', full_name: 'Demo User', disabled: false, role: 'owner', joined_at: '${FIXTURE_YEAR}-01-01T00:00:00Z' }, { user_id: 'u-other', full_name: 'Other Member', disabled: false, role: 'member', joined_at: '${FIXTURE_YEAR}-01-02T00:00:00Z' }];`)
+    .replace('const monthTargets', "entries.forEach((e) => { if (e.desc === 'Summer vacation') e.userId = 'u-other'; }); const monthTargets");
+  const { ctx, page } = await ctxPage({ stub: twoMembers });
+  await page.goto(BASE + '#/today', { waitUntil: 'load' });
+  const all = page.getByRole('button', { name: 'All users' }).or(page.getByRole('radio', { name: 'All users' })).first();
+  await all.waitFor(V).catch(() => { throw new Error('a two-member household is not offered the toggle'); });
+  const pressed = async (el) => (await el.getAttribute('aria-pressed')) === 'true' || (await el.getAttribute('aria-checked')) === 'true';
+  if (!(await pressed(all))) throw new Error('"All users" is not the default');
+  const text = () => page.locator('main').innerText();
+  const before = await text();
+  await page.getByRole('button', { name: 'My entries' }).or(page.getByRole('radio', { name: 'My entries' })).first().click();
+  await page.waitForTimeout(500);
+  const mine = await text();
+  if (mine === before) throw new Error('"My entries" changed nothing — another member\'s $1,800 entry is still counted');
+  await all.click();
+  await page.waitForTimeout(500);
+  if ((await text()) !== before) throw new Error('"All users" did not bring back the same picture');
+  await ctx.close();
+});
+
 // ── Money schema migration (schema v8: dollars -> cents) ────────────────
 // Every other test's fixture payload declares schemaVersion: 999, so it's
 // taken as already-cents and never exercises the upgrade path. This test

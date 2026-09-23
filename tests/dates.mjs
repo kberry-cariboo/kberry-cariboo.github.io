@@ -258,6 +258,16 @@ const dates = (e, year = 2026, overrides = {}) =>
     last.balance === 100000 + 12 * (300000 - 165000), J(last && last.balance));
 }
 
+// Every occurrence carries who added its entry — the dashboard's "My entries"
+// filter reads ev.userId, and it was never set, so the filter kept everything.
+{
+  const e = { id: 'u1', desc: 'x', type: 'expense', category: 'c', amount: 1000, repeats: true,
+    recurUnit: 'month', recurEvery: 1, startDate: '2026-01-01', userId: 'member-a' };
+  const evs = expandEntries([e], 2026, {});
+  check('expandEntries: every occurrence carries the entry\'s userId',
+    evs.length === 12 && evs.every((ev) => ev.userId === 'member-a'), J(evs.map((ev) => ev.userId)));
+}
+
 // ── monthlyEquivalent ────────────────────────────────────────────────────────
 // What an entry costs in an ordinary month, from its schedule. Today's "ends
 // soon — frees $X/mo" used to divide the year's occurrences by twelve, which

@@ -4388,7 +4388,7 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
 // is exactly what happened across the notification work: four rounds of
 // changes all shipped under v177, and the app kept showing the old Settings
 // copy after the new one was live.)
-const CF_VERSION='v193';
+const CF_VERSION='v194';
 if('serviceWorker'in navigator){
 try{
   const hadController=!!navigator.serviceWorker.controller;
@@ -5429,6 +5429,10 @@ document.addEventListener('DOMContentLoaded',function(){
           // a shared household. Nothing totals or sorts by either.
           _by: ov._by,
           _savedAt: ov._savedAt,
+          // Who added the entry. The dashboard's "My entries" filter reads
+          // this, and until it was carried here it read undefined on every
+          // occurrence — so "My entries" quietly showed everyone's.
+          userId: e.userId,
           month: effM,
           day: effD,
           date: effDate,
@@ -6500,15 +6504,15 @@ document.addEventListener('DOMContentLoaded',function(){
   const HELP_SHOTS = {
     "settings-years": {
       "w": 917,
-      "h": 109
+      "h": 115
     },
     "entry-form": {
       "w": 680,
-      "h": 472
+      "h": 502
     },
     "budget-toolbar": {
       "w": 521,
-      "h": 31
+      "h": 34
     },
     "budget-grid": {
       "w": 915,
@@ -6516,7 +6520,7 @@ document.addEventListener('DOMContentLoaded',function(){
     },
     "row-menu": {
       "w": 180,
-      "h": 235
+      "h": 276
     },
     "bva": {
       "w": 917,
@@ -6524,19 +6528,19 @@ document.addEventListener('DOMContentLoaded',function(){
     },
     "dashboard-kpis": {
       "w": 917,
-      "h": 84
+      "h": 126
     },
     "dashboard-upcoming": {
       "w": 917,
-      "h": 318
+      "h": 320
     },
     "plan-goals": {
       "w": 917,
-      "h": 191
+      "h": 202
     },
     "settings-backup": {
       "w": 917,
-      "h": 55
+      "h": 61
     }
   };
   // Extracted from app-data.js (round-9 AR4 remainder) — pure code motion.
@@ -10107,7 +10111,9 @@ const RUNWAY_DAYS = 90;
     ), open && /* @__PURE__ */ React.createElement("div", { className: "cf-popover" }, templates.map((t, i) => /* @__PURE__ */ React.createElement(
       "button",
       {
-        key: i,
+        // Templates are unique by description (saving one replaces its
+        // namesake), so that is the stable key.
+        key: t.desc || i,
         onClick: () => {
           onSelect(t);
           setOpen(false);
@@ -16868,10 +16874,15 @@ Fill every field of the response schema. Rules:
     const [incExpView, setIncExpView] = useState("grouped");
     const [summaryView, setSummaryView] = useState("table");
     const [incView, setIncView] = useState("bar");
-    const [sharedView, setSharedView] = useState(false);
+    // "All users" first: the household's whole picture is the default
+    // everywhere else, and until the filter actually filtered (see userId in
+    // expandEntries) it is what this view has always shown.
+    const [sharedView, setSharedView] = useState(true);
     const effectiveFlow = useMemo(() => {
       if (sharedView || !sessionUser) return flow;
-      return flow.filter((e) => !e.userId || e.userId === sessionUser.id);
+      // Member ids are strings. Anything else — the placeholder 1 older builds
+      // stamped on entries added while signed out — is nobody's, so shown.
+      return flow.filter((e) => typeof e.userId !== "string" || e.userId === sessionUser.id);
     }, [flow, sharedView, sessionUser]);
     // Declared here rather than beside its state above, because it reads
     // effectiveFlow and a const is in its temporal dead zone until the line
@@ -19731,7 +19742,7 @@ Fill every field of the response schema. Rules:
       /* @__PURE__ */ React.createElement(Icon, { name: "download", size: 12 }),
       "Reload from Cloud"
     ))), when: () => !!(sbConfigured && household) },
-      templates: { title: "Entry templates", value: () => String((templates || []).length), render: () => React.createElement("div", null, /* @__PURE__ */ React.createElement(Card, { className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Entry Templates"), (templates || []).length === 0 && /* @__PURE__ */ React.createElement("div", { className: "italic-hint" }, "No templates saved yet. Use the entry form to create one."), (templates || []).map((t, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "template-row" }, /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "tx-sb" }, t.desc), /* @__PURE__ */ React.createElement("div", { className: "hint mt-2" }, isInflowEvent(t) ? "+" : "-", fmt(t.amount), " \u00b7 ", t.category, t.repeats && /* @__PURE__ */ React.createElement("span", null, " \u00b7 Recurring"))), /* @__PURE__ */ React.createElement(
+      templates: { title: "Entry templates", value: () => String((templates || []).length), render: () => React.createElement("div", null, /* @__PURE__ */ React.createElement(Card, { className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Entry Templates"), (templates || []).length === 0 && /* @__PURE__ */ React.createElement("div", { className: "italic-hint" }, "No templates saved yet. Use the entry form to create one."), (templates || []).map((t, i) => /* @__PURE__ */ React.createElement("div", { key: t.desc || i, className: "template-row" }, /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, /* @__PURE__ */ React.createElement("div", { className: "tx-sb" }, t.desc), /* @__PURE__ */ React.createElement("div", { className: "hint mt-2" }, isInflowEvent(t) ? "+" : "-", fmt(t.amount), " \u00b7 ", t.category, t.repeats && /* @__PURE__ */ React.createElement("span", null, " \u00b7 Recurring"))), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => setTemplates((prev) => prev.filter((_, j) => j !== i)),
@@ -21956,7 +21967,11 @@ Fill every field of the response schema. Rules:
       return out.sort((a, b) => a.month - b.month || a.day - b.day);
     }, [overridesByYr, activeYear, entries]);
     const addEntry = (data) => {
-      const entry = __spreadProps(__spreadValues({}, data), { id: genId(), userId: (sessionUser == null ? void 0 : sessionUser.id) || 1 });
+      // Stamped with the member who added it, and with nothing when no one is
+      // signed in. It used to fall back to the number 1 — not anybody's id —
+      // and the dashboard's personal view, which keeps entries that are yours
+      // or unowned, then hid every entry added before signing in.
+      const entry = __spreadValues(__spreadValues({}, data), sessionUser && sessionUser.id ? { id: genId(), userId: sessionUser.id } : { id: genId() });
       setEntries((prev) => [...prev, entry]);
       // Adding an expense used to raise its category's budget target, in
       // every month of every configured year, by what the entry schedules —

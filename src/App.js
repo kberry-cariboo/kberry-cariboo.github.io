@@ -865,7 +865,11 @@
       return out.sort((a, b) => a.month - b.month || a.day - b.day);
     }, [overridesByYr, activeYear, entries]);
     const addEntry = (data) => {
-      const entry = __spreadProps(__spreadValues({}, data), { id: genId(), userId: (sessionUser == null ? void 0 : sessionUser.id) || 1 });
+      // Stamped with the member who added it, and with nothing when no one is
+      // signed in. It used to fall back to the number 1 — not anybody's id —
+      // and the dashboard's personal view, which keeps entries that are yours
+      // or unowned, then hid every entry added before signing in.
+      const entry = __spreadValues(__spreadValues({}, data), sessionUser && sessionUser.id ? { id: genId(), userId: sessionUser.id } : { id: genId() });
       setEntries((prev) => [...prev, entry]);
       // Adding an expense used to raise its category's budget target, in
       // every month of every configured year, by what the entry schedules —

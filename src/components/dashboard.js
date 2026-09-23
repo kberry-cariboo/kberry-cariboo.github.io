@@ -215,10 +215,15 @@
     const [incExpView, setIncExpView] = useState("grouped");
     const [summaryView, setSummaryView] = useState("table");
     const [incView, setIncView] = useState("bar");
-    const [sharedView, setSharedView] = useState(false);
+    // "All users" first: the household's whole picture is the default
+    // everywhere else, and until the filter actually filtered (see userId in
+    // expandEntries) it is what this view has always shown.
+    const [sharedView, setSharedView] = useState(true);
     const effectiveFlow = useMemo(() => {
       if (sharedView || !sessionUser) return flow;
-      return flow.filter((e) => !e.userId || e.userId === sessionUser.id);
+      // Member ids are strings. Anything else — the placeholder 1 older builds
+      // stamped on entries added while signed out — is nobody's, so shown.
+      return flow.filter((e) => typeof e.userId !== "string" || e.userId === sessionUser.id);
     }, [flow, sharedView, sessionUser]);
     // Declared here rather than beside its state above, because it reads
     // effectiveFlow and a const is in its temporal dead zone until the line

@@ -210,6 +210,10 @@
           // a shared household. Nothing totals or sorts by either.
           _by: ov._by,
           _savedAt: ov._savedAt,
+          // Who added the entry. The dashboard's "My entries" filter reads
+          // this, and until it was carried here it read undefined on every
+          // occurrence — so "My entries" quietly showed everyone's.
+          userId: e.userId,
           month: effM,
           day: effD,
           date: effDate,
