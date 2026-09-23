@@ -90,6 +90,24 @@
     });
     return out;
   }
+  // String figures to numbers; "" (not filled in) and anything unparseable
+  // are left exactly as they were.
+  function normaliseDebtFigures(debts) {
+    const out = {};
+    Object.keys(debts).forEach((k) => {
+      const d = debts[k];
+      if (!d || typeof d !== "object") {
+        out[k] = d;
+        return;
+      }
+      const copy = Object.assign({}, d);
+      ["balance", "rate", "payment"].forEach((f) => {
+        if (typeof copy[f] === "string" && copy[f].trim() !== "" && Number.isFinite(Number(copy[f]))) copy[f] = Number(copy[f]);
+      });
+      out[k] = copy;
+    });
+    return out;
+  }
   const HOUSEHOLD_FIELDS = [
     { key: "entries", storage: "cf_entries", initial: () => [], kind: "array", backup: true },
     { key: "overridesByYr", storage: "cf_overrides", initial: () => ({}), kind: "object", backup: true, toStorage: stripOverrideAttachments },
@@ -120,7 +138,12 @@
     { key: "budgetTargets", storage: "cf_budgtargets", initial: () => ({}), kind: "object", backup: true },
     { key: "templates", storage: "cf_templates", initial: () => [], kind: "array", backup: true },
     { key: "completed", storage: "cf_completed", initial: () => ({}), kind: "object", backup: true },
-    { key: "debtData", storage: "cf_debt_data", initial: () => ({}), kind: "object", backup: true },
+    // Figures arrive as numbers from the cloud; a backup or an older device may
+    // still carry the strings of cents the tracker used to write. Normalised
+    // here so a debt's balance is one type however it got onto this device.
+    { key: "debtData", storage: "cf_debt_data", initial: () => ({}), backup: true, apply: (v, set) => {
+      if (v && typeof v === "object") set(normaliseDebtFigures(v));
+    } },
     // Tombstones for the year-copy sync: source-entry id -> true, recorded
     // whenever the user deletes a one-time entry that was itself a copy
     // (entry.copiedFrom set). Without this, re-running "Copy year -> year+1"
@@ -281,11 +304,7 @@
   function exportHouseholdBackup(values) {
     const blob = new Blob([JSON.stringify(buildHouseholdBackup(values), null, 2)], { type: "application/json" });
     if (!downloadBlob(`CashFlow_Backup_${localDateStr(/* @__PURE__ */ new Date())}.json`, blob)) return false;
-    try {
-      localStorage.setItem("cf_last_backup", String(Date.now()));
-    } catch (e) {
-      // The export itself already succeeded.
-    }
+    safeStorage.set("cf_last_backup", String(Date.now()));
     return true;
   }
   // Every synced field's localStorage key, plus the per-year AI report cache.
@@ -419,6 +438,39 @@
       if (!data || !data.length) throw new Error("Only the household owner can rename other members.");
       await refreshMembership(session.user.id);
     }, [household, session, refreshMembership]);
+    // Leaving, removing and deleting. The rules (last one out takes the
+    // household; never leave it ownerless) are enforced by the RPCs — these
+    // only call them and bring local state into line with the answer.
+    const leaveHousehold = useCallback(async () => {
+      if (!supabaseClient || !session) return;
+      const { error } = await supabaseClient.rpc("leave_household");
+      if (error) throw error;
+      // The data on this device is the household's, and this person is no
+      // longer in it.
+      clearHouseholdLocalState();
+      await refreshMembership(session.user.id);
+    }, [session, refreshMembership]);
+    const removeMember = useCallback(async (userId) => {
+      if (!supabaseClient || !session) return;
+      const { error } = await supabaseClient.rpc("remove_member", { p_user_id: userId });
+      if (error) throw error;
+      await refreshMembership(session.user.id);
+    }, [session, refreshMembership]);
+    const deleteMyAccount = useCallback(async () => {
+      if (!supabaseClient || !session) return;
+      const { error } = await supabaseClient.rpc("delete_my_account");
+      if (error) throw error;
+      clearHouseholdLocalState();
+      try {
+        await supabaseClient.auth.signOut();
+      } catch (e) {
+        // The account is gone; a sign-out that cannot reach the server still
+        // clears the local session below.
+      }
+      setSession(null);
+      setHousehold(null);
+      setMembers([]);
+    }, [session]);
     const signOut = useCallback(async () => {
       if (!supabaseClient) return;
       await supabaseClient.auth.signOut();
@@ -438,6 +490,9 @@
       setMemberRole,
       updateMemberName,
       updateMyName,
+      leaveHousehold,
+      removeMember,
+      deleteMyAccount,
       signOut
     };
   }
@@ -474,24 +529,8 @@
   //                       difference between "safe to push" and "ask the user".
   const UNSAVED_KEY = "cf_unsaved_since";
   const SYNCED_AT_KEY = "cf_last_synced_at";
-  const readMarker = (k) => {
-    try {
-      return localStorage.getItem(k);
-    } catch (e) {
-      return null;
-    }
-  };
-  const writeMarker = (k, v) => {
-    try {
-      if (v == null) localStorage.removeItem(k);
-      else localStorage.setItem(k, v);
-    } catch (e) {
-      // Storage can throw outright in private/partitioned modes. Nothing
-      // here is essential to the current interaction, so a failure is
-      // genuinely ignorable — real save failures surface via
-      // notifyStorageWriteFailure.
-    }
-  };
+  const readMarker = (k) => safeStorage.get(k);
+  const writeMarker = (k, v) => v == null ? safeStorage.remove(k) : safeStorage.set(k, v);
 
   // Puts receipt images into the overrides they belong to, for any override
   // that exists and has no image of its own. Never replaces one: an image

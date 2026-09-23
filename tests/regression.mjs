@@ -3587,6 +3587,91 @@ await test('dashboard: "My entries" leaves out another member\'s entries, and "A
   await ctx.close();
 });
 
+// The built page carries a Content-Security-Policy that pins its four inline
+// scripts by hash and names every host it talks to. Nothing the app does on
+// any main screen may trip it — a violation is either a blocked feature or a
+// policy that has drifted from the code.
+await test('csp: the page declares a policy, and no screen violates it', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.addInitScript(() => {
+    window.__csp = [];
+    document.addEventListener('securitypolicyviolation', (e) => window.__csp.push(`${e.violatedDirective} ${e.blockedURI}`));
+  });
+  await page.goto(BASE + '#/today', { waitUntil: 'load' });
+  const meta = await page.evaluate(() => (document.querySelector('meta[http-equiv="Content-Security-Policy"]') || {}).content || '');
+  if (!/script-src 'self'( 'sha256-[^']+'){4}/.test(meta)) throw new Error('no hash-pinned script-src in the page: ' + meta.slice(0, 120));
+  if (/unsafe-eval/.test(meta) || /script-src[^;]*unsafe-inline/.test(meta)) throw new Error('the script policy allows unsafe-inline or unsafe-eval');
+  for (const r of ['today', 'flow/list', 'flow/calendar', 'flow/curve', 'flow/entries', 'envelopes', 'plan/goals', 'plan/debt', 'plan/networth', 'plan/insights', 'alerts', 'help', 'you', 'you/backup']) {
+    await page.goto(BASE + '#/' + r, { waitUntil: 'load' });
+    await page.waitForTimeout(500);
+  }
+  const v = await page.evaluate(() => window.__csp);
+  await ctx.close();
+  if (v.length) throw new Error('CSP violations: ' + [...new Set(v)].slice(0, 4).join('; '));
+});
+
+// Members could be disabled but never removed, nobody could leave, and there
+// was no way to delete an account. The rules are the database's
+// (tests/member-lifecycle.sql); these check the controls reach it, and say the
+// right thing before they do.
+{
+  const household = (me, other) => (t) => t
+    .replace(/const members = \[[^\n]*\];/, `const members = [{ user_id: 'u-demo', full_name: 'Demo User', disabled: false, role: '${me}', joined_at: '${FIXTURE_YEAR}-01-01T00:00:00Z' }${other ? `, { user_id: 'u-other', full_name: 'Sam', disabled: false, role: '${other}', joined_at: '${FIXTURE_YEAR}-01-02T00:00:00Z' }` : ''}];`)
+    .replace("rpc: (name) => name === 'load_household' ? resolved({ data: payload, receipts: [] }) : resolved(null),",
+      `rpc: (name, args) => { (window.__rpc = window.__rpc || []).push({ name, args: JSON.parse(JSON.stringify(args || null)) });
+         return name === 'load_household' ? resolved({ data: payload, receipts: [] }) : resolved(null); },`);
+  const rpcs = (page, name) => page.evaluate((n) => (window.__rpc || []).filter((c) => c.name === n).map((c) => c.args), name);
+
+  await test('household: an owner can make another member an owner, or remove them, after confirming', async () => {
+    const { ctx, page } = await ctxPage({ stub: household('owner', 'member') });
+    await page.goto(BASE + '#/you/household', { waitUntil: 'load' });
+    await page.getByRole('button', { name: 'Remove Sam from the household' }).click();
+    await page.getByRole('button', { name: 'Remove', exact: true }).last().click();
+    await page.waitForTimeout(400);
+    const removed = await rpcs(page, 'remove_member');
+    if (!removed.length || removed[0].p_user_id !== 'u-other') throw new Error('remove_member was not called for Sam: ' + JSON.stringify(removed));
+    // Make owner: until now the interface could only toggle view-only, so an
+    // owner could never hand over and therefore never leave.
+    await page.getByRole('button', { name: 'Make Sam an owner' }).click();
+    await page.getByRole('button', { name: 'Make owner', exact: true }).last().click();
+    await page.waitForTimeout(400);
+    await ctx.close();
+  });
+
+  await test('household: a member who is not an owner is not offered remove or make-owner', async () => {
+    const { ctx, page } = await ctxPage({ stub: household('member', 'owner') });
+    await page.goto(BASE + '#/you/household', { waitUntil: 'load' });
+    await page.getByText('Leave this household').first().waitFor(V);
+    if (await page.getByRole('button', { name: /Remove Sam|Make Sam an owner/ }).count()) throw new Error('a plain member is offered owner-only controls');
+    await page.getByRole('button', { name: 'Leave household' }).click();
+    await page.getByRole('button', { name: 'Leave', exact: true }).click();
+    await page.waitForTimeout(400);
+    if (!(await rpcs(page, 'leave_household')).length) throw new Error('leaving never called leave_household');
+    await ctx.close();
+  });
+
+  await test('household: the only owner is told to hand over before leaving', async () => {
+    const { ctx, page } = await ctxPage({ stub: household('owner', 'member') });
+    await page.goto(BASE + '#/you/household', { waitUntil: 'load' });
+    await page.getByText(/only owner\. Make another member an owner first/).waitFor(V)
+      .catch(() => { throw new Error('the only owner is not told why leaving would fail'); });
+    await ctx.close();
+  });
+
+  await test('danger zone: deleting your account asks first, then signs you out', async () => {
+    const { ctx, page } = await ctxPage({ stub: household('owner') });
+    await page.goto(BASE + '#/you/danger', { waitUntil: 'load' });
+    await page.getByRole('button', { name: 'Delete my account' }).click();
+    await page.getByText(/only member, so the household and everything in it is deleted/).waitFor(V)
+      .catch(() => { throw new Error('the only member is not told the household goes too'); });
+    await page.getByRole('button', { name: 'Delete my account' }).last().click();
+    await page.getByText('Sign in to your account').waitFor(V)
+      .catch(() => { throw new Error('after deleting the account the app is still signed in'); });
+    if (!(await rpcs(page, 'delete_my_account')).length) throw new Error('delete_my_account was never called');
+    await ctx.close();
+  });
+}
+
 // ── Money schema migration (schema v8: dollars -> cents) ────────────────
 // Every other test's fixture payload declares schemaVersion: 999, so it's
 // taken as already-cents and never exercises the upgrade path. This test
@@ -4473,8 +4558,10 @@ await test('sync: editing a holiday schedules a save of its own', async () => {
     if (back.amount !== rent.amount) throw new Error(`rent restored as ${back.amount}, backed up as ${rent.amount}`);
     if (after.years[0].openingBalance !== json.yearConfigs[0].openingBalance) throw new Error('opening balance changed scale');
     if (after.thresh !== json.alertThreshold) throw new Error('alert threshold changed scale');
-    if (after.debt.visa.balance !== '450000') throw new Error('v8 debt dollars not converted: ' + after.debt.visa.balance);
-    if (after.debt.visa.rate !== '19.99') throw new Error('interest rate was treated as money: ' + after.debt.visa.rate);
+    // Numbers, since debt figures are normalised on load (they used to be
+    // written as strings of cents while the cloud handed back numbers).
+    if (after.debt.visa.balance !== 450000) throw new Error('v8 debt dollars not converted to cents: ' + JSON.stringify(after.debt.visa.balance));
+    if (after.debt.visa.rate !== 19.99) throw new Error('interest rate was treated as money: ' + JSON.stringify(after.debt.visa.rate));
     await ctx.close();
   });
 
@@ -4980,7 +5067,11 @@ await test('service worker: a repeat launch is served from cache, and a deploy s
   // from the route on every render, so a title marker is erased by the very
   // build you are trying to detect.
   serverOverride.set('/sw.js', realSw.replace(/const CACHE = '[^']+'/, "const CACHE = 'cf-deploy-test'"));
-  const nextHtml = realHtml.replace(/const CF_VERSION='[^']+'/, "const CF_VERSION='v-deploy-test'");
+  // The stamp changes the app script, so its pinned hash in the page's CSP
+  // no longer matches and the browser would (rightly) refuse to run it. A real
+  // build writes a policy for its own scripts; this hand-made one drops it.
+  const nextHtml = realHtml.replace(/const CF_VERSION='[^']+'/, "const CF_VERSION='v-deploy-test'")
+    .replace(/<meta http-equiv="Content-Security-Policy"[^>]*>/, '');
   if (nextHtml === realHtml) throw new Error('could not stamp a new build tag into the page');
   serverOverride.set('/', nextHtml);
   serverOverride.set('/index.html', nextHtml);
@@ -5014,7 +5105,9 @@ await test('service worker: cross-origin reads (the Supabase API) always reach t
     res.end(JSON.stringify({ call: hits }));
   });
   await new Promise((r) => api.listen(PORT - 1, '127.0.0.1', r));
-  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  // The page's CSP allows the real Supabase host, not this stand-in for it.
+  // What is under test is the worker, so the policy is set aside here.
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, bypassCSP: true });
   try {
     const page = await ctx.newPage();
     await page.addInitScript(mkStub(false, true));

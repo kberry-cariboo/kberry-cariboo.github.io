@@ -2787,3 +2787,152 @@ end $$;
 revoke execute on function cf_seed_member_preferences() from public, anon, authenticated;
 revoke execute on function cf_member_pref_keys() from public, anon, authenticated;
 select cf_seed_member_preferences();
+
+-- AI usage, per member per day ------------------------------------------------
+--
+-- The ai-proxy Edge Function spends the deployment owner's Anthropic key on
+-- behalf of signed-in household members. Membership bounds *who*; this bounds
+-- *how much*: one row per user per UTC day, counted by the function before it
+-- calls Anthropic. RLS is on with no policies, so nobody reads or resets the
+-- counter directly — only ai_take_quota touches it.
+create table if not exists ai_usage (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  day date not null,
+  calls int not null default 0,
+  primary key (user_id, day)
+);
+alter table ai_usage enable row level security;
+
+-- Counts one call for the caller today and says whether it is within
+-- p_limit. Counting happens either way, so a caller who keeps going past the
+-- limit stays past it. The limit comes from the function's environment
+-- (AI_DAILY_LIMIT); a user calling this directly with a bigger number only
+-- spends their own count faster.
+create or replace function ai_take_quota(p_limit int)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare n int;
+begin
+  if auth.uid() is null then
+    return false;
+  end if;
+  insert into ai_usage as u (user_id, day, calls) values (auth.uid(), (now() at time zone 'utc')::date, 1)
+    on conflict (user_id, day) do update set calls = u.calls + 1
+    returning calls into n;
+  return n <= greatest(coalesce(p_limit, 0), 0);
+end $$;
+
+-- Leaving, removing, deleting --------------------------------------------------
+--
+-- A member could be disabled but never removed, nobody could leave a
+-- household, and there was no way to delete an account — while privacy.html
+-- told people their data stays "until you delete your account". These are the
+-- three ways out. The rules live here, not in the interface:
+--   * the last member leaving takes the household (and all its data) with them
+--   * a household is never left without an owner while it has other members —
+--     make someone else an owner first (the owner-only update policy on
+--     household_members allows role = 'owner')
+--   * only an owner removes someone else, and nobody removes themselves that
+--     way (that is leaving)
+-- A departing member's own preferences and push subscriptions go with them.
+
+-- The shared step: take `uid` out of `hid`. Not callable directly.
+create or replace function cf_remove_membership(hid uuid, uid uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  delete from household_members where household_id = hid and user_id = uid;
+  delete from member_preferences where household_id = hid and user_id = uid;
+  delete from push_subscriptions where household_id = hid and user_id = uid;
+end $$;
+revoke execute on function cf_remove_membership(uuid, uuid) from public, anon, authenticated;
+
+-- The caller's household, disabled or not: a disabled member may still leave.
+create or replace function cf_household_of(uid uuid)
+returns uuid language sql stable security definer set search_path = public as $$
+  select household_id from household_members where user_id = uid limit 1;
+$$;
+revoke execute on function cf_household_of(uuid) from public, anon, authenticated;
+
+create or replace function leave_household()
+returns text
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  hid uuid := cf_household_of(auth.uid());
+  me household_members%rowtype;
+  others int;
+  other_owners int;
+begin
+  if hid is null then
+    raise exception 'You are not in a household.';
+  end if;
+  select * into me from household_members where household_id = hid and user_id = auth.uid();
+  select count(*) into others from household_members where household_id = hid and user_id <> auth.uid();
+  if others = 0 then
+    -- The last one out: nobody is left to have the data, so it goes.
+    delete from households where id = hid;
+    return 'deleted';
+  end if;
+  select count(*) into other_owners from household_members
+    where household_id = hid and user_id <> auth.uid() and role = 'owner' and not disabled;
+  if me.role = 'owner' and other_owners = 0 then
+    raise exception 'You are the only owner. Make another member an owner before you leave.'
+      using errcode = '42501';
+  end if;
+  perform cf_remove_membership(hid, auth.uid());
+  return 'left';
+end $$;
+
+create or replace function remove_member(p_user_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare hid uuid := cf_my_household();
+begin
+  if not is_household_owner(hid) then
+    raise exception 'Only a household owner can remove a member.' using errcode = '42501';
+  end if;
+  if p_user_id = auth.uid() then
+    raise exception 'To remove yourself, leave the household instead.';
+  end if;
+  if not exists (select 1 from household_members where household_id = hid and user_id = p_user_id) then
+    raise exception 'That person is not a member of this household.';
+  end if;
+  perform cf_remove_membership(hid, p_user_id);
+end $$;
+
+-- Leaves the household under the rules above, then deletes the account. The
+-- references to the user that do not cascade (invites they made or used, the
+-- last-updated-by stamps) are cleared first; the rest (memberships, push
+-- subscriptions, preferences, AI usage) cascade from auth.users.
+create or replace function delete_my_account()
+returns void
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
+declare uid uuid := auth.uid();
+begin
+  if uid is null then
+    raise exception 'Not signed in.';
+  end if;
+  if cf_household_of(uid) is not null then
+    perform leave_household();
+  end if;
+  delete from household_invites where created_by = uid;
+  update household_invites set used_by = null where used_by = uid;
+  update household_settings set updated_by = null where updated_by = uid;
+  update household_data set updated_by = null where updated_by = uid;
+  delete from auth.users where id = uid;
+end $$;

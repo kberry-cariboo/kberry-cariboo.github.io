@@ -231,6 +231,12 @@ jobs:
       - name: Check the AI proxy answers household members only
         run: node --experimental-strip-types tests/ai-proxy.mjs
 
+      # The two third-party bundles are pinned by SHA-256 in
+      # src/vendor/SHA256SUMS, so replacing one is a deliberate, reviewable
+      # change rather than an unreadable minified diff inside a larger one.
+      - name: Check the vendored bundles are the pinned ones
+        run: node tests/vendor-hashes.mjs
+
       # The Help screenshots are committed, not built, so nothing else notices
       # when the page names a file that isn't there or a shot is left behind
       # after a rename. Browser-free.
@@ -279,6 +285,15 @@ jobs:
       # the old zero-argument load still returns images inline for old tabs.
       - name: Check receipts are listed, fetched one at a time, and kept in their household
         run: psql -v ON_ERROR_STOP=1 -f tests/receipts.sql
+
+      - name: Check the per-member daily AI allowance
+        run: psql -v ON_ERROR_STOP=1 -f tests/ai-quota.sql
+
+      # Leaving (never orphaning a household; the last one out takes it),
+      # owner-only removal, and deleting an account with the references that
+      # do not cascade cleared first.
+      - name: Check leaving, removing and deleting accounts
+        run: psql -v ON_ERROR_STOP=1 -f tests/member-lifecycle.sql
 
       - name: Check every payload field survives a save and a load
         run: CF_TEST_PG=1 node tests/payload-roundtrip.mjs

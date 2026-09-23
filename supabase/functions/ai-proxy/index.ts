@@ -24,17 +24,25 @@ import { handle, type Caller } from "./handler.ts";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
+// Calls per member per UTC day. Generous for a household (the heaviest
+// feature, the yearly assessment, is one call) and a ceiling on a runaway.
+const AI_DAILY_LIMIT = Number(Deno.env.get("AI_DAILY_LIMIT") ?? "100") || 100;
+// Optional: the site(s) allowed to call this from a browser, comma-separated,
+// e.g. https://you.github.io. Unset allows any (see corsFor in handler.ts).
+const ALLOWED_ORIGINS = (Deno.env.get("ALLOWED_ORIGINS") ?? "").split(",").map((s) => s.trim()).filter(Boolean);
 
 // Everything this function decides is in handler.ts; this file only connects
 // it to Supabase. The membership read runs *as the caller* (their JWT, the
 // anon key) so row-level security answers it: the "read household members"
 // policy only shows rows of a household the caller is an active member of,
 // which means a disabled member finds no row of their own and is refused.
+const asCaller = (authHeader: string) => createClient(SUPABASE_URL, ANON_KEY, {
+  global: { headers: { Authorization: authHeader } },
+  auth: { persistSession: false, autoRefreshToken: false },
+});
+
 async function identify(authHeader: string): Promise<Caller> {
-  const db = createClient(SUPABASE_URL, ANON_KEY, {
-    global: { headers: { Authorization: authHeader } },
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
+  const db = asCaller(authHeader);
   const jwt = authHeader.replace(/^Bearer\s+/i, "");
   const { data: userData, error: userErr } = await db.auth.getUser(jwt);
   if (userErr || !userData?.user) return { ok: false };
@@ -49,4 +57,18 @@ async function identify(authHeader: string): Promise<Caller> {
   return { ok: true, userId, member: !error && Array.isArray(rows) && rows.length > 0 };
 }
 
-Deno.serve((req: Request) => handle(req, { anthropicKey: ANTHROPIC_API_KEY, identify, fetch }));
+Deno.serve((req: Request) => handle(req, {
+  anthropicKey: ANTHROPIC_API_KEY,
+  allowedOrigins: ALLOWED_ORIGINS,
+  identify,
+  // As the caller, so ai_take_quota counts against their own auth.uid().
+  takeQuota: async () => {
+    const { data, error } = await asCaller(req.headers.get("Authorization") ?? "").rpc("ai_take_quota", { p_limit: AI_DAILY_LIMIT });
+    if (error) {
+      console.warn("ai_take_quota unavailable — re-run supabase/schema.sql:", error.message);
+      return null;
+    }
+    return data === true;
+  },
+  fetch,
+}));

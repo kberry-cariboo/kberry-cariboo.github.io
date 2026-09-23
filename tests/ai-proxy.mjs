@@ -23,24 +23,27 @@ const CALLERS = {
   'Bearer outsider': { ok: true, userId: 'u-outsider', member: false },
   'Bearer bad': { ok: false },
 };
-const run = async ({ auth = 'Bearer member', body, method = 'POST', key = 'sk-test' } = {}) => {
+const run = async ({ auth = 'Bearer member', body, method = 'POST', key = 'sk-test', quota, origins, origin } = {}) => {
   const sent = [];
+  let quotaTaken = 0;
   const deps = {
     anthropicKey: key,
+    allowedOrigins: origins,
+    takeQuota: quota === undefined ? undefined : async () => { quotaTaken++; return quota; },
     identify: async (h) => CALLERS[h] || { ok: false },
     fetch: async (url, init) => {
       sent.push({ url, body: JSON.parse(init.body) });
       return new Response(JSON.stringify({ content: [{ type: 'text', text: 'hi' }] }), { status: 200 });
     },
   };
-  const headers = auth ? { Authorization: auth } : {};
+  const headers = Object.assign(auth ? { Authorization: auth } : {}, origin ? { Origin: origin } : {});
   const req = new Request('https://x/functions/v1/ai-proxy', {
     method, headers, body: method === 'POST' ? JSON.stringify(body ?? {}) : undefined,
   });
   const res = await handle(req, deps);
   let json = null;
   try { json = await res.json(); } catch {}
-  return { status: res.status, json, sent };
+  return { status: res.status, json, sent, quotaTaken, allowOrigin: res.headers.get('Access-Control-Allow-Origin') };
 };
 const call = { request: { model: 'claude-opus-5', max_tokens: 100, messages: [{ role: 'user', content: 'hi' }] } };
 
@@ -95,6 +98,44 @@ const call = { request: { model: 'claude-opus-5', max_tokens: 100, messages: [{ 
 {
   const r = await run({ method: 'GET' });
   check('only POST is served', r.status === 405, `status ${r.status}`);
+}
+
+// ── How much ─────────────────────────────────────────────────────────────────
+// A per-member daily allowance (ai_usage / ai_take_quota in schema.sql).
+{
+  const r = await run({ body: call, quota: false });
+  check('a member over today\'s allowance gets 429, and nothing reaches Anthropic',
+    r.status === 429 && r.sent.length === 0, `status ${r.status}, ${r.sent.length} upstream call(s)`);
+}
+{
+  const r = await run({ body: call, quota: true });
+  check('a member within it is answered', r.status === 200 && r.sent.length === 1 && r.quotaTaken === 1, `status ${r.status}, taken ${r.quotaTaken}`);
+}
+{
+  const r = await run({ body: { ping: true }, quota: false });
+  check('the capability probe spends no allowance', r.status === 200 && r.quotaTaken === 0, `status ${r.status}, taken ${r.quotaTaken}`);
+}
+{
+  const r = await run({ auth: 'Bearer outsider', body: call, quota: true });
+  check('an outsider is refused before any allowance is counted', r.status === 403 && r.quotaTaken === 0, `taken ${r.quotaTaken}`);
+}
+{
+  const r = await run({ body: { request: { ...call.request, model: 'nope' } }, quota: true });
+  check('a malformed request is refused without spending allowance', r.status === 400 && r.quotaTaken === 0, `taken ${r.quotaTaken}`);
+}
+{
+  const r = await run({ body: call, quota: null });
+  check('a database without the counter lets the call through (and logs it)', r.status === 200, `status ${r.status}`);
+}
+
+// ── From where ───────────────────────────────────────────────────────────────
+{
+  const allowed = await run({ body: call, origins: ['https://me.github.io'], origin: 'https://me.github.io' });
+  const other = await run({ body: call, origins: ['https://me.github.io'], origin: 'https://evil.example' });
+  const open = await run({ body: call });
+  check('with ALLOWED_ORIGINS set, only the named site is granted CORS',
+    allowed.allowOrigin === 'https://me.github.io' && other.allowOrigin === null && open.allowOrigin === '*',
+    JSON.stringify({ allowed: allowed.allowOrigin, other: other.allowOrigin, open: open.allowOrigin }));
 }
 
 const failed = results.filter((r) => !r.ok).length;

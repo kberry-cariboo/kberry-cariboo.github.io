@@ -15,6 +15,9 @@
       setMemberRole,
       updateMemberName,
       updateMyName,
+      leaveHousehold,
+      removeMember,
+      deleteMyAccount,
       signOut
     } = useHousehold();
     const sessionUser = useMemo(() => {
@@ -88,14 +91,7 @@
     useEffect(() => {
       if (!lockTimeout || !sessionUser || locked) return;
       const stamp = () => {
-        try {
-          sessionStorage.setItem(LOCK_KEY, String(Date.now()));
-        } catch (e) {
-          // Storage can throw outright in private/partitioned modes.
-          // Nothing here is essential to the current interaction, so a
-          // failure is genuinely ignorable — real save failures surface via
-          // notifyStorageWriteFailure.
-        }
+        safeStorage.set(LOCK_KEY, String(Date.now()), "session");
       };
       stamp();
       // Re-stamp periodically while visible so elapsed *hidden* time is what
@@ -130,14 +126,7 @@
       // lock screen can prompt for the fingerprint.
       if (!authLoading && !session) {
         setLocked(false);
-        try {
-          sessionStorage.removeItem(LOCK_KEY);
-        } catch (e) {
-          // Storage can throw outright in private/partitioned modes.
-          // Nothing here is essential to the current interaction, so a
-          // failure is genuinely ignorable — real save failures surface via
-          // notifyStorageWriteFailure.
-        }
+        safeStorage.remove(LOCK_KEY, "session");
       }
     }, [authLoading, session]);
     // Every household-synced field's state at once, created from the single
@@ -256,14 +245,7 @@
       }
     });
     useEffect(() => {
-      try {
-        sessionStorage.setItem("cf_tab", tab);
-      } catch (e) {
-        // Storage can throw outright in private/partitioned modes. Nothing
-        // here is essential to the current interaction, so a failure is
-        // genuinely ignorable — real save failures surface via
-        // notifyStorageWriteFailure.
-      }
+      safeStorage.set("cf_tab", tab, "session");
     }, [tab]);
     const [showQuickAdd, setShowQuickAdd] = useState(false);
     // The Plan screen owns this; the Alerts centre only reads it, so its
@@ -549,14 +531,7 @@
     }, []);
     const dismissBackup = (doExport = false) => {
       setShowBackupNudge(false);
-      try {
-        localStorage.setItem("cf_last_backup", String(Date.now()));
-      } catch (e) {
-        // Storage can throw outright in private/partitioned modes. Nothing
-        // here is essential to the current interaction, so a failure is
-        // genuinely ignorable — real save failures surface via
-        // notifyStorageWriteFailure.
-      }
+      safeStorage.set("cf_last_backup", String(Date.now()));
       // The same file Settings → Backup makes, from the same builder.
       if (doExport) exportHouseholdBackup(houseValues);
     };
@@ -1423,14 +1398,7 @@
         }
       };
       const markSeen = (k) => {
-        try {
-          localStorage.setItem(k, todayKey);
-        } catch (e) {
-          // Storage can throw outright in private/partitioned modes.
-          // Nothing here is essential to the current interaction, so a
-          // failure is genuinely ignorable — real save failures surface via
-          // notifyStorageWriteFailure.
-        }
+        safeStorage.set(k, todayKey);
       };
       if (navLowInfo && !seen("cf_notified_lowbal")) {
         showLocalNotification("Low balance forecast", {
@@ -1538,14 +1506,7 @@
     }
     if (locked) {
       return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(LockScreen, { sessionUser, onUnlock: () => {
-        try {
-          sessionStorage.setItem(LOCK_KEY, String(Date.now()));
-        } catch (e) {
-          // Storage can throw outright in private/partitioned modes.
-          // Nothing here is essential to the current interaction, so a
-          // failure is genuinely ignorable — real save failures surface via
-          // notifyStorageWriteFailure.
-        }
+        safeStorage.set(LOCK_KEY, String(Date.now()), "session");
         setLocked(false);
       }, onSignOut: logout }));
     }
@@ -1993,7 +1954,10 @@
         createInvite,
         setMemberDisabled,
         setMemberRole,
-        updateMemberName
+        updateMemberName,
+        leaveHousehold,
+        removeMember,
+        deleteMyAccount
       }
     ))), undoStack.length > 0 && /* @__PURE__ */ React.createElement(
       UndoToast,
