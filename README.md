@@ -424,6 +424,21 @@ scenario sandbox, which payoff order is highlighted. Everything the household
 *owns* is in `HOUSEHOLD_FIELDS`, and `tests/payload-fields.mjs` fails if that
 table and `cf_payload_keys()` in the schema disagree.
 
+Between the two sits what each **member** prefers: theme, forecast window, the
+column order of both grids, which dashboard panels are hidden and in what order,
+and the Entries filters. These follow a person to every device they sign in on,
+and no further. They used to be household fields, so one member switching to
+dark mode switched everyone. They are rows in `member_preferences` now, one per
+member and readable only by that member, reached through `load_my_preferences()`
+and `save_my_preferences()`. A view-only member can save them too, since they
+aren't household data. The client declares them in `MEMBER_PREF_FIELDS`, beside
+`HOUSEHOLD_FIELDS`. `tests/payload-fields.mjs` holds that table to
+`cf_member_pref_keys()` and fails if a key appears in both lists. Their old
+payload keys are in `cf_payload_retired_keys()`, so a tab opened before the
+split keeps saving. Re-running `schema.sql` seeds each member's row from what
+the household shared until then (`cf_seed_member_preferences()`, never
+overwriting a row that exists). `tests/member-prefs.sql` covers all of it.
+
 A synced field must have exactly one piece of state. `useLS` is per-hook
 `useState` over a localStorage key, so a second `useLS` on a key that
 `useHouseholdState` already owns is a second copy the payload never sees

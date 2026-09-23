@@ -158,22 +158,10 @@
       categoryColors,
       activeYear,
       alertThreshold: alertThresh,
-      darkMode,
-      forecastHorizon,
       assets,
       goals,
-      dashHidden,
-      dashOrder,
-      colOrder,
-      budgetColOrder,
       debtExtra,
       debtSimExcluded,
-      // The Entries filters keep their "regFilter*" payload names for
-      // compatibility (see the table); only these bindings are renamed.
-      regFilter: entriesFilter,
-      regFilterCats: entriesFilterCats,
-      regFilterScheds: entriesFilterScheds,
-      regFilterStatus: entriesFilterStatus,
       budgetTargets,
       templates,
       completed,
@@ -194,20 +182,10 @@
       categoryColors: setCategoryColors,
       activeYear: setActiveYear,
       alertThreshold: setAlertThresh,
-      darkMode: setDarkMode,
-      forecastHorizon: setForecastHorizon,
       assets: setAssets,
       goals: setGoals,
-      dashHidden: setDashHidden,
-      dashOrder: setDashOrder,
-      colOrder: setColOrder,
-      budgetColOrder: setBudgetColOrder,
       debtExtra: setDebtExtra,
       debtSimExcluded: setDebtSimExcluded,
-      regFilter: setEntriesFilter,
-      regFilterCats: setEntriesFilterCats,
-      regFilterScheds: setEntriesFilterScheds,
-      regFilterStatus: setEntriesFilterStatus,
       budgetTargets: setBudgetTargets,
       templates: setTemplates,
       completed: setCompleted,
@@ -220,6 +198,37 @@
       activity: setActivity,
       accounts: setAccounts
     } = houseSetters;
+    // How this member likes to look at the household — theme, forecast window,
+    // column orders, dashboard layout, Entries filters. Their own row on the
+    // server, following them to every device they sign in on and to no one
+    // else's (see MEMBER_PREF_FIELDS in household-sync.js).
+    const { values: prefValues, setters: prefSetters } = useMemberPrefs(household);
+    const {
+      darkMode,
+      forecastHorizon,
+      dashHidden,
+      dashOrder,
+      colOrder,
+      budgetColOrder,
+      // The Entries filters keep their "regFilter*" names for compatibility
+      // (see the table); only these bindings are renamed.
+      regFilter: entriesFilter,
+      regFilterCats: entriesFilterCats,
+      regFilterScheds: entriesFilterScheds,
+      regFilterStatus: entriesFilterStatus
+    } = prefValues;
+    const {
+      darkMode: setDarkMode,
+      forecastHorizon: setForecastHorizon,
+      dashHidden: setDashHidden,
+      dashOrder: setDashOrder,
+      colOrder: setColOrder,
+      budgetColOrder: setBudgetColOrder,
+      regFilter: setEntriesFilter,
+      regFilterCats: setEntriesFilterCats,
+      regFilterScheds: setEntriesFilterScheds,
+      regFilterStatus: setEntriesFilterStatus
+    } = prefSetters;
     // Deliberately not a household field: a personal API credential, never
     // synced to the household and never written into a backup file.
     const [aiApiKey, setAiApiKey] = useLS("cf_ai_key", "");

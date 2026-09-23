@@ -30,7 +30,7 @@ Severity scale:
 | 5 | The backup-nudge "Export backup" writes an **incomplete backup**, missing accounts, holidays, currency and six more fields | S2 | `src/App.js:554` |
 | 6 | The "Car loan ends — frees $288.75/mo" figure for a $385/mo loan is wrong | S2 | `src/components/dashboard.js:700` |
 | 7 | Receipt images are stored inside `cf_overrides` in `localStorage`, where the ~5 MB quota runs out quickly | S2 | `src/lib/household-sync.js:74` |
-| 8 | Device preferences are synced to the whole household (dark mode, Entries filters, column order). One partner's phone changes the other's. | S2 | `src/lib/household-sync.js:82-130` |
+| 8 | ~~Device preferences are synced to the whole household~~ **Fixed in v193:** they're per-member now | S2 | `src/lib/household-sync.js:82-130` |
 | 9 | Envelopes call scheduled money "spent", and adding an entry quietly raises the target to match. The feature ends up grading itself. | S2 | `src/App.js:863`, `src/components/budget.js:1129` |
 | 10 | There's no build step, types or modules: 20k lines of hand-maintained esbuild output in one shared scope | Arch | whole `src/` |
 
@@ -359,6 +359,28 @@ Still open from §1.4: a per-user rate limit on the proxy.
   - `plan/networth` is in the layout sweep (217 screens, clean).
   - README drift fixed.
   - The header "gap" finding is retracted (see its row above).
+
+### Batch 3 (build v193): §1.8, per-member preferences
+
+These ten fields are now each member's own row in `member_preferences`, not household fields: theme, forecast window, both column orders, dashboard hidden panels and order, and the four Entries filters. They follow a person to every device they sign in on and no one else's.
+
+- **Server:**
+  - `load_my_preferences()` / `save_my_preferences()` read and write your own row, with RLS on the table itself.
+  - View-only members may save their own preferences.
+  - Unknown keys are refused.
+  - `cf_seed_member_preferences()` seeds each member from the previously shared values, and never overwrites an existing row.
+  - The old payload keys are retired, so tabs opened before the upgrade keep saving.
+- **Client:**
+  - `MEMBER_PREF_FIELDS` and `useMemberPrefs` use the same storage keys as before, so no device loses its settings.
+  - A preference changed offline is pushed on the next launch rather than overwritten by the server's copy.
+  - Preferences are cleared on sign-out and left out of backups.
+- **Tests:**
+  - `tests/member-prefs.sql` (10 checks, in CI).
+  - `tests/payload-fields.mjs` holds `MEMBER_PREF_FIELDS` and `cf_member_pref_keys()` together, forbids overlap, and requires the old keys to be retired.
+  - `tests/payload-roundtrip.mjs` checks the keys no longer leave `load_household` and round-trip through the member's own row.
+  - Two browser tests: load/save/never-household, and "offline wins".
+
+**Deploy note:** re-run `supabase/schema.sql` before this client reaches users. Until you do, the client stays on each device's own values and doesn't try to save.
 
 ## 6. Suggested order
 

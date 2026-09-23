@@ -3354,6 +3354,59 @@ await test('today: the low-balance warning sees a dip just past the new year', a
   await ctx.close();
 });
 
+// Theme, forecast window, column orders, dashboard layout and the Entries
+// filters are each member's own now (member_preferences). They used to ride in
+// the household payload, so one person switching to dark mode switched
+// everyone. This records every RPC the page makes, serves a stored preference
+// back, and checks a change goes to the member's own row and never into the
+// household's.
+const recordRpc = (prefs) => (t) => t.replace(
+  "rpc: (name) => name === 'load_household' ? resolved({ data: payload, receipts: [] }) : resolved(null),",
+  `rpc: (name, args) => { (window.__rpc = window.__rpc || []).push({ name, args: JSON.parse(JSON.stringify(args || null)) });
+     if (name === 'load_household') return resolved({ data: payload, receipts: [] });
+     if (name === 'load_my_preferences') return resolved(${JSON.stringify(prefs)});
+     return resolved(null); },`);
+await test('preferences: each member\'s own — loaded from their row, saved to it, never to the household', async () => {
+  // This device last had light; the member's row says dark and a 30-day window.
+  const { ctx, page } = await ctxPage({ stub: recordRpc({ darkMode: true, forecastHorizon: 30 }) });
+  await page.goto(BASE + '#/you/appearance', { waitUntil: 'load' });
+  await page.waitForFunction(() => document.documentElement.dataset.theme === 'dark', null, { timeout: 5000 })
+    .catch(() => { throw new Error('the member\'s stored dark theme was not applied on load'); });
+  const horizon = await page.evaluate(() => localStorage.getItem('cf_forecastHorizon'));
+  if (horizon !== '30') throw new Error('the member\'s forecast window was not applied: ' + horizon);
+  // Applying what the server sent is not an edit: nothing is saved back yet.
+  await page.waitForTimeout(1500);
+  const early = await page.evaluate(() => (window.__rpc || []).filter((c) => c.name === 'save_my_preferences').length);
+  if (early) throw new Error('loading the member\'s preferences saved them straight back');
+
+  await page.getByRole('switch', { name: 'Dark Mode' }).click();
+  await page.waitForTimeout(1800);
+  const calls = await page.evaluate(() => window.__rpc || []);
+  const mine = calls.filter((c) => c.name === 'save_my_preferences');
+  if (!mine.length) throw new Error('turning dark mode off saved nothing to the member\'s row');
+  const last = mine[mine.length - 1].args.p;
+  if (last.darkMode !== false || last.forecastHorizon !== 30) throw new Error('the saved preferences are wrong: ' + JSON.stringify(last));
+  const leaked = calls.filter((c) => c.name === 'save_household')
+    .filter((c) => ['darkMode', 'forecastHorizon', 'colOrder', 'regFilter'].some((k) => c.args && c.args.p_data && k in c.args.p_data));
+  if (leaked.length) throw new Error('a member preference went into the household save: ' + Object.keys(leaked[0].args.p_data).join(', '));
+  await ctx.close();
+});
+
+// A preference changed offline is waiting to be saved (cf_prefs_unsaved). The
+// next launch must push it, not replace it with the server's older copy.
+await test('preferences: a change made offline wins over the older copy on the next launch', async () => {
+  const { ctx, page } = await ctxPage({ dark: true, stub: recordRpc({ darkMode: false }) });
+  await page.addInitScript("try{localStorage.setItem('cf_prefs_unsaved', new Date().toISOString())}catch(e){}");
+  await page.goto(BASE + '#/today', { waitUntil: 'load' });
+  await page.waitForTimeout(1800);
+  const theme = await page.evaluate(() => document.documentElement.dataset.theme);
+  if (theme !== 'dark') throw new Error('the server\'s older light theme replaced the dark one chosen offline');
+  const saves = await page.evaluate(() => (window.__rpc || []).filter((c) => c.name === 'save_my_preferences').map((c) => c.args.p.darkMode));
+  if (!saves.includes(true)) throw new Error('the offline change was never pushed: ' + JSON.stringify(saves));
+  if (await page.evaluate(() => localStorage.getItem('cf_prefs_unsaved'))) throw new Error('the unsaved marker survived a successful save');
+  await ctx.close();
+});
+
 // ── Money schema migration (schema v8: dollars -> cents) ────────────────
 // Every other test's fixture payload declares schemaVersion: 999, so it's
 // taken as already-cents and never exercises the upgrade path. This test
@@ -4146,7 +4199,7 @@ await test('sync: editing a holiday schedules a save of its own', async () => {
     // the same commit that changes that flag — the point is that dropping a
     // field from the backup has to be a decision, not a side effect.
     for (const k of ['entries', 'overridesByYr', 'yearConfigs', 'categories', 'categoryColors',
-      'activeYear', 'alertThreshold', 'darkMode', 'goals', 'budgetTargets', 'templates',
+      'activeYear', 'alertThreshold', 'goals', 'budgetTargets', 'templates',
       'completed', 'debtData', 'deletedCopyIds', 'holidays', 'activity', 'accounts']) {
       if (!(k in json)) throw new Error('missing from the export: ' + k);
     }

@@ -884,8 +884,13 @@
       });
       t("colOrder drops the fixed actions column", () => {
         const got = [];
-        houseApply(HOUSEHOLD_FIELDS.find((f) => f.key === "colOrder"))(["desc", "amount", "actions"], (v) => got.push(v));
+        houseApply(MEMBER_PREF_FIELDS.find((f) => f.key === "colOrder"))(["desc", "amount", "actions"], (v) => got.push(v));
         return got.length === 1 && got[0].join(",") === "desc,amount";
+      });
+      t("a member's own preferences are not household fields, and not in backups", () => {
+        const house = HOUSEHOLD_FIELDS.map((f) => f.key);
+        const backup = HOUSEHOLD_BACKUP_FIELDS.map((f) => f.key);
+        return MEMBER_PREF_FIELDS.length > 0 && MEMBER_PREF_FIELDS.every((f) => !house.includes(f.key) && !backup.includes(f.key) && typeof f.initial === "function");
       });
       t("the backup export carries the fields worth restoring", () => {
         const keys = HOUSEHOLD_BACKUP_FIELDS.map((f) => f.key);

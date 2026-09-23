@@ -1033,11 +1033,9 @@ create or replace function cf_payload_keys()
 returns text[] language sql immutable as $$
   select array[
     'entries', 'overridesByYr', 'yearConfigs', 'categories', 'categoryColors',
-    'activeYear', 'alertThreshold', 'darkMode', 'forecastHorizon', 'goals',
-    'dashHidden', 'dashOrder', 'colOrder', 'regFilter', 'regFilterCats',
-    'regFilterScheds', 'regFilterStatus', 'budgetTargets', 'templates',
+    'activeYear', 'alertThreshold', 'goals', 'budgetTargets', 'templates',
     'completed', 'debtData', 'deletedCopyIds', 'holidays',
-    'budgetColOrder', 'debtExtra', 'debtSimExcluded',
+    'debtExtra', 'debtSimExcluded',
     'currency', 'locale', 'holidayRegion', 'activity', 'accounts', 'assets'
   ]::text[];
 $$;
@@ -1059,7 +1057,13 @@ create or replace function cf_payload_retired_keys()
 returns text[] language sql immutable as $$
   -- aiApiKey: a personal credential with its own billing, and every household
   -- member can read household_settings. Dropped from the sync in schema v8.
-  select array['aiApiKey']::text[];
+  -- The other ten are one person's view of the household, not the household:
+  -- they moved to member_preferences (see the end of this file), and a tab
+  -- opened before that still sends them.
+  select array['aiApiKey',
+    'darkMode', 'forecastHorizon', 'colOrder', 'budgetColOrder', 'dashHidden',
+    'dashOrder', 'regFilter', 'regFilterCats', 'regFilterScheds', 'regFilterStatus'
+  ]::text[];
 $$;
 
 -- Decompose a full payload (the app's in-memory shape, or the legacy blob) into
@@ -2021,23 +2025,16 @@ begin
     select jsonb_strip_nulls(jsonb_build_object(
       'activeYear', s.active_year,
       'alertThreshold', s.alert_threshold,
-      'darkMode', s.dark_mode,
-      'forecastHorizon', s.forecast_horizon,
+      -- darkMode, forecastHorizon, the two column orders, the dashboard's
+      -- hidden panels and order, and the Entries filters are each member's
+      -- own now: load_my_preferences(), not this.
       -- aiApiKey is deliberately absent: retired in schema v8 (see
       -- cf_payload_retired_keys) because household_settings is readable by
       -- every member. The client ignores the key, but it was still leaving the
       -- database on every load.
-      'colOrder', to_jsonb(s.col_order),
-      'regFilter', s.reg_filter,
-      'regFilterCats', to_jsonb(s.reg_filter_cats),
-      'regFilterScheds', to_jsonb(s.reg_filter_scheds),
-      'regFilterStatus', to_jsonb(s.reg_filter_status),
-      'dashHidden', cf_keys_true(s.dash_hidden_ids),
-      'dashOrder', to_jsonb(s.dash_order),
       'currency', s.currency,
       'locale', s.locale,
       'holidayRegion', s.holiday_region,
-      'budgetColOrder', to_jsonb(s.budget_col_order),
       -- coalesced, not left null: load_household strips nulls out of the
       -- payload, and a stripped key is a key the client never sees — which
       -- schema-test.sql rightly calls "accepts but never emits". '100' is the
@@ -2587,3 +2584,154 @@ begin
     raise notice 'Re-keyed % entry-level receipt(s) to their start-date occurrence.', moved;
   end if;
 end $$;
+
+-- Per-member preferences -------------------------------------------------------
+--
+-- How each person likes to look at the household: their theme, the forecast
+-- window, the column order of the two grids, which dashboard panels they hide
+-- and in what order, and the Entries filters. These used to be household
+-- fields — columns on household_settings — so switching to dark mode, or
+-- filtering Entries to "unpaid", changed every other member's screen on their
+-- next load. They were put there so a preference would follow you to your
+-- phone, which is right; following your partner to theirs is not.
+--
+-- So they are keyed by member here. Each person reads and writes only their own
+-- row, on every device they sign in on. They are not household data: a
+-- view-only member keeps preferences like anyone else, which is why the save
+-- below asks for membership, not is_household_writer.
+--
+-- The household_settings columns stay, as the source the rows below are seeded
+-- from; the payload keys that fed them are retired (cf_payload_retired_keys), so
+-- an old tab that still sends them is accepted and nothing reads them back.
+create table if not exists member_preferences (
+  household_id uuid not null references households(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  dark_mode boolean,
+  forecast_horizon int,
+  col_order text[],
+  budget_col_order text[],
+  dash_hidden_ids text[],
+  dash_order text[],
+  reg_filter text,
+  reg_filter_cats text[],
+  reg_filter_scheds text[],
+  reg_filter_status text[],
+  updated_at timestamptz not null default now(),
+  primary key (household_id, user_id)
+);
+alter table member_preferences enable row level security;
+drop policy if exists "read own preferences" on member_preferences;
+create policy "read own preferences" on member_preferences
+  for select using (user_id = auth.uid() and is_household_member(household_id));
+
+-- The keys a preferences object may carry, in the client's names. The client
+-- declares the same list as MEMBER_PREF_FIELDS in src/lib/household-sync.js,
+-- and tests/payload-fields.mjs fails if the two disagree.
+create or replace function cf_member_pref_keys()
+returns text[] language sql immutable as $$
+  select array[
+    'darkMode', 'forecastHorizon', 'colOrder', 'budgetColOrder', 'dashHidden',
+    'dashOrder', 'regFilter', 'regFilterCats', 'regFilterScheds', 'regFilterStatus'
+  ]::text[];
+$$;
+
+-- Saves the caller's own preferences. Only the keys present are written, so a
+-- client that sends one changed field leaves the rest alone; an unknown key is
+-- refused, as it is in save_household, so a client newer than the database
+-- fails loudly instead of losing the field.
+create or replace function save_my_preferences(p jsonb)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  hid uuid := cf_my_household();
+  bad text[];
+begin
+  if p is null or jsonb_typeof(p) <> 'object' then
+    raise exception 'Preferences must be an object.';
+  end if;
+  select array_agg(k) into bad
+    from jsonb_object_keys(p) k where k <> all (cf_member_pref_keys());
+  if bad is not null then
+    raise exception 'Unknown preference key(s): % — re-run supabase/schema.sql.', array_to_string(bad, ', ');
+  end if;
+  insert into member_preferences as mp (household_id, user_id) values (hid, auth.uid())
+    on conflict (household_id, user_id) do nothing;
+  update member_preferences mp set
+    dark_mode         = case when p ? 'darkMode'        then cf_bool(p->>'darkMode')              else mp.dark_mode end,
+    forecast_horizon  = case when p ? 'forecastHorizon' then cf_int(p->>'forecastHorizon')        else mp.forecast_horizon end,
+    col_order         = case when p ? 'colOrder'        then cf_text_array(p->'colOrder')         else mp.col_order end,
+    budget_col_order  = case when p ? 'budgetColOrder'  then cf_text_array(p->'budgetColOrder')   else mp.budget_col_order end,
+    dash_hidden_ids   = case when p ? 'dashHidden'      then cf_truthy_keys(p->'dashHidden')      else mp.dash_hidden_ids end,
+    dash_order        = case when p ? 'dashOrder'       then cf_text_array(p->'dashOrder')        else mp.dash_order end,
+    reg_filter        = case when p ? 'regFilter'       then p->>'regFilter'                      else mp.reg_filter end,
+    reg_filter_cats   = case when p ? 'regFilterCats'   then cf_text_array(p->'regFilterCats')    else mp.reg_filter_cats end,
+    reg_filter_scheds = case when p ? 'regFilterScheds' then cf_text_array(p->'regFilterScheds')  else mp.reg_filter_scheds end,
+    reg_filter_status = case when p ? 'regFilterStatus' then cf_text_array(p->'regFilterStatus')  else mp.reg_filter_status end,
+    updated_at = now()
+  where mp.household_id = hid and mp.user_id = auth.uid();
+end $$;
+
+-- The caller's own preferences, in the client's names. Unset fields are
+-- stripped rather than sent as null, so the client keeps its own default for
+-- anything this member has never chosen.
+create or replace function load_my_preferences()
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+stable
+as $$
+declare
+  hid uuid := cf_my_household();
+  out jsonb;
+begin
+  select jsonb_strip_nulls(jsonb_build_object(
+      'darkMode', mp.dark_mode,
+      'forecastHorizon', mp.forecast_horizon,
+      'colOrder', to_jsonb(mp.col_order),
+      'budgetColOrder', to_jsonb(mp.budget_col_order),
+      'dashHidden', case when mp.dash_hidden_ids is null then null else cf_keys_true(mp.dash_hidden_ids) end,
+      'dashOrder', to_jsonb(mp.dash_order),
+      'regFilter', mp.reg_filter,
+      'regFilterCats', to_jsonb(mp.reg_filter_cats),
+      'regFilterScheds', to_jsonb(mp.reg_filter_scheds),
+      'regFilterStatus', to_jsonb(mp.reg_filter_status)))
+    into out
+    from member_preferences mp
+    where mp.household_id = hid and mp.user_id = auth.uid();
+  return coalesce(out, '{}'::jsonb);
+end $$;
+
+-- Seed each member's row from what the household shared until now, so nobody's
+-- theme or column order resets on upgrade. `do nothing` on conflict: once a
+-- member has a row it is theirs, and re-running this file must not overwrite
+-- it with the household's stale copy. A function rather than a bare statement
+-- so tests/member-prefs.sql can run it against a household it set up itself.
+create or replace function cf_seed_member_preferences()
+returns int
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare n int;
+begin
+  insert into member_preferences (household_id, user_id, dark_mode, forecast_horizon,
+      col_order, budget_col_order, dash_hidden_ids, dash_order,
+      reg_filter, reg_filter_cats, reg_filter_scheds, reg_filter_status)
+    select m.household_id, m.user_id, s.dark_mode, s.forecast_horizon,
+      nullif(s.col_order, '{}'), nullif(s.budget_col_order, '{}'),
+      nullif(s.dash_hidden_ids, '{}'), nullif(s.dash_order, '{}'),
+      s.reg_filter, nullif(s.reg_filter_cats, '{}'),
+      nullif(s.reg_filter_scheds, '{}'), nullif(s.reg_filter_status, '{}')
+    from household_members m
+    join household_settings s on s.household_id = m.household_id
+    on conflict (household_id, user_id) do nothing;
+  get diagnostics n = row_count;
+  return n;
+end $$;
+revoke execute on function cf_seed_member_preferences() from public, anon, authenticated;
+revoke execute on function cf_member_pref_keys() from public, anon, authenticated;
+select cf_seed_member_preferences();
