@@ -59,7 +59,7 @@ import { fmt } from "./format.js";
     if (!history.length) return [];
     const current = anomalyMonthTotals(flow, month);
 
-    const cats = new Set();
+    const cats = new Set<string>();
     history.forEach((h) => Object.keys(h).forEach((c) => cats.add(c)));
     Object.keys(current).forEach((c) => cats.add(c));
 

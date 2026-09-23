@@ -22,10 +22,11 @@ on:
       # change happens to land. The Node and Postgres bumps below were pushed
       # and never built for exactly that reason.
       - ".github/workflows/**"
-      # The build and the lint depend on these now (esbuild, ESLint config).
+      # The build, typecheck and lint depend on these (esbuild, tsc, ESLint).
       - "package.json"
       - "package-lock.json"
       - "eslint.config.mjs"
+      - "tsconfig.json"
   pull_request:
     paths:
       - "src/**"
@@ -38,10 +39,11 @@ on:
       - "images/**"
       - "scripts/**"
       - ".github/workflows/**"
-      # The build and the lint depend on these now (esbuild, ESLint config).
+      # The build, typecheck and lint depend on these (esbuild, tsc, ESLint).
       - "package.json"
       - "package-lock.json"
       - "eslint.config.mjs"
+      - "tsconfig.json"
   workflow_dispatch: {}
 
 permissions:
@@ -112,8 +114,12 @@ jobs:
       - name: Build index.html and sw.js
         run: node build.js
 
-      # Correctness-only lint, plus no-undef/no-unused-vars on every module:
-      # each file imports what it uses, so the check runs per file.
+      # The source is TypeScript; esbuild only strips the types, so this is
+      # the step that checks them.
+      - name: Typecheck
+        run: npm run typecheck
+
+      # Correctness-only lint, plus unused names, on every module.
       - name: Lint source
         run: npm run lint
 
@@ -132,14 +138,14 @@ jobs:
           npx playwright@1.63.0 install --with-deps chromium
 
       # Needs neither a browser nor a database: it reads HOUSEHOLD_FIELDS out of
-      # src/lib/household-sync.js and cf_payload_keys() out of
+      # src/lib/household-sync.ts and cf_payload_keys() out of
       # supabase/schema.sql and fails if they disagree. That pair is the one
       # place a household field is declared twice, and a mismatch is the exact
       # shape of failure that used to reach production silently.
       - name: Check the client and the schema agree on the payload fields
         run: node tests/payload-fields.mjs
 
-      # Also browser-free: evaluates src/lib/migrate.js directly and checks that
+      # Also browser-free: evaluates src/lib/migrate.ts directly and checks that
       # a payload from any schema version is upgraded exactly once. Over-
       # migration is silent and multiplies every amount by 100, and the cloud
       # load path runs this on every load, so it gets its own fast check rather
@@ -147,14 +153,14 @@ jobs:
       - name: Check payloads migrate exactly once
         run: node tests/payload-migration.mjs
 
-      # Browser-free too: drives src/lib/year-copy.js directly. Rolling a year
+      # Browser-free too: drives src/lib/year-copy.ts directly. Rolling a year
       # forward reaches four stores at once and has to be safe to re-run, so
       # the scenarios are cheaper and far more thorough as plain data than as
       # clicks. The three buttons that trigger it are covered in the UI suite.
       - name: Check rolling a budget year forward
         run: node tests/year-copy.mjs
 
-      # Browser-free: drives src/lib/dates.js directly. Every balance, total
+      # Browser-free: drives src/lib/dates.ts directly. Every balance, total
       # and forecast in the app is computed over what expandEntries returns,
       # and the schedule rules it encodes (last day, nth weekday, semi-monthly,
       # the banking-day deposit) are exactly the kind of arithmetic that is
@@ -194,13 +200,13 @@ jobs:
       - name: Check motion stops when the reader asks it to
         run: node tests/motion.mjs
 
-      # Browser-free: drives src/lib/networth.js directly. Values arrive from a
+      # Browser-free: drives src/lib/networth.ts directly. Values arrive from a
       # form and from the cloud, so they can be strings, missing or nonsense,
       # and one bad row must not turn a household's net worth into NaN.
       - name: Check the net worth arithmetic
         run: node tests/networth.mjs
 
-      # Browser-free: drives src/lib/cat-detail.js directly. The grouping is
+      # Browser-free: drives src/lib/cat-detail.ts directly. The grouping is
       # the part with judgement in it — two entries can share a description and
       # must not be added together, while one entry's occurrences must be, even
       # when a per-date edit renamed one of them. Neither is visible on screen
@@ -208,21 +214,21 @@ jobs:
       - name: Check what a category's total is made of
         run: node tests/cat-detail.mjs
 
-      # Browser-free: drives src/lib/sinking.js directly. The roll runs
+      # Browser-free: drives src/lib/sinking.ts directly. The roll runs
       # unattended on every load and reaches goals and entries at once, so the
       # hazards are year-copy's: it has to be idempotent, and it has to land on
       # a date that is actually still ahead when cycles have been missed.
       - name: Check repeating goals roll over
         run: node tests/sinking.mjs
 
-      # Browser-free: drives src/lib/anomaly.js directly. Most of the file is
+      # Browser-free: drives src/lib/anomaly.ts directly. Most of the file is
       # about staying quiet — a biweekly bill's two-and-three-payment months
       # and one holiday sitting in the baseline both look enormous against a
       # mean and neither is worth saying.
       - name: Check category anomaly detection
         run: node tests/anomaly.mjs
 
-      # Browser-free: drives src/lib/drift.js directly. The feature is a
+      # Browser-free: drives src/lib/drift.ts directly. The feature is a
       # judgement about when to speak — the silent cases (a variable bill, a
       # few dollars on a mortgage, an entry that has already ended) are what
       # make it usable, and they are cheaper to pin as data than as clicks.

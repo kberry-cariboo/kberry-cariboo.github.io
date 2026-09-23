@@ -107,7 +107,17 @@ import { toast } from "./auth-misc.js";
   // ask for while still importing a year of transactions in a handful of
   // calls.
   export const CSV_AI_BATCH = 60;
-  export function CsvImportModal({ show, onClose, onImport, categories = [], existingEntries = [], scheduledOccurrences = [], apiKey = "", isOffline = false }) {
+  export interface CsvImportModalProps {
+    show: any;
+    onClose: (...args: any[]) => any;
+    onImport: (...args: any[]) => any;
+    categories?: string[];
+    existingEntries?: any[];
+    scheduledOccurrences?: any[];
+    apiKey?: string;
+    isOffline?: boolean;
+  }
+  export function CsvImportModal({ show, onClose, onImport, categories = [], existingEntries = [], scheduledOccurrences = [], apiKey = "", isOffline = false }: CsvImportModalProps) {
     const [step, setStep] = useState("upload");
     const [fileName, setFileName] = useState("");
     const [headers, setHeaders] = useState([]);
@@ -237,8 +247,8 @@ import { toast } from "./auth-misc.js";
         const near = byAmount[String(Math.abs(amountCents))];
         if (!near || !dateStr) return null;
         const t = parseDate(dateStr);
-        if (!t || isNaN(t)) return null;
-        return near.find((o) => Math.abs((o.date - t) / 864e5) <= OCCURRENCE_DAY_WINDOW) || null;
+        if (!t || isNaN(t.getTime())) return null;
+        return near.find((o) => Math.abs((o.date - t.getTime()) / 864e5) <= OCCURRENCE_DAY_WINDOW) || null;
       };
       return dataRows.map((r, i) => {
         const date = dateCol >= 0 ? parseCsvDate(r[dateCol]) : null;

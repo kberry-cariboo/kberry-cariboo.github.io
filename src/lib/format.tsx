@@ -198,7 +198,7 @@ import { toast } from "../components/auth-misc.js";
   // household of one (where "by Ken" on every row is noise), or an id no
   // longer in the member list. Callers render nothing at all in that case
   // rather than "Unknown".
-  export function memberName(userId, members, opts = {}) {
+  export function memberName(userId, members, opts: { always?: boolean; selfId?: string } = {}) {
     if (!userId || !Array.isArray(members) || members.length < 2 && !opts.always) return "";
     const m = members.find((x) => x && x.user_id === userId);
     if (!m) return "";
@@ -244,11 +244,17 @@ import { toast } from "../components/auth-misc.js";
     window.print();
     document.title = prev;
   }
+  export interface ExportBarProps {
+    onAdd?: (...args: any[]) => any;
+    onCSV: (...args: any[]) => any;
+    onPrint: (...args: any[]) => any;
+    style?: Record<string, any>;
+  }
   // The one export/add toolbar, used on every view that has one. All three
   // buttons share a single size (cf-btn--md) and differ only in variant —
   // CSV and PDF used to carry their own inline 11px/4px-12px, which put two
   // type scales side by side in the same row on every screen.
-  export const ExportBar = ({ onAdd, onCSV, onPrint, style = {} }) => <div
+  export const ExportBar = ({ onAdd, onCSV, onPrint, style = {} }: ExportBarProps) => <div
     data-noprint={true}
     className="export-bar"
     style={style}

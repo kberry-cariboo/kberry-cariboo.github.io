@@ -8,6 +8,7 @@ import { Card, CatChip, CategoryDetailSheet, ConfirmDialog, EmptyState, GridPagi
 import { ContextMenu, EntryForm } from "./forms.js";
 import { Icon, OccurrenceEditModal } from "./misc-ui.js";
 import { toast } from "./auth-misc.js";
+import type { Cents, Entry, FlowRow } from "../types.js";
   // Hoisted out of BudgetView: defining these inside the component made React
   // see a new component type each render and remount their DOM.
   export const TodayLine = () => <tr key="today-marker">
@@ -24,13 +25,50 @@ import { toast } from "./auth-misc.js";
     <span className="today-label">TODAY</span>
     <div className="today-line-strip" />
   </div>;
+  export interface BudgetViewProps {
+    apiKey?: string;
+    isOffline?: boolean;
+    flow: FlowRow[];
+    prevYearFlow?: FlowRow[];
+    prevYearConfigured?: boolean;
+    openBal: Cents;
+    entries?: Entry[];
+    setOverride: (...args: any[]) => any;
+    clearOverride: (...args: any[]) => any;
+    categories: string[];
+    categoryColors?: Record<string, any>;
+    setEntries: (...args: any[]) => any;
+    saveEntryEdit?: any;
+    addEntry: (...args: any[]) => any;
+    pushUndo?: (...args: any[]) => any;
+    flowSub?: string;
+    showEnvelopes?: boolean;
+    setFlowSub?: (...args: any[]) => any;
+    monthIdx: number;
+    setMonthIdx: (...args: any[]) => any;
+    alertThreshold?: number;
+    globalSearch?: string;
+    templates?: any[];
+    setTemplates?: (...args: any[]) => any;
+    budgetTargets?: Record<string, any>;
+    setBudgetTargets?: (...args: any[]) => any;
+    completed?: Record<string, any>;
+    toggleComplete?: (...args: any[]) => any;
+    markOccurrencesPaid?: (...args: any[]) => any;
+    activeYear?: number;
+    budgetColOrder?: string[];
+    setBudgetColOrder?: (...args: any[]) => any;
+    onDeleted?: (...args: any[]) => any;
+    onAddNextYear?: any;
+    skippedOccurrences?: any[];
+  }
   export function BudgetView({ apiKey = "", isOffline = false, flow, prevYearFlow = [], prevYearConfigured = false, openBal, entries = [], setOverride, clearOverride, categories, categoryColors = {}, setEntries, saveEntryEdit = null, addEntry, pushUndo = () => {
   }, flowSub = "list", showEnvelopes = false, setFlowSub = () => {
   }, monthIdx, setMonthIdx, alertThreshold = DEFAULT_ALERT_THRESHOLD, globalSearch = "", templates = [], setTemplates, budgetTargets = {}, setBudgetTargets, completed = {}, toggleComplete = () => {
   }, markOccurrencesPaid = () => {
   }, activeYear = (new Date()).getFullYear(), budgetColOrder = DEFAULT_BUDGET_COLS, setBudgetColOrder = () => {
   }, onDeleted = () => {
-  }, onAddNextYear = null, skippedOccurrences = [] }) {
+  }, onAddNextYear = null, skippedOccurrences = [] }: BudgetViewProps) {
     const isMobile = useIsMobile();
     const isCoarsePointer = useIsCoarsePointer();
     const { logActivity, accounts: hhAccounts } = useContext(HouseholdContext);
@@ -98,7 +136,7 @@ import { toast } from "./auth-misc.js";
       setConfirmDelEv(null);
       setShowOccurrenceForm(false);
       setEditingEv(null);
-      toast(`Deleted "${(orig?.desc) || confirmDelEv.desc}"`);
+      toast(`Deleted "${orig?.desc || confirmDelEv.desc}"`);
     };
     const openEntryEdit = (ev) => {
       const orig = entries.find((e) => e.id === ev.entryId);
@@ -221,8 +259,8 @@ import { toast } from "./auth-misc.js";
     const todayDate = new Date();
     const gq = (globalSearch || "").toLowerCase();
     const matchingMonths = useMemo(() => {
-      if (!gq) return new Set();
-      const s2 = new Set();
+      if (!gq) return new Set<number>();
+      const s2 = new Set<number>();
       flow.filter((ev) => eventMatchesSearch(ev, gq)).forEach((ev) => s2.add(ev.month));
       return s2;
     }, [gq, flow]);
@@ -242,7 +280,7 @@ import { toast } from "./auth-misc.js";
     // Device-local: whether you want the month's four totals open is a
     // property of the screen you are reading on, like the analysis on Today.
     const [monthSummaryOpen, setMonthSummaryOpen] = useLS("cf_month_summary", false);
-    const [selIds, setSelIds] = useState(() => new Set());
+    const [selIds, setSelIds] = useState(() => new Set<string>());
     const [pgPage, setPgPage] = useState(0);
     const [pgSize, setPgSize] = useLS("cf_budgetPageSize", "all");
     const [mobileLoaded, setMobileLoaded] = useState(1);
@@ -304,7 +342,7 @@ import { toast } from "./auth-misc.js";
     useEffect(() => {
       clearSel();
     }, [monthIdx, flowSub, activeYear]);
-    const [bvaModalData, setBvaModalData] = useState({ cat: "", target: "", editCat: null });
+    const [bvaModalData, setBvaModalData] = useState<{ cat: string; target: string; editCat: string | null; rollover?: boolean }>({ cat: "", target: "", editCat: null });
     const [bvaCtxMenu, setBvaCtxMenu] = useState(null);
     // Which envelope's breakdown is open. The row says Housing is $4,183.32
     // of $4,183.32 and stops there; the payments behind it were two screens
@@ -529,7 +567,7 @@ import { toast } from "./auth-misc.js";
       </tr>
     );
     const renderPeriodCardHdr = (label) => <div key={label} className="period-hdr-td">{label}</div>;
-    const renderEventCard = (ev, opts = {}) => <LedgerRow
+    const renderEventCard = (ev, opts: { hideDayLabel?: boolean } = {}) => <LedgerRow
       key={ev.id}
       ev={ev}
       alertThreshold={alertThreshold}
@@ -1612,7 +1650,7 @@ import { toast } from "./auth-misc.js";
               left: `${spentPct}%`,
               width: `${pct - spentPct}%`,
               "--bva-fill": color
-            }}
+            } as React.CSSProperties}
               />}
             </div>
 }

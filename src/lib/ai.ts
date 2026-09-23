@@ -93,7 +93,7 @@ import { supabaseClient } from "./supabase-config.js";
   }
 
   export function aiFail(code, message) {
-    const err = new Error(message);
+    const err: Error & { code?: string } = new Error(message);
     err.code = code;
     return err;
   }
@@ -140,7 +140,7 @@ import { supabaseClient } from "./supabase-config.js";
   // the intended dial for cost, and a lower effort is both cheaper and safer
   // than turning thinking off.
   export function aiBuildRequest({ system, messages, schema, maxTokens = 2048, effort = "high" }) {
-    const outputConfig = { effort };
+    const outputConfig: { effort: string; format?: object } = { effort };
     if (schema) outputConfig.format = { type: "json_schema", schema };
     return {
       model: AI_MODEL,
@@ -168,7 +168,7 @@ import { supabaseClient } from "./supabase-config.js";
   export async function aiExtractReceipt({ dataUrl, categories = [], apiKey = "" }) {
     const image = aiImageBlockFromDataUrl(dataUrl);
     if (!image) throw aiFail("bad_image", "That attachment isn't an image this can read.");
-    const properties = {
+    const properties: Record<string, object> = {
       readable: { type: "boolean", description: "false if this is not a legible receipt or invoice." },
       merchant: { type: "string", description: "Business name as printed, or an empty string if unreadable." },
       date: { type: "string", description: "Transaction date as YYYY-MM-DD, or an empty string if unreadable." },

@@ -18,7 +18,7 @@ const read = (p) => readFileSync(join(ROOT, p), 'utf8');
 const noHook = () => { throw new Error('anomaly detection must not need React'); };
 // The source is ES modules; loadSrc bundles these (and what they import) and
 // runs them against the stand-ins passed here.
-const load = (React, localStorage, window) => loadSrc(['src/lib/anomaly.js'], { React, localStorage, window });
+const load = (React, localStorage, window) => loadSrc(['src/lib/anomaly.ts'], { React, localStorage, window });
 const { categoryAnomalies, categoryAnomalyFindings, anomalyMonthTotals } =
   load(new Proxy({}, { get: () => noHook }),
     { getItem: () => null, setItem: () => {}, removeItem: () => {} },

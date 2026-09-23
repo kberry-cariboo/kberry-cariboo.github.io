@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "es2020",
+    "lib": ["es2022", "dom", "dom.iterable"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "jsx": "react",
+    "noEmit": true,
+    "isolatedModules": true,
+    "allowUmdGlobalAccess": true,
+    "skipLibCheck": true,
+    "types": ["react"],
+    "strict": false
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx"]
+}

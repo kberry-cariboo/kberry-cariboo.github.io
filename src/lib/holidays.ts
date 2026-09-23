@@ -99,7 +99,7 @@ import { localDateStr } from "./dates.js";
     // holiday is the week before, not that day.
     const victoria = addDays(may25, -((may25.getDay() + 6) % 7 || 7));
     const easter = easterSunday(year);
-    const fixed = [
+    const fixed: [Date, string, boolean][] = [
       [new Date(year, 0, 1), "New Year's Day", false],
       [addDays(easter, -2), "Good Friday", false],
       [addDays(easter, 1), "Easter Monday", true],
@@ -120,7 +120,7 @@ import { localDateStr } from "./dates.js";
     const taken = new Set();
     // In date order, so an earlier holiday claims its observed day before a
     // later one looks for its own.
-    fixed.sort((a, b) => a[0] - b[0]).forEach(([date, name, optional]) => {
+    fixed.sort((a, b) => a[0].getTime() - b[0].getTime()).forEach(([date, name, optional]) => {
       const obs = observedFor(date, taken);
       const obsStr = localDateStr(obs);
       taken.add(obsStr);
@@ -206,11 +206,11 @@ import { localDateStr } from "./dates.js";
   // back from the database (a holiday_years row with no holidays rows), and it
   // has to stay distinct from "nobody has touched 2027", which falls back to
   // the rules.
-  export function isYearStored(year, store) {
+  export function isYearStored(year, store?) {
     const y = yearIn(store, year);
     return !!y && typeof y === "object";
   }
-  export function holidaysForYear(year, store) {
+  export function holidaysForYear(year, store?) {
     const y = yearIn(store, year);
     return y && typeof y === "object" ? y : computedHolidaysForYear(year);
   }
@@ -222,7 +222,7 @@ import { localDateStr } from "./dates.js";
   // What Settings shows: one row per date, sorted, carrying where it came from.
   // `source` is "manual" for a hand-added or hand-edited date, "published" for
   // one that came from a fetch, and "computed" for the rules-based fallback.
-  export function holidayRowsForYear(year, store) {
+  export function holidayRowsForYear(year, store?) {
     const days = holidaysForYear(year, store);
     const stored = isYearStored(year, store);
     return Object.keys(days).filter(isHolidayDateKey).sort().map((date) => {
@@ -293,7 +293,7 @@ import { localDateStr } from "./dates.js";
   // the computed rules first, because the alternative — starting from an empty
   // list — would silently drop every real holiday the moment someone added one
   // date of their own.
-  export function holidayYearForEditing(year, store) {
+  export function holidayYearForEditing(year, store?) {
     const days = holidaysForYear(year, store);
     const out = {};
     Object.keys(days).filter(isHolidayDateKey).forEach((date) => {

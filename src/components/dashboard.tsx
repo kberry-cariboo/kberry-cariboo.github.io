@@ -12,17 +12,29 @@ import { Icon, RECONCILE_DESC, ReconcileModal, lastReconciledDate, reconcileCate
 import { OnboardingWizard } from "./forecast-plan.js";
 import { DASH_AXIS_TICK_X, DASH_AXIS_TICK_Y, projectPayoffBalances } from "./plan-dashboard-shared.js";
 import { toast } from "./auth-misc.js";
+import type { Cents, Entry, FlowRow, OverridesByYear, YearConfig } from "../types.js";
+  export interface GlanceTileProps {
+    title: any;
+    children: React.ReactNode;
+  }
   // Hoisted out of DashboardView's render body — an inline component
   // definition creates a new type each render and forces React to remount.
-  export const GlanceTile = ({ title, children }) => <div className="glance-tile">
+  export const GlanceTile = ({ title, children }: GlanceTileProps) => <div className="glance-tile">
     <div className="glance-tile-title">{title}</div>
     {children}
   </div>;
+  export interface MonthlyBriefCardProps {
+    flow: FlowRow[];
+    activeYear: number;
+    categories?: string[];
+    apiKey?: string;
+    isOffline?: boolean;
+  }
   // "What changed this month" — the smallest useful AI surface in the app.
   // Everything it reports is computed here from the same flow the rest of the
   // dashboard draws; the model is only asked to say which of the differences
   // matter and why, never to do the arithmetic.
-  export function MonthlyBriefCard({ flow, activeYear, categories = [], apiKey = "", isOffline = false }) {
+  export function MonthlyBriefCard({ flow, activeYear, categories = [], apiKey = "", isOffline = false }: MonthlyBriefCardProps) {
     const [brief, setBrief] = useState(null);
     const [busy, setBusy] = useState(false);
     const [err, setErr] = useState("");
@@ -113,7 +125,7 @@ import { toast } from "./auth-misc.js";
     // job. Without it this card sat flush against the Monthly Summary heading.
     return <Card className="mb-16">
       <div className="cf-row-between mb-12">
-        <SectionTitle style={{ marginBottom: 0 }}>{"What changed in "}{MONTHS[thisMonth]}</SectionTitle>
+        <SectionTitle className="mb-0">{"What changed in "}{MONTHS[thisMonth]}</SectionTitle>
         <button
           onClick={run}
           disabled={busy || isOffline || !aiCanRun(apiKey)}
@@ -146,6 +158,37 @@ import { toast } from "./auth-misc.js";
       </div>}
     </Card>;
   }
+  export interface DashboardViewProps {
+    apiKey?: string;
+    isOffline?: boolean;
+    flow: FlowRow[];
+    openBal: Cents;
+    yearFlows: any;
+    viewFlows?: any;
+    yearConfigs: YearConfig[];
+    alertThreshold: any;
+    activeYear: number;
+    budgetTargets?: Record<string, any>;
+    categories?: string[];
+    categoryColors?: Record<string, any>;
+    users?: any[];
+    sessionUser?: any;
+    entries?: Entry[];
+    toggleComplete?: (...args: any[]) => any;
+    setYearConfigs?: (...args: any[]) => any;
+    addEntry?: (...args: any[]) => any;
+    setTab?: (...args: any[]) => any;
+    overridesByYr?: OverridesByYear;
+    applyDriftFix?: (...args: any[]) => any;
+    setEntries?: (...args: any[]) => any;
+    completed?: Record<string, any>;
+    dashHidden?: Record<string, any>;
+    setDashHidden?: (...args: any[]) => any;
+    dashOrder?: any[];
+    setDashOrder?: (...args: any[]) => any;
+    debtData?: Record<string, any>;
+    assets?: any[];
+  }
   export function DashboardView({ apiKey = "", isOffline = false, flow, openBal, yearFlows, viewFlows = null, yearConfigs, alertThreshold, activeYear, budgetTargets = {}, categories = [], categoryColors = {}, users = [], sessionUser = null, entries = [], toggleComplete = () => {
   }, setYearConfigs = () => {
   }, addEntry = () => {
@@ -154,7 +197,7 @@ import { toast } from "./auth-misc.js";
   }, setEntries = () => {
   }, completed = {}, dashHidden = {}, setDashHidden = () => {
   }, dashOrder = [], setDashOrder = () => {
-  }, debtData = {}, assets = [] }) {
+  }, debtData = {}, assets = [] }: DashboardViewProps) {
     const isMobile = useIsMobile();
     const [showCustomize, setShowCustomize] = useState(false);
     // Every other dismissible dialog in the app closes on Escape — the
@@ -289,7 +332,7 @@ import { toast } from "./auth-misc.js";
     };
     const summaries = useMemo(() => getMonthSummaries(effectiveFlow, openBal), [effectiveFlow, openBal]);
     const catTotals = useMemo(() => {
-      const map = {};
+      const map: Record<string, number> = {};
       effectiveFlow.filter((e) => e.type === "expense").forEach((e) => {
         map[e.category] = (map[e.category] || 0) + e.amount;
       });
@@ -298,7 +341,7 @@ import { toast } from "./auth-misc.js";
     // Income groups by entry description, not category — most income shares one
     // "Income" category, which collapsed this widget into a single useless bar.
     const incTotals = useMemo(() => {
-      const map = {};
+      const map: Record<string, number> = {};
       effectiveFlow.filter((e) => e.type === "income").forEach((e) => {
         const key = e.desc || e.category || "Income";
         map[key] = (map[key] || 0) + e.amount;
@@ -520,7 +563,7 @@ import { toast } from "./auth-misc.js";
           if (d > end) return;
           if (low === null || ev.balance < low.balance) low = { balance: ev.balance, month: ev.month, day: ev.day, date: d };
         });
-        const daysToLow = low ? Math.max(0, Math.round((low.date - new Date(activeYear, todayM, todayD)) / 864e5)) : null;
+        const daysToLow = low ? Math.max(0, Math.round((low.date - (new Date(activeYear, todayM, todayD)).getTime()) / 864e5)) : null;
         const due = flow.filter((ev) => ev.type === "expense" && ev.month === todayM && ev.day >= todayD && !completed[ev.id]).reduce((s, ev) => s + ev.amount, 0);
         const dueCount = flow.filter((ev) => ev.type === "expense" && ev.month === todayM && ev.day >= todayD && !completed[ev.id]).length;
         return { balanceNow, low, daysToLow, due: roundMoney(due), dueCount, month: MONTHS[todayM] };
@@ -547,7 +590,7 @@ import { toast } from "./auth-misc.js";
         // rather than a scatter of the days something happened.
         const closeByOffset = new Map();
         flow.forEach((ev) => {
-          const off = Math.round((new Date(activeYear, ev.month, ev.day) - start) / 864e5);
+          const off = Math.round(((new Date(activeYear, ev.month, ev.day)).getTime() - start.getTime()) / 864e5);
           if (off >= 0 && off <= RUNWAY_DAYS) closeByOffset.set(off, ev.balance);
         });
         let bal = getCurrentBalance(flow, openBal, activeYear);
@@ -1581,7 +1624,7 @@ import { toast } from "./auth-misc.js";
         const autoMonthly = (key) => {
           const evs = autoAllEvs[key] || [];
           if (!evs.length) return 0;
-          const byEntry = {};
+          const byEntry: Record<string, FlowRow[]> = {};
           evs.forEach((ev) => {
             const eid = ev.entryId != null ? ev.entryId : ev.id;
             (byEntry[eid] || (byEntry[eid] = [])).push(ev);

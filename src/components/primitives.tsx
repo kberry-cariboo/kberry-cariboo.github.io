@@ -10,7 +10,14 @@ import { Icon } from "./misc-ui.js";
     const idx = sorted.indexOf(category);
     return CAT_PALETTE[(idx < 0 ? 0 : idx) % CAT_PALETTE.length];
   }
-  export const CatChip = ({ category, categories, categoryColors, style = {}, className = "" }) => {
+  export interface CatChipProps {
+    category: any;
+    categories?: string[];
+    categoryColors?: any;
+    style?: Record<string, any>;
+    className?: string;
+  }
+  export const CatChip = ({ category, categories, categoryColors, style = {}, className = "" }: CatChipProps) => {
     const ctxCats = useContext(CategoriesContext);
     const cats = categories || ctxCats.categories;
     const catColors = categoryColors || ctxCats.categoryColors;
@@ -25,6 +32,22 @@ import { Icon } from "./misc-ui.js";
       {category}
     </span>;
   };
+  export interface LedgerRowProps {
+    ev: any;
+    alertThreshold?: number;
+    paid?: boolean;
+    selected?: boolean;
+    past?: boolean;
+    dateLabel?: any;
+    onTogglePaid: (...args: any[]) => any;
+    onToggleSelect?: any;
+    onOpen?: any;
+    onMenu?: any;
+    onSwipeLeft?: any;
+    showBalance?: boolean;
+    categories: string[];
+    categoryColors: any;
+  }
   // ── One ledger row ──────────────────────────────────────────────────────
   // A dated occurrence looks and behaves the same wherever you meet it: the
   // month ledger, a calendar day, the forecast, and this week on Today. Those
@@ -40,7 +63,7 @@ import { Icon } from "./misc-ui.js";
     ev, alertThreshold = DEFAULT_ALERT_THRESHOLD, paid = false, selected = false, past = false,
     dateLabel = null, onTogglePaid, onToggleSelect = null, onOpen = null, onMenu = null, onSwipeLeft = null,
     showBalance = true, categories, categoryColors
-  }) => {
+  }: LedgerRowProps) => {
     const signed = signedAmount(ev);
     const dim = paid ? "var(--textLt)" : null;
     // The same reason the desktop ledger row names itself by date: a recurring
@@ -218,6 +241,14 @@ import { Icon } from "./misc-ui.js";
       {row}
     </div>;
   };
+  export interface SparklineProps {
+    data: any;
+    color?: string;
+    height?: number;
+    width?: number;
+    responsive?: boolean;
+    area?: boolean;
+  }
   // Sparklines are context, not verdicts: neutral ink by default. First-vs-last
   // trend coloring was misleading (a red line beside a green income KPI, green
   // for rising expenses), so it's gone — pass `color` explicitly if needed.
@@ -226,7 +257,7 @@ import { Icon } from "./misc-ui.js";
   // thumbnail beside a figure. The end dot is dropped there — a circle in a
   // box scaled on one axis is an ellipse — and the stroke is pinned so the
   // line keeps its weight however far it stretches.
-  export const Sparkline = ({ data, color = "var(--textMid)", height = 32, width = 80, responsive = false, area = false }) => {
+  export const Sparkline = ({ data, color = "var(--textMid)", height = 32, width = 80, responsive = false, area = false }: SparklineProps) => {
     if (!data || data.length < 2) return null;
     const min = Math.min(...data);
     const max = Math.max(...data);
@@ -309,7 +340,15 @@ import { Icon } from "./misc-ui.js";
       };
     }, [active]);
   }
-  export const GridPagination = ({ pageInfo, setPage, pageSize, setPageSize, label = "rows", isMobile = false }) => {
+  export interface GridPaginationProps {
+    pageInfo: any;
+    setPage?: (...args: any[]) => any;
+    pageSize: any;
+    setPageSize: (...args: any[]) => any;
+    label?: string;
+    isMobile?: boolean;
+  }
+  export const GridPagination = ({ pageInfo, setPage, pageSize, setPageSize, label = "rows", isMobile = false }: GridPaginationProps) => {
     const { total, totalPages, safePage, start, end } = pageInfo;
     if (total === 0) return null;
     return <div
@@ -353,7 +392,11 @@ import { Icon } from "./misc-ui.js";
       </div>
     </div>;
   };
-  export function TemplatePicker({ templates = [], onSelect }) {
+  export interface TemplatePickerProps {
+    templates?: any[];
+    onSelect: (...args: any[]) => any;
+  }
+  export function TemplatePicker({ templates = [], onSelect }: TemplatePickerProps) {
     const [open, setOpen] = useState(false);
     if (!templates.length) return null;
     return <div className="relative inline-block">
@@ -384,6 +427,9 @@ import { Icon } from "./misc-ui.js";
       </div>}
     </div>;
   }
+  export interface SheetHandleProps {
+    onDismiss: (...args: any[]) => any;
+  }
   // Drag handle for the mobile bottom sheets, and the swipe-down-to-dismiss
   // gesture that makes it honest. The touch context menu has drawn a handle
   // for a while, but it was an inert <div> — an affordance promising a gesture
@@ -396,7 +442,7 @@ import { Icon } from "./misc-ui.js";
   // setPointerCapture keeps the drag alive if the finger leaves the handle.
   // The card follows the finger so the gesture reads as direct manipulation,
   // and snaps back below the dismiss threshold.
-  export const SheetHandle = ({ onDismiss }) => {
+  export const SheetHandle = ({ onDismiss }: SheetHandleProps) => {
     const ref = useRef(null);
     const drag = useRef(null);
     // Every sheet trapped focus correctly but none of them took it, so a sheet
@@ -423,7 +469,7 @@ import { Icon } from "./misc-ui.js";
       card.style.transition = "none";
       card.style.transform = dy > 0 ? `translateY(${dy}px)` : "";
     };
-    const release = (card, dismiss) => {
+    const release = (card, dismiss?) => {
       if (!card) return;
       card.style.transition = "transform 0.18s ease-out";
       card.style.transform = "";
@@ -467,18 +513,30 @@ import { Icon } from "./misc-ui.js";
       <div className="sheet-handle-bar" />
     </div>;
   };
-  export const Card = ({ children, style = {}, className = "", id }) => <div
+  export interface CardProps {
+    children: React.ReactNode;
+    style?: Record<string, any>;
+    className?: string;
+    id?: any;
+  }
+  export const Card = ({ children, style = {}, className = "", id }: CardProps) => <div
     id={id}
     className={`cf-card ${className}`.trim()}
     style={style}
   >
     {children}
   </div>;
+  export interface SectionTitleProps {
+    children: React.ReactNode;
+    action?: any;
+    className?: any;
+    help?: any;
+  }
   // className replaces the default bottom margin (e.g. "mb-0" for flush headers).
   // `help` puts a HelpTip beside the heading — the section's explanatory
   // paragraph without the paragraph. (Defined below this line but hoisted, as
   // everything in this bundle's shared scope is.)
-  export const SectionTitle = ({ children, action, className, help }) => <div
+  export const SectionTitle = ({ children, action, className, help }: SectionTitleProps) => <div
     className={"cf-row-between " + (className || "mb-12")}
   >
     <div className="section-title-wrap">
@@ -487,18 +545,36 @@ import { Icon } from "./misc-ui.js";
     </div>
     {action}
   </div>;
-  export const EmptyState = ({ icon, message, actionLabel, onAction }) => <>
+  export interface EmptyStateProps {
+    icon: any;
+    message: any;
+    actionLabel: any;
+    onAction: (...args: any[]) => any;
+  }
+  export const EmptyState = ({ icon, message, actionLabel, onAction }: EmptyStateProps) => <>
     <div className="empty-state-icon">{icon}</div>
     <div className="mb-14">{message}</div>
     {actionLabel && <button onClick={onAction} className="cf-btn cf-btn--primary cf-btn--action">
       {actionLabel}
     </button>}
   </>;
-  export const KpiCard = ({ label, value, color, sub }) => <div className="kpi-card">
+  export interface KpiCardProps {
+    label: any;
+    value: any;
+    color?: any;
+    sub?: any;
+  }
+  export const KpiCard = ({ label, value, color, sub }: KpiCardProps) => <div className="kpi-card">
     <div className="kpi-label">{label}</div>
     <div className="kpi-value" style={color ? { color } : void 0}>{value}</div>
     {sub && <div className="kpi-sub">{sub}</div>}
   </div>;
+  export interface MobileYearBadgeProps {
+    year: any;
+    years?: any[];
+    inHeader?: boolean;
+    onSelect?: (...args: any[]) => any;
+  }
   // Mobile-only "which year am I on" indicator — desktop already shows the
   // year pills in the header, which are hidden on mobile to save space.
   // Tapping it opens the same year switcher the header pills provide.
@@ -507,7 +583,7 @@ import { Icon } from "./misc-ui.js";
   // hidden, so the header had ~195px of empty navy while this cost a whole
   // row of content underneath it.
   export const MobileYearBadge = ({ year, years = [], inHeader = false, onSelect = () => {
-  } }) => {
+  } }: MobileYearBadgeProps) => {
     const [ctx, setCtx] = useState(null);
     const cls = "mobile-year-badge" + (inHeader ? " mobile-year-badge--header" : "");
     if (years.length < 2) {
@@ -535,7 +611,17 @@ import { Icon } from "./misc-ui.js";
       />}
     </>;
   };
-  export const MonthPicker = ({ value, onChange, noMargin = false, matchingMonths = null, onAddNextYear = null, nextYear = null, monthCloses = null, alertThreshold = DEFAULT_ALERT_THRESHOLD }) => {
+  export interface MonthPickerProps {
+    value: any;
+    onChange: (...args: any[]) => any;
+    noMargin?: boolean;
+    matchingMonths?: any;
+    onAddNextYear?: any;
+    nextYear?: any;
+    monthCloses?: any;
+    alertThreshold?: number;
+  }
+  export const MonthPicker = ({ value, onChange, noMargin = false, matchingMonths = null, onAddNextYear = null, nextYear = null, monthCloses = null, alertThreshold = DEFAULT_ALERT_THRESHOLD }: MonthPickerProps) => {
     const stripRef = useRef(null);
     const roving = useRovingTabs(".month-pill");
     // Edge-scroll fade: on mobile the strip scrolls horizontally with no
@@ -639,13 +725,19 @@ import { Icon } from "./misc-ui.js";
       </div>
     </div>;
   };
+  export interface ChartToggleProps {
+    options: any;
+    value: any;
+    onChange: (...args: any[]) => any;
+    label: any;
+  }
   // `label` names the group, not the buttons. A dashboard puts five of these
   // on one page and every one of them offers "Line" and "Bar", so on their own
   // the buttons are five identical controls with nothing to tell them apart —
   // a screen reader hears "Line, button" over and over with no idea which
   // chart it would change. Naming the group is what a role="group" is for: it
   // is announced on entry, and it leaves the button names alone.
-  export const ChartToggle = ({ options, value, onChange, label }) => <div
+  export const ChartToggle = ({ options, value, onChange, label }: ChartToggleProps) => <div
     role="group"
     aria-label={label ? label + " view" : void 0}
     className="chart-toggle-group"
@@ -661,12 +753,18 @@ import { Icon } from "./misc-ui.js";
       {o.icon || o.label}
     </button>)}
   </div>;
+  export interface PillToggleProps {
+    options: any;
+    value: any;
+    onChange: (...args: any[]) => any;
+    size?: any;
+  }
   // Base look lives in .cf-pill; explicitly-passed size props remain inline
   // overrides for the compact dashboard variants.
   // size="sm" applies the .cf-pill--sm modifier — used where the toggle docks
   // into a tight card header (YoY metric, shared-view) instead of one-off
   // fontSize/padding/borderRadius overrides per call site.
-  export const PillToggle = ({ options, value, onChange, size }) => {
+  export const PillToggle = ({ options, value, onChange, size }: PillToggleProps) => {
     return <div role="group" className="cf-row cf-gap-6 cf-wrap">
       {options.map((o) => <button
         key={o.id}
@@ -678,7 +776,12 @@ import { Icon } from "./misc-ui.js";
       </button>)}
     </div>;
   };
-  export const ChartTip = ({ active, payload, label }) => {
+  export interface ChartTipProps {
+    active?: any;
+    payload?: any;
+    label?: any;
+  }
+  export const ChartTip = ({ active, payload, label }: ChartTipProps) => {
     if (!active || !payload?.length) return null;
     const total = payload.reduce((s, p) => s + Math.abs(p.value || 0), 0);
     return <div className="chart-tip">
@@ -703,8 +806,19 @@ import { Icon } from "./misc-ui.js";
     })}
     </div>;
   };
-  export const FieldError = ({ msg }) => msg ? <div className="field-error-text">{msg}</div> : null;
-  export function ConfirmDialog({ title, message, onConfirm, onCancel, confirmLabel = "Delete", confirmVariant = "danger" }) {
+  export interface FieldErrorProps {
+    msg: any;
+  }
+  export const FieldError = ({ msg }: FieldErrorProps) => msg ? <div className="field-error-text">{msg}</div> : null;
+  export interface ConfirmDialogProps {
+    title: any;
+    message: any;
+    onConfirm: (...args: any[]) => any;
+    onCancel: (...args: any[]) => any;
+    confirmLabel?: string;
+    confirmVariant?: string;
+  }
+  export function ConfirmDialog({ title, message, onConfirm, onCancel, confirmLabel = "Delete", confirmVariant = "danger" }: ConfirmDialogProps) {
     useEffect(() => {
       const h = (e) => {
         if (e.key === "Escape") onCancel();
@@ -766,7 +880,14 @@ import { Icon } from "./misc-ui.js";
   // hover, focus or tap — and a row indicator with no way to ask what it means
   // is just a mystery character.
   export let HELPTIP_SEQ = 0;
-  export function HelpTip({ text, label = "", align = "start", icon = "?", variant = "" }) {
+  export interface HelpTipProps {
+    text: any;
+    label?: string;
+    align?: string;
+    icon?: string;
+    variant?: string;
+  }
+  export function HelpTip({ text, label = "", align = "start", icon = "?", variant = "" }: HelpTipProps) {
     const [open, setOpen] = useState(false);
     const [tipId] = useState(() => `helptip-${++HELPTIP_SEQ}`);
     const wrapRef = useRef(null);
@@ -874,18 +995,31 @@ import { Icon } from "./misc-ui.js";
       </span>
     </span>;
   }
+  export interface FieldLabelProps {
+    htmlFor?: any;
+    children: React.ReactNode;
+    help?: any;
+    helpLabel?: string;
+    helpAlign?: any;
+    className?: string;
+  }
   // A field label with its help beside it. The tip is a *sibling* of the
   // <label>, never a child: a control inside a label is folded into the field's
   // accessible name, so a help button in there makes the input announce itself
   // as "Actual Amount Paid Help: Actual Amount Paid" — noise a screen-reader
   // user can't skip. The row keeps the two on one line anyway.
-  export const FieldLabel = ({ htmlFor, children, help, helpLabel = "", helpAlign, className = "field-label" }) => <div
+  export const FieldLabel = ({ htmlFor, children, help, helpLabel = "", helpAlign, className = "field-label" }: FieldLabelProps) => <div
     className="field-label-row"
   >
     <label className={className} htmlFor={htmlFor}>{children}</label>
     {help && <HelpTip label={helpLabel} text={help} align={helpAlign} />}
   </div>;
-  export const Toggle = ({ value, onChange, label }) => <div className="toggle-row">
+  export interface ToggleProps {
+    value: any;
+    onChange: (...args: any[]) => any;
+    label: any;
+  }
+  export const Toggle = ({ value, onChange, label }: ToggleProps) => <div className="toggle-row">
     <button
       type="button"
       role="switch"
@@ -899,6 +1033,14 @@ import { Icon } from "./misc-ui.js";
     {label && <span onClick={() => onChange(!value)} className="toggle-label">{label}</span>}
   </div>;
 
+  export interface CategoryDetailSheetProps {
+    detail: any;
+    openRows: any;
+    onToggleRow: (...args: any[]) => any;
+    onClose: (...args: any[]) => any;
+    scope: any;
+    year: any;
+  }
   // What a category's total is made of, as a sheet.
   //
   // Today's "Top expense categories" widget grew this first: a bar said
@@ -914,7 +1056,7 @@ import { Icon } from "./misc-ui.js";
   // appears in two sentences and neither reads well assembled from parts.
   // The caller also owns which rows are expanded, so opening a category on
   // one page does not leave a drawer open on the other.
-  export const CategoryDetailSheet = ({ detail, openRows, onToggleRow, onClose, scope, year }) => {
+  export const CategoryDetailSheet = ({ detail, openRows, onToggleRow, onClose, scope, year }: CategoryDetailSheetProps) => {
     if (!detail) return null;
     return <div
       className="modal-overlay"

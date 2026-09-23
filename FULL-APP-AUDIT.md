@@ -399,6 +399,35 @@ These ten fields are now each member's own row in `member_preferences`, not hous
   - This turned up a bigger bug: occurrences never carried `userId`, so the dashboard's "My entries" filter never filtered anything. It does now (unit test and browser test), and "All users" stays the default, which is what everyone has been seeing.
 - **S3, index keys:** both template lists are now keyed by their unique description. The other 20-odd index keys are on static lists (Help blocks, chart slices, menu items, CSV headers) that never reorder and hold no per-row state, so they're left as they are.
 
+### Batch 5: §2, architecture
+
+Seven commits, each validated before it was pushed: fast suites, the SQL suites against Postgres 16, and the full browser group (regression 216/216, layout sweep, focus rings, settings sweep, cloud sync).
+
+- **§2.7 Tooling:** `package.json` with pinned devDependencies (esbuild, TypeScript, ESLint, Playwright) and a lockfile. `scripts/test.mjs` runs the fast, sql and browser groups with one exit code, and `npm run check` is the pre-push minimum.
+- **§2.6 Security:**
+  - `build.js` writes a Content-Security-Policy. Inline scripts are pinned by SHA-256, with no `unsafe-inline` for scripts, and connections are limited to this origin, the Supabase project, Anthropic and the holiday feed. A regression test fails on any violation.
+  - `ai-proxy` has a per-member daily allowance (`ai_usage`, `ai_take_quota`) and an optional origin allow-list.
+  - The two packaged vendor bundles are pinned in `src/vendor/SHA256SUMS` and checked in CI.
+- **§2.5 Schema and client:**
+  - Leave household, remove member and delete my account: RPCs whose rules live in the database, plus Settings UI.
+  - Debt figures are numbers everywhere.
+- **§2.9 Consistency:** `safeStorage` replaces thirteen copies of the storage try/catch.
+- **§2.8 Performance:** a recompute is 2.5× cheaper. 300 entries over three years went from 193 ms to 77 ms, because object copying was the cost, not the schedule logic. There is also now one carry-forward loop instead of two. Memoising per year, as proposed above, would not have helped: an entry edit changes the input to every year.
+- **§2.2 `App.js`:** 17 hooks in `src/app/`, moved verbatim, took it from 1,982 lines to 802.
+- **§2.1 Build migration**, in three stages:
+  1. **ES modules.** Every file imports what it uses, and esbuild bundles from `src/main.ts`. The concatenation list and the stitched-bundle lint are gone.
+  2. **JSX, and no transpile residue.** A codemod made 864 JSX conversions and restored `?.` (55), `??` (11) and object spread (172), and dropped 68 `@__PURE__` comments. It was checked by bundling old and new source at es2017, where esbuild lowers these forms itself: the two bundles were identical apart from the now-unused helpers. Native spread also retires the `__proto__` special case.
+  3. **TypeScript.** Components are `.tsx`, the rest `.ts`, and `tsc` runs in CI with 0 errors. `src/types.ts` holds the data model: `Cents`, `Entry`, `FlowEvent`, `FlowRow`, `Override`, `Goal`, `HouseholdData`, `MemberPrefs`. `HOUSEHOLD_FIELDS` is checked against `HouseholdData` at compile time. All 57 destructured-props components have a `Props` interface, and `lib/dates.ts`, the field tables and the sync payload are fully annotated. The build output is unchanged; esbuild only strips types. I went with esbuild rather than Vite: it was already the bundler, and one inline `index.html` needs nothing more.
+- **Defects the typechecker found:**
+  - The header search icon never received its `className`, so it drew in full text colour instead of the dimmed `--on-dark-45` its CSS asks for. Fixed.
+  - The "What changed in …" card gave `SectionTitle` a `style` it ignores, so the intended flush heading kept a 12 px margin. Fixed.
+  - Two in-app self-tests passed props that no longer exist (`UndoToast entry=`, `BudgetView view=`). Fixed.
+  - Open: the self-test "renders: …" checks cannot fail. The vendored `ReactDOM` global is `react-dom/client` (only `createRoot`, `hydrateRoot` and `version`), so `flushSync` is always undefined and the render runs asynchronously, after the check has passed. The fix is to expose `flushSync` from the vendor bundle, or make those checks async.
+- **Not done yet:**
+  - `strict` mode: 1,824 errors today, 844 of them from `strictNullChecks` alone. That's the next typing increment, best done module by module starting with `lib/`.
+  - §2.3 row-level sync and Realtime is next.
+  - Lazy-loading (§2.8), splitting `regression.mjs` (§2.7.3), the `scope` column (§2.4) and the naming and design-system items in §2.9 are still open.
+
 ## 6. Suggested order
 
 1. **Today (hotfix):** §1.1 tokens, §1.3 service worker, §1.2 invite role, §1.4 proxy membership. Bump `CF_VERSION`. Add the self-reference lint and a computed-contrast probe.

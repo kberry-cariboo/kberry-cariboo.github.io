@@ -126,7 +126,7 @@ import { daysInMonth, localDateStr, parseDate } from "./dates.js";
 
   // Apply a plan to plain arrays. The caller hands in setters so this works
   // against React state and against a test's objects alike.
-  export function applyGoalRollovers(plan, { setGoals, setEntries, newId = genId } = {}) {
+  export function applyGoalRollovers(plan, { setGoals, setEntries, newId = genId }: { setGoals?: (fn: (prev: any[]) => any[]) => void; setEntries?: (fn: (prev: any[]) => any[]) => void; newId?: () => string } = {}) {
     if (!plan || !plan.changed) return;
     const payoutIds = new Map();
     if (setEntries) {

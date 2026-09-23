@@ -7,7 +7,17 @@ import { aiCanRun, aiErrorMessage, callClaude } from "../lib/ai.js";
 import { FieldError, FieldLabel, SheetHandle, TemplatePicker, Toggle } from "./primitives.js";
 import { Icon } from "./misc-ui.js";
 import { toast } from "./auth-misc.js";
-  export function EntryForm({ initial, onSave, onCancel, categories, templates = [], onSaveTemplate = null, apiKey = "", isOffline = false }) {
+  export interface EntryFormProps {
+    initial: any;
+    onSave: (...args: any[]) => any;
+    onCancel: (...args: any[]) => any;
+    categories: string[];
+    templates?: any[];
+    onSaveTemplate?: any;
+    apiKey?: string;
+    isOffline?: boolean;
+  }
+  export function EntryForm({ initial, onSave, onCancel, categories, templates = [], onSaveTemplate = null, apiKey = "", isOffline = false }: EntryFormProps) {
     // Off the household context rather than a prop: the form is opened from
     // six places and threading the account list through all of them is how one
     // of them ends up without it.
@@ -65,7 +75,7 @@ import { toast } from "./auth-misc.js";
       accountId: initial.accountId || "",
       toAccountId: initial.toAccountId || ""
     } : blank);
-    const [errors, setErrors] = useState({});
+    const [errors, setErrors] = useState<Record<string, string>>({});
     const [showMonthly, setShowMonthly] = useState(!!initial?.monthlyAmounts);
     const set = (patch) => setF((p) => ({ ...p, ...patch }));
     const [nlText, setNlText] = useState("");
@@ -84,7 +94,7 @@ import { toast } from "./auth-misc.js";
       setNlNote("");
       try {
         const sortedCats = [...categories].sort((a, b) => a.localeCompare(b));
-        const properties = {
+        const properties: Record<string, object> = {
           desc: { type: "string", description: "Short label for the entry, usually the payee or purpose." },
           type: { type: "string", enum: ["income", "expense"] },
           amount: { type: "number", description: "Amount in dollars, always positive. 0 when the text doesn't say." },
@@ -109,7 +119,7 @@ import { toast } from "./auth-misc.js";
           effort: "low",
           apiKey
         });
-        const patch = {};
+        const patch: Record<string, any> = {};
         if (data.desc && data.desc.trim()) patch.desc = data.desc.trim();
         if (data.type === "income" || data.type === "expense") patch.type = data.type;
         if (Number.isFinite(data.amount) && data.amount > 0) patch.amount = String(data.amount);
@@ -175,7 +185,7 @@ import { toast } from "./auth-misc.js";
       return f.recurEnd ? sentence : sentence + " (ongoing)";
     };
     const validate = () => {
-      const errs = {};
+      const errs: Record<string, string> = {};
       if (!f.desc.trim()) errs.desc = "Description is required.";
       if (!f.category) errs.category = "Please select a category.";
       const amt = parseFloat(f.amount);
@@ -638,10 +648,20 @@ import { toast } from "./auth-misc.js";
       </div>
     </>;
   }
+  export interface AddEntryModalProps {
+    show: any;
+    onClose: (...args: any[]) => any;
+    onSave: (...args: any[]) => any;
+    categories: string[];
+    templates?: any[];
+    setTemplates?: any;
+    apiKey?: string;
+    isOffline?: boolean;
+  }
   // Shared "Add Entry" modal \u2014 wraps EntryForm in the same modal chrome used
   // wherever an explicit Add button (top-right, next to CSV/PDF) needs to
   // open a blank entry form.
-  export function AddEntryModal({ show, onClose, onSave, categories, templates = [], setTemplates = null, apiKey = "", isOffline = false }) {
+  export function AddEntryModal({ show, onClose, onSave, categories, templates = [], setTemplates = null, apiKey = "", isOffline = false }: AddEntryModalProps) {
     // Escape closes, the backdrop doesn't — the same bargain every other
     // overlay here strikes. It matters more now: this modal is mounted at app
     // level and opens over whatever you were reading, so the way out has to be
@@ -675,7 +695,13 @@ import { toast } from "./auth-misc.js";
       </div>
     </div>;
   }
-  export function ContextMenu({ x, y, items, onClose }) {
+  export interface ContextMenuProps {
+    x: any;
+    y: any;
+    items: any;
+    onClose: (...args: any[]) => any;
+  }
+  export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
     const menuRef = useRef(null);
     useEffect(() => {
       const h = (e) => {
@@ -784,11 +810,19 @@ import { toast } from "./auth-misc.js";
       )}
     </div>;
   }
+  export interface FilterPillProps {
+    label: any;
+    allLabel: any;
+    options: any;
+    selected: any;
+    onChange: (...args: any[]) => any;
+    inline?: boolean;
+  }
   // `inline` renders the options in flow instead of as a floating popover.
   // Inside the mobile filter sheet the popover was absolutely positioned in a
   // scrolling card, so it escaped past the bottom of the screen and covered
   // the date fields and the "Show results" button.
-  export function FilterPill({ label, allLabel, options, selected, onChange, inline = false }) {
+  export function FilterPill({ label, allLabel, options, selected, onChange, inline = false }: FilterPillProps) {
     const [open, setOpen] = useState(false);
     const ref = useRef(null);
     useEffect(() => {

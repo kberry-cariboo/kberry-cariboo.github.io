@@ -17,7 +17,15 @@ import { ForecastView } from "./forecast-plan.js";
 import { PlanView } from "./plan.js";
 import { DashboardView } from "./dashboard.js";
 import { HolidaySettings } from "./settings.js";
-  export function MoneyInput({ value, onChange, style, inputRef, ...rest }) {
+import type { Entry } from "../types.js";
+  export interface MoneyInputProps {
+    value: any;
+    onChange: (...args: any[]) => any;
+    style?: any;
+    inputRef?: any;
+    [prop: string]: any;
+  }
+  export function MoneyInput({ value, onChange, style, inputRef, ...rest }: MoneyInputProps) {
     const [focused, setFocused] = useState(false);
     const display = (() => {
       if (focused) return value;
@@ -114,7 +122,13 @@ import { HolidaySettings } from "./settings.js";
       </div>}
     </div>;
   }
-  export function UndoToast({ label, count = 1, onUndo, onDismiss }) {
+  export interface UndoToastProps {
+    label?: any;
+    count?: number;
+    onUndo: (...args: any[]) => any;
+    onDismiss: (...args: any[]) => any;
+  }
+  export function UndoToast({ label, count = 1, onUndo, onDismiss }: UndoToastProps) {
     const [secs, setSecs] = useState(5);
     // Restart the countdown when a further undoable action lands while the
     // toast is still up — the newest one gets the full undo window.
@@ -368,7 +382,12 @@ import { HolidaySettings } from "./settings.js";
       </div>
     </div>;
   }
-  export function LockScreen({ sessionUser, onUnlock, onSignOut }) {
+  export interface LockScreenProps {
+    sessionUser: any;
+    onUnlock: (...args: any[]) => any;
+    onSignOut: (...args: any[]) => any;
+  }
+  export function LockScreen({ sessionUser, onUnlock, onSignOut }: LockScreenProps) {
     const [hasBiometric] = useState(() => !!getBiometricCredId(sessionUser.id));
     const [mode, setMode] = useState(() => hasBiometric ? "biometric" : "password");
     const [checking, setChecking] = useState(false);
@@ -544,17 +563,17 @@ import { HolidaySettings } from "./settings.js";
           out.push({ name, ok: false, detail: e.message });
         }
       };
-      const entry = { id: 1, desc: "T", type: "expense", amount: 100, repeats: true, recurEvery: 1, recurUnit: "month", startDate: "2026-01-15", recurEnd: "" };
+      const entry: Entry = { id: 1, desc: "T", type: "expense", amount: 100, category: "Test", repeats: true, recurEvery: 1, recurUnit: "month", startDate: "2026-01-15", recurEnd: "" };
       const evs = expandEntries([entry], 2026, {});
       t("expandEntries monthly = 12 events", () => evs.length === 12);
       t("expandEntries carries recurUnit", () => evs[0].recurUnit === "month");
-      const semi = { ...entry, id: 2, recurUnit: "semimonth", startDate: "2026-01-01" };
+      const semi: Entry = { ...entry, id: 2, recurUnit: "semimonth", startDate: "2026-01-01" };
       t("semimonthly = 24 events", () => expandEntries([semi], 2026, {}).length === 24);
       // Last day of the month: every month's real length, not the start
       // date's day number. An entry created in February is the case that
       // separates this from a plain monthly entry — that one would stay on
       // the 28th all year.
-      const mend = { ...entry, id: 20, recurUnit: "monthend", startDate: "2026-02-28" };
+      const mend: Entry = { ...entry, id: 20, recurUnit: "monthend", startDate: "2026-02-28" };
       const mendEvs = expandEntries([mend], 2026, {});
       t("month-end = 11 events (Mar-Dec plus Feb)", () => mendEvs.length === 11);
       t("month-end lands on 31 Mar, 30 Apr, 31 May", () => mendEvs[1].month === 2 && mendEvs[1].day === 31 && mendEvs[2].day === 30 && mendEvs[3].day === 31);
@@ -563,13 +582,13 @@ import { HolidaySettings } from "./settings.js";
         return plain[1].day === 28 && mendEvs[1].day === 31;
       });
       // Third Friday of each month, from Fri 16 Jan 2026.
-      const nth3 = { ...entry, id: 22, recurUnit: "monthweekday", recurNth: 3, recurDays: [5], startDate: "2026-01-16" };
+      const nth3: Entry = { ...entry, id: 22, recurUnit: "monthweekday", recurNth: 3, recurDays: [5], startDate: "2026-01-16" };
       const nth3Evs = expandEntries([nth3], 2026, {});
       t("3rd Friday = 12 events", () => nth3Evs.length === 12);
       t("3rd Friday is always a Friday", () => nth3Evs.every((ev) => ev.date.getDay() === 5));
       t("3rd Friday is always in the third week", () => nth3Evs.every((ev) => ev.day >= 15 && ev.day <= 21));
       // "Last" is not "fourth": in a month with five Fridays they differ.
-      const nthLast = { ...entry, id: 23, recurUnit: "monthweekday", recurNth: -1, recurDays: [5], startDate: "2026-01-30" };
+      const nthLast: Entry = { ...entry, id: 23, recurUnit: "monthweekday", recurNth: -1, recurDays: [5], startDate: "2026-01-30" };
       const lastEvs = expandEntries([nthLast], 2026, {});
       t("last Friday is always a Friday within 7 days of month end", () => lastEvs.every((ev) => ev.date.getDay() === 5 && ev.day > daysInMonth(ev.month, 2026) - 7));
       t("last Friday differs from 4th Friday in a 5-Friday month", () => {
@@ -582,7 +601,7 @@ import { HolidaySettings } from "./settings.js";
         const fifth = expandEntries([{ ...nthLast, id: 25, recurNth: 5 }], 2026, {});
         return fifth.length > 0 && fifth.length < 12 && fifth.every((ev) => ev.date.getDay() === 5);
       });
-      const biw = { ...entry, id: 3, recurUnit: "week", recurEvery: 2, startDate: "2026-01-02" };
+      const biw: Entry = { ...entry, id: 3, recurUnit: "week", recurEvery: 2, startDate: "2026-01-02" };
       const bevs = expandEntries([biw], 2026, {});
       t("bi-weekly \u2248 26 events", () => bevs.length >= 25 && bevs.length <= 27);
       const sums = getMonthSummaries(computeFlow(evs, 1e3), 1e3);
@@ -659,7 +678,7 @@ import { HolidaySettings } from "./settings.js";
         return Object.keys(payload).every((k) => k in rt) && rt.schemaVersion === SCHEMA_VERSION && rt.goals[0].saved === 25;
       });
       t("receipts are per-occurrence only", () => {
-        const ent = { ...entry, id: 9, attachment: "base64LEGACY" };
+        const ent: Entry = { ...entry, id: 9, attachment: "base64LEGACY" };
         const evsA = expandEntries([ent], 2026, {});
         const ovA = {};
         ovA[evsA[0].id] = { attachment: "base64OVERRIDE" };
@@ -674,7 +693,7 @@ import { HolidaySettings } from "./settings.js";
       });
       // Payroll deposit dates. 2026: the 15th is a Sunday in Feb/Mar/Nov and a
       // Saturday in Aug; Aug 1 is a Saturday; Jan 1 2028 is a Saturday.
-      const payroll = { id: 20, desc: "Ken - Payroll (15th)", type: "income", amount: 25e4, category: "Income", repeats: true, recurEvery: 1, recurUnit: "month", startDate: "2026-01-15", recurEnd: "" };
+      const payroll: Entry = { id: 20, desc: "Ken - Payroll (15th)", type: "income", amount: 25e4, category: "Income", repeats: true, recurEvery: 1, recurUnit: "month", startDate: "2026-01-15", recurEnd: "" };
       const payEvs = expandEntries([payroll], 2026, {});
       const onMonth = (evs, mi) => evs.find((ev) => ev.month === mi);
       const depStr = (ev) => ev.depositDate ? localDateStr(ev.depositDate) : null;
@@ -697,18 +716,18 @@ import { HolidaySettings } from "./settings.js";
       });
       t("a payday on a stat holiday is deposited the last banking day before it", () => {
         // Canada Day 2026 is a Wednesday — a working day but not a banking one.
-        const canadaDay = { ...payroll, id: 21, startDate: "2026-01-01" };
+        const canadaDay: Entry = { ...payroll, id: 21, startDate: "2026-01-01" };
         const jul = onMonth(expandEntries([canadaDay], 2026, {}), 6);
         return jul.day === 1 && jul.depositShifted === true && depStr(jul) === "2026-06-30";
       });
       t("a payday on a holiday Monday steps back past the weekend too", () => {
         // BC Day 2026 is Monday 3 August: back past Sun and Sat to Fri Jul 31.
-        const bcDay = { ...payroll, id: 22, startDate: "2026-08-03", recurUnit: "year" };
+        const bcDay: Entry = { ...payroll, id: 22, startDate: "2026-08-03", recurUnit: "year" };
         const aug = expandEntries([bcDay], 2026, {})[0];
         return aug.day === 3 && depStr(aug) === "2026-07-31";
       });
       t("an optional BC holiday counts (Boxing Day)", () => {
-        const boxing = { ...payroll, id: 23, startDate: "2026-12-28", recurUnit: "year" };
+        const boxing: Entry = { ...payroll, id: 23, startDate: "2026-12-28", recurUnit: "year" };
         // 26 Dec 2026 is a Saturday, so Boxing Day is taken Mon 28 Dec and
         // Christmas Day is Fri 25 Dec: the last banking day is Thu 24 Dec.
         const dec = expandEntries([boxing], 2026, {})[0];
@@ -718,14 +737,14 @@ import { HolidaySettings } from "./settings.js";
         // The date a holiday slides off is always a Saturday or a Sunday, so
         // the weekend rule already covered it — a payday on Boxing Day Sat 26
         // Dec 2026 still deposits on Thursday the 24th.
-        const onSat = { ...payroll, id: 31, startDate: "2026-12-26", recurUnit: "year" };
+        const onSat: Entry = { ...payroll, id: 31, startDate: "2026-12-26", recurUnit: "year" };
         return depStr(expandEntries([onSat], 2026, {})[0]) === "2026-12-24";
       });
       t("the deposit date may fall in the previous month or year", () => {
         // Nothing moves, so this is just a label — no month's totals change.
-        const firstOfMonth = { ...payroll, id: 24, desc: "Ken - Payroll (1st)", startDate: "2026-01-01" };
+        const firstOfMonth: Entry = { ...payroll, id: 24, desc: "Ken - Payroll (1st)", startDate: "2026-01-01" };
         const aug = onMonth(expandEntries([firstOfMonth], 2026, {}), 7);
-        const nyd = { ...payroll, id: 25, desc: "Ken - Payroll (1st)", startDate: "2028-01-01" };
+        const nyd: Entry = { ...payroll, id: 25, desc: "Ken - Payroll (1st)", startDate: "2028-01-01" };
         const jan = expandEntries([nyd], 2028, {})[0];
         return aug.month === 7 && aug.day === 1 && depStr(aug) === "2026-07-31" && jan.month === 0 && jan.day === 1 && depStr(jan) === "2027-12-31";
       });
@@ -739,14 +758,14 @@ import { HolidaySettings } from "./settings.js";
         return again.amount === 3e5 && again.day === 15 && again.depositShifted === true;
       });
       t("the rule is income-only, payroll-only and repeating-only", () => {
-        const rentOn15th = { ...payroll, id: 26, desc: "Rent", type: "expense" };
-        const payrollExpense = { ...payroll, id: 27, desc: "Payroll remittance", type: "expense" };
-        const onceOff = { ...payroll, id: 28, repeats: false, startDate: "2026-08-15" };
+        const rentOn15th: Entry = { ...payroll, id: 26, desc: "Rent", type: "expense" };
+        const payrollExpense: Entry = { ...payroll, id: 27, desc: "Payroll remittance", type: "expense" };
+        const onceOff: Entry = { ...payroll, id: 28, repeats: false, startDate: "2026-08-15" };
         return onMonth(expandEntries([rentOn15th], 2026, {}), 7).depositShifted === false && onMonth(expandEntries([payrollExpense], 2026, {}), 7).depositShifted === false && expandEntries([onceOff], 2026, {})[0].depositShifted === false;
       });
       t('"Mel - Payroll" and "PAY ROLL" both read as payroll', () => {
-        const mel = { ...payroll, id: 29, desc: "Mel - Payroll" };
-        const spaced = { ...payroll, id: 30, desc: "PAY ROLL \u2014 Ken" };
+        const mel: Entry = { ...payroll, id: 29, desc: "Mel - Payroll" };
+        const spaced: Entry = { ...payroll, id: 30, desc: "PAY ROLL \u2014 Ken" };
         return onMonth(expandEntries([mel], 2026, {}), 7).depositShifted === true && onMonth(expandEntries([spaced], 2026, {}), 7).depositShifted === true;
       });
       t("moving an occurrence by hand re-reads the deposit date from where you put it", () => {
@@ -945,12 +964,12 @@ import { HolidaySettings } from "./settings.js";
           && v.b.balance === "" && v.b.payment === 12000 && v.c.hidden === true && v.a.label === "Visa";
       });
       t("a member's own preferences are not household fields, and not in backups", () => {
-        const house = HOUSEHOLD_FIELDS.map((f) => f.key);
-        const backup = HOUSEHOLD_BACKUP_FIELDS.map((f) => f.key);
+        const house: string[] = HOUSEHOLD_FIELDS.map((f) => f.key);
+        const backup: string[] = HOUSEHOLD_BACKUP_FIELDS.map((f) => f.key);
         return MEMBER_PREF_FIELDS.length > 0 && MEMBER_PREF_FIELDS.every((f) => !house.includes(f.key) && !backup.includes(f.key) && typeof f.initial === "function");
       });
       t("the backup export carries the fields worth restoring", () => {
-        const keys = HOUSEHOLD_BACKUP_FIELDS.map((f) => f.key);
+        const keys: string[] = HOUSEHOLD_BACKUP_FIELDS.map((f) => f.key);
         return ["entries", "overridesByYr", "goals", "budgetTargets", "holidays", "categories"].every((k) => keys.includes(k)) && !keys.includes("regFilterCats");
       });
       t("multi-select filter math ([]=all)", () => {
@@ -971,7 +990,11 @@ import { HolidaySettings } from "./settings.js";
           const host = document.createElement("div");
           const root2 = ReactDOM.createRoot(host);
           try {
-            if (ReactDOM.flushSync) ReactDOM.flushSync(() => root2.render(el));
+            // The vendored ReactDOM global is react-dom/client, which has no
+            // flushSync, so this render is asynchronous and a component that
+            // throws while rendering still passes. See FULL-APP-AUDIT.md §2.1.
+            const { flushSync } = ReactDOM as { flushSync?: (fn: () => void) => void };
+            if (flushSync) flushSync(() => root2.render(el));
             else root2.render(el);
             return true;
           } finally {
@@ -1008,7 +1031,7 @@ import { HolidaySettings } from "./settings.js";
         years={[2026]}
         activeYear={2026}
       />);
-      renderCheck("UndoToast", <UndoToast entry={{ desc: "Test" }} count={2} onUndo={noop} onDismiss={noop} />);
+      renderCheck("UndoToast", <UndoToast label="Test" count={2} onUndo={noop} onDismiss={noop} />);
       renderCheck("ReceiptLightbox", <ReceiptLightbox
         src="data:image/gif;base64,R0lGODlhAQABAAAAACw="
         onClose={noop}
@@ -1035,8 +1058,6 @@ import { HolidaySettings } from "./settings.js";
         categories={["A"]}
         setEntries={noop}
         addEntry={noop}
-        view="monthly"
-        setView={noop}
         monthIdx={0}
         setMonthIdx={noop}
       />);
@@ -1133,7 +1154,7 @@ import { HolidaySettings } from "./settings.js";
       Promise.race([
         navigator.serviceWorker.ready,
         new Promise((_, rej) => setTimeout(() => rej(new Error("timed out after 10s")), 1e4))
-      ]).then((reg) => {
+      ]).then((reg: ServiceWorkerRegistration) => {
         add([
           { name: "Service worker registered + active", ok: !!reg.active, detail: reg.scope },
           { name: "showNotification available (Android's only path)", ok: typeof reg.showNotification === "function", detail: "" },
@@ -1180,7 +1201,11 @@ import { HolidaySettings } from "./settings.js";
       <a href={location.pathname} className="selftest-back-link">← Back to app</a>
     </div>;
   }
-  export function BudgetSubTabs({ value, onChange }) {
+  export interface BudgetSubTabsProps {
+    value: any;
+    onChange: (...args: any[]) => any;
+  }
+  export function BudgetSubTabs({ value, onChange }: BudgetSubTabsProps) {
     const ref = useRef(null);
     const roving = useRovingTabs();
     useEffect(() => {
@@ -1210,7 +1235,7 @@ import { HolidaySettings } from "./settings.js";
         aria-pressed={value === s.id}
         // One tab stop for the strip; arrow keys move within it.
         tabIndex={value === s.id ? 0 : -1}
-        className={"budget-subtab-pill budget-subtab-btn" + (s.cls ? " " + s.cls : "")}
+        className="budget-subtab-pill budget-subtab-btn"
         onClick={() => {
           haptic();
           onChange(s.id);
@@ -1232,7 +1257,11 @@ import { HolidaySettings } from "./settings.js";
       </button>)}
     </div>;
   }
-  export function PlanSubTabs({ value, onChange }) {
+  export interface PlanSubTabsProps {
+    value: any;
+    onChange: (...args: any[]) => any;
+  }
+  export function PlanSubTabs({ value, onChange }: PlanSubTabsProps) {
     const ref = useRef(null);
     const roving = useRovingTabs();
     useEffect(() => {

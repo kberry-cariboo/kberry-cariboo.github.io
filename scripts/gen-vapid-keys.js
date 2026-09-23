@@ -40,7 +40,7 @@ console.log(`
 VAPID key pair
 ==============
 
-Public key (safe to commit — paste into src/lib/supabase-config.js as
+Public key (safe to commit — paste into src/lib/supabase-config.ts as
 VAPID_PUBLIC_KEY, then run 'node build.js'):
 
   ${pub}

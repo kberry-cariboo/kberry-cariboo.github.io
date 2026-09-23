@@ -10,12 +10,20 @@ import { ACCOUNT_KINDS, ACTIVITY_LABELS, HouseholdContext, MONTHS, WEEKDAYS, acc
 import { Card, ConfirmDialog, FieldLabel, HelpTip, SectionTitle, Sparkline, Toggle, getCatColor } from "./primitives.js";
 import { Icon } from "./misc-ui.js";
 import { toast } from "./auth-misc.js";
+import type { Account, Entry, FlowRow, Goal, Member, OverridesByYear, YearConfig } from "../types.js";
+  export interface AlertsPanelProps {
+    flow: FlowRow[];
+    alertThreshold: any;
+    setTab: (...args: any[]) => any;
+    findings?: any[];
+    gotoForecast?: (...args: any[]) => any;
+  }
     // The alerts page. See lowBalanceEpisodes for what an alert is and why it
   // is not one row per event: this page's whole job is to say how many
   // distinct things are wrong, and the old one said sixty when the answer
   // was one.
   export function AlertsPanel({ flow, alertThreshold, setTab, findings = [], gotoForecast = () => {
-  } }) {
+  } }: AlertsPanelProps) {
     const episodes = lowBalanceEpisodes(flow, alertThreshold);
     const dateLabel = (ev) => MONTHS[ev.month] + " " + ev.day;
 
@@ -147,6 +155,15 @@ import { toast } from "./auth-misc.js";
     }
   }
 
+  export interface HolidaySettingsProps {
+    holidays?: Record<string, any>;
+    setHolidays: (...args: any[]) => any;
+    years?: any[];
+    activeYear: number;
+    isOffline?: boolean;
+    holidayRegionCode?: string;
+    setHolidayRegionCode?: (...args: any[]) => any;
+  }
   // Settings → Statutory Holidays. Exists so the dates driving the payroll
   // deposit marker are visible and correctable rather than an invisible rule:
   // this is the one place that answers "what does the app think a holiday is?".
@@ -157,7 +174,7 @@ import { toast } from "./auth-misc.js";
   // lost. Rows say where they came from, because "built-in" and "I typed this"
   // are different kinds of trust.
   export function HolidaySettings({ holidays = {}, setHolidays, years = [], activeYear, isOffline = false, holidayRegionCode = DEFAULT_HOLIDAY_REGION, setHolidayRegionCode = () => {
-  } }) {
+  } }: HolidaySettingsProps) {
     const [year, setYear] = useState(() => (years.includes(activeYear) ? activeYear : years[0] || (new Date()).getFullYear()));
     const [form, setForm] = useState(null);
     const [err, setErr] = useState("");
@@ -436,6 +453,85 @@ import { toast } from "./auth-misc.js";
       />}
     </Card>;
   }
+  export interface SettingsViewProps {
+    youSub?: any;
+    setYouSub?: (...args: any[]) => any;
+    categories: string[];
+    setCategories: (...args: any[]) => any;
+    categoryColors?: Record<string, any>;
+    setCategoryColors?: (...args: any[]) => any;
+    alertThreshold: any;
+    setAlertThreshold: (...args: any[]) => any;
+    darkMode: any;
+    setDarkMode: (...args: any[]) => any;
+    notifyEnabled?: boolean;
+    setNotifyEnabled?: (...args: any[]) => any;
+    enableNotifications?: (...args: any[]) => any;
+    disableNotifications?: (...args: any[]) => any;
+    notifPerm?: string;
+    notifyHour?: number;
+    setNotifyHour?: (...args: any[]) => any;
+    pushState?: any;
+    yearConfigs: YearConfig[];
+    setYearConfigs: (...args: any[]) => any;
+    activeYear: number;
+    setActiveYear: (...args: any[]) => any;
+    overridesByYr: OverridesByYear;
+    setOverridesByYr: (...args: any[]) => any;
+    entries: Entry[];
+    setEntries: (...args: any[]) => any;
+    completed?: Record<string, any>;
+    setCompleted?: (...args: any[]) => any;
+    goals?: Goal[];
+    setGoals?: (...args: any[]) => any;
+    debtData?: Record<string, any>;
+    setDebtData?: (...args: any[]) => any;
+    deletedCopyIds?: Record<string, any>;
+    setDeletedCopyIds?: (...args: any[]) => any;
+    installPrompt?: any;
+    triggerInstall?: (...args: any[]) => any;
+    lockTimeout?: number;
+    setLockTimeout?: (...args: any[]) => any;
+    templates?: any[];
+    setTemplates: (...args: any[]) => any;
+    activeFlow?: any[];
+    activity?: any[];
+    accounts?: Account[];
+    setAccounts?: (...args: any[]) => any;
+    pushUndo?: (...args: any[]) => any;
+    budgetTargets?: Record<string, any>;
+    setBudgetTargets?: (...args: any[]) => any;
+    sessionUser?: any;
+    logout?: (...args: any[]) => any;
+    aiApiKey?: string;
+    setAiApiKey: (...args: any[]) => any;
+    sbConfigured?: boolean;
+    houseStatus?: string;
+    houseMsg?: string;
+    houseUnsaved?: boolean;
+    houseSave?: (...args: any[]) => any;
+    houseLoad?: (...args: any[]) => any;
+    household?: any;
+    members?: Member[];
+    createInvite?: (...args: any[]) => any;
+    setMemberRole?: (...args: any[]) => any;
+    setMemberDisabled?: (...args: any[]) => any;
+    updateMemberName?: (...args: any[]) => any;
+    leaveHousehold?: (...args: any[]) => any;
+    removeMember?: (...args: any[]) => any;
+    deleteMyAccount?: (...args: any[]) => any;
+    holidays?: Record<string, any>;
+    setHolidays?: (...args: any[]) => any;
+    isOffline?: boolean;
+    houseValues?: Record<string, any>;
+    houseSetters?: Record<string, any>;
+    currency?: string;
+    setCurrency?: (...args: any[]) => any;
+    locale?: string;
+    setLocale?: (...args: any[]) => any;
+    holidayRegionCode?: string;
+    setHolidayRegionCode?: (...args: any[]) => any;
+  }
   export function SettingsView({ youSub = null, setYouSub = () => {
   }, categories, setCategories, categoryColors = {}, setCategoryColors = () => {
   }, alertThreshold, setAlertThreshold, darkMode, setDarkMode, notifyEnabled = false, setNotifyEnabled = () => {
@@ -465,7 +561,7 @@ import { toast } from "./auth-misc.js";
   }, isOffline = false, houseValues = {}, houseSetters = {}, currency = DEFAULT_CURRENCY, setCurrency = () => {
   }, locale = DEFAULT_LOCALE, setLocale = () => {
   }, holidayRegionCode = DEFAULT_HOLIDAY_REGION, setHolidayRegionCode = () => {
-  } }) {
+  } }: SettingsViewProps) {
     setAiApiKey = setAiApiKey || (() => {
     });
     const [newCat, setNewCat] = useState("");
@@ -1546,7 +1642,7 @@ import { toast } from "./auth-misc.js";
       const reader = new FileReader();
       reader.onload = (ev) => {
         try {
-          const parsed = JSON.parse(ev.target.result);
+          const parsed = JSON.parse(String(ev.target.result));
           // Parsing is not recognition. Any .json at all used to reach the
           // confirm dialog, and confirming one from some other app restored
           // nothing while reporting "Backup restored successfully!" — the user
@@ -1968,7 +2064,7 @@ import { toast } from "./auth-misc.js";
     // Grouped by what you came here to do, not alphabetically. The old index
     // strip was alphabetical because it was an index; a directory you read
     // top to bottom wants the related things together.
-    const SETTINGS_GROUPS = [
+    const SETTINGS_GROUPS: [string, string[]][] = [
       ["Your money", ["years", "accounts", "categories", "money", "holidays", "reset"]],
       ["Alerts & display", ["appearance", "threshold", "notifications"]],
       ["Sharing & data", ["household", "sync", "backup", "templates", "activity"]],
@@ -2016,7 +2112,7 @@ import { toast } from "./auth-misc.js";
         </div>}
     </div>;;
   }
-  export class ErrorBoundary extends React.Component {
+  export class ErrorBoundary extends React.Component<{ children?: React.ReactNode }, { err: Error | null }> {
     constructor(props) {
       super(props);
       this.state = { err: null };

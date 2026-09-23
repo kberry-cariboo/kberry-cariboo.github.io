@@ -1,38 +1,10 @@
-// Minimal correctness-only lint gate. src/ is ES modules (bundled by
-// build.js with esbuild), so every file declares what it imports and the
-// undefined/unused-name rules run on each file directly. They used to run on a
-// stitched copy of the whole app (scripts/lint-bundle.js), because the files
-// shared one global scope and a per-file pass saw every cross-file name as
-// undefined. Style rules stay off; these catch real, silent bugs.
+// Minimal correctness-only lint gate. src/ is TypeScript (ES modules, bundled
+// by build.js with esbuild; type-checked by tsc, `npm run typecheck`), so
+// ESLint parses it with typescript-eslint and leaves undefined names to tsc.
+// Style rules stay off; these catch real, silent bugs.
 // Run: npm run lint
 
-// True external globals the concatenated app code touches: browser/DOM APIs
-// (not covered by ESLint's language built-ins) plus the vendor scripts that
-// sit in sibling <script> tags — src/vendor/react-bundle.js (React,
-// ReactDOM), src/vendor/mini-recharts.js (Recharts), and
-// src/vendor/supabase-client.js (window.supabase, read off `window` below,
-// not listed separately). Extend this list, not the rule severity, if a
-// legitimate new browser API shows up as "not defined".
-const browserGlobals = {
-  window: "readonly", document: "readonly", navigator: "readonly",
-  location: "readonly", history: "readonly", localStorage: "readonly",
-  sessionStorage: "readonly", indexedDB: "readonly", fetch: "readonly", URL: "readonly",
-  URLSearchParams: "readonly", Blob: "readonly", File: "readonly",
-  FileReader: "readonly", Image: "readonly", CustomEvent: "readonly",
-  Event: "readonly", TextEncoder: "readonly", TextDecoder: "readonly",
-  crypto: "readonly", PublicKeyCredential: "readonly", console: "readonly",
-  Notification: "readonly",
-  alert: "readonly", confirm: "readonly", setTimeout: "readonly",
-  clearTimeout: "readonly", setInterval: "readonly", clearInterval: "readonly",
-  requestAnimationFrame: "readonly", cancelAnimationFrame: "readonly",
-  MutationObserver: "readonly", IntersectionObserver: "readonly",
-  ResizeObserver: "readonly", btoa: "readonly", atob: "readonly",
-  performance: "readonly", structuredClone: "readonly", getComputedStyle: "readonly",
-  queueMicrotask: "readonly", globalThis: "readonly", self: "readonly",
-  React: "readonly", ReactDOM: "readonly", Recharts: "readonly",
-  // Declared by src/bootstrap-head.js, which is not a module.
-  CF_VERSION: "readonly"
-};
+import tseslint from "typescript-eslint";
 
 const CORRECTNESS = {
   "no-dupe-keys": "error",
@@ -58,14 +30,14 @@ const CORRECTNESS = {
 export default [
   {
     // A no-`files` ignores block is a global ignore in flat config.
-    ignores: ["src/vendor/**", "src/bootstrap-head.js", "src/bootstrap-tail.js", "index.html"]
+    ignores: ["src/vendor/**", "src/bootstrap-head.js", "src/bootstrap-tail.js", "src/**/*.d.ts", "index.html"]
   },
   {
-    files: ["src/**/*.js"],
-    languageOptions: { ecmaVersion: "latest", sourceType: "module", globals: browserGlobals, parserOptions: { ecmaFeatures: { jsx: true } } },
+    files: ["src/**/*.ts", "src/**/*.tsx"],
+    languageOptions: { parser: tseslint.parser, ecmaVersion: "latest", sourceType: "module", parserOptions: { ecmaFeatures: { jsx: true } } },
+    plugins: { "@typescript-eslint": tseslint.plugin },
     rules: Object.assign({}, CORRECTNESS, {
-      "no-undef": "error",
-      "no-unused-vars": ["error", { args: "none", caughtErrors: "none", varsIgnorePattern: "^_" }]
+      "@typescript-eslint/no-unused-vars": ["error", { args: "none", caughtErrors: "none", varsIgnorePattern: "^_" }]
     })
   },
   {

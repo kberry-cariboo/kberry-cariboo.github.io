@@ -29,7 +29,7 @@ const read = (p) => readFileSync(join(ROOT, p), 'utf8');
 const noHook = () => { throw new Error('the schedule engine must not need React'); };
 // The source is ES modules; loadSrc bundles these (and what they import) and
 // runs them against the stand-ins passed here.
-const load = (React, localStorage, window) => loadSrc(['src/lib/dates.js'], { React, localStorage, window });
+const load = (React, localStorage, window) => loadSrc(['src/lib/dates.ts'], { React, localStorage, window });
 const store = new Map();
 const localStorage = {
   getItem: (k) => (store.has(k) ? store.get(k) : null),

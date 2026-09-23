@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-4llOHAxiMfr87wWhUsmKzAqwi1bMLkdCK5o7UBFhUG4=' 'sha256-lJc7oPue1vzJz8L4R8FNqJJYZWoH4eylFQyhuUMNZKk=' 'sha256-hO6b9FaVwd07oVlba8+w8JZyQ0YxNR/8jr6RQFRdX/Y=' 'sha256-X7+Q2Zs8qiDq0DB2/DT+qQ0EutSXj7l9GgzuCAovPS8='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://vhwrflyqcubvybolbifl.supabase.co wss://vhwrflyqcubvybolbifl.supabase.co https://api.anthropic.com https://canada-holidays.ca; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'"/>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-4llOHAxiMfr87wWhUsmKzAqwi1bMLkdCK5o7UBFhUG4=' 'sha256-lJc7oPue1vzJz8L4R8FNqJJYZWoH4eylFQyhuUMNZKk=' 'sha256-hO6b9FaVwd07oVlba8+w8JZyQ0YxNR/8jr6RQFRdX/Y=' 'sha256-kouBUBt2XhHcawv4bPzyd+inmzhAa570WNl/xAlUkBU='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://vhwrflyqcubvybolbifl.supabase.co wss://vhwrflyqcubvybolbifl.supabase.co https://api.anthropic.com https://canada-holidays.ca; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 <title>CashFlow Budget</title>
 <meta name="theme-color" content="#14413A"/>
@@ -4473,7 +4473,7 @@ document.addEventListener('DOMContentLoaded',function(){
   if(typeof window.Recharts==='undefined'){showError('Chart library failed','Inline Recharts failed to init.');return;}
   try{ (() => {
 (() => {
-  // src/lib/runtime.js
+  // src/lib/runtime.ts
   var { useState, useMemo, useEffect, useLayoutEffect, useCallback, useRef, useContext, createContext } = React;
   function genId() {
     try {
@@ -4516,14 +4516,14 @@ document.addEventListener('DOMContentLoaded',function(){
     }
   };
 
-  // src/lib/supabase-config.js
+  // src/lib/supabase-config.ts
   var SUPABASE_URL = "https://vhwrflyqcubvybolbifl.supabase.co";
   var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZod3JmbHlxY3Vidnlib2xiaWZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQyMzQ5NzUsImV4cCI6MjA5OTgxMDk3NX0.PKKtR6c6mcXV-Sfou3awEDI0HL_1MePaumoOMUZcAug";
   var VAPID_PUBLIC_KEY = "BGbemiiYRInroq-BSlKEpaETX129HajcS-cxognl96Al5OjLKIAcMbXfGRwGmxjBbN_yFX7KJgErCj6WThQYIWs";
   var isSupabaseConfigured = () => !SUPABASE_URL.includes("YOUR-PROJECT") && !SUPABASE_ANON_KEY.includes("YOUR-ANON");
   var supabaseClient = isSupabaseConfigured() ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
-  // src/lib/holidays.js
+  // src/lib/holidays.ts
   var HOLIDAY_API_URL = (year, region) => `https://canada-holidays.ca/api/v1/provinces/${holidayRegion(region).code}?year=${year}&optional=true`;
   var nthWeekdayOfMonth = (year, month, weekday, n) => {
     const first = new Date(year, month, 1);
@@ -4592,7 +4592,7 @@ document.addEventListener('DOMContentLoaded',function(){
     if (r.boxing || r.boxingOptional) fixed.push([new Date(year, 11, 26), "Boxing Day", !!r.boxingOptional]);
     const out = {};
     const taken = /* @__PURE__ */ new Set();
-    fixed.sort((a, b) => a[0] - b[0]).forEach(([date, name, optional]) => {
+    fixed.sort((a, b) => a[0].getTime() - b[0].getTime()).forEach(([date, name, optional]) => {
       const obs = observedFor(date, taken);
       const obsStr = localDateStr(obs);
       taken.add(obsStr);
@@ -4713,7 +4713,7 @@ document.addEventListener('DOMContentLoaded',function(){
     return out;
   }
 
-  // src/lib/biometric.js
+  // src/lib/biometric.ts
   function b64urlEncode(buf) {
     const bytes = new Uint8Array(buf);
     let str = "";
@@ -4791,7 +4791,7 @@ document.addEventListener('DOMContentLoaded',function(){
     return true;
   }
 
-  // src/lib/receipt-store.js
+  // src/lib/receipt-store.ts
   var RECEIPT_DB = "cf-receipts";
   var RECEIPT_STORE = "receipts";
   var _receiptDb = null;
@@ -4865,7 +4865,7 @@ document.addEventListener('DOMContentLoaded',function(){
     }
   }
 
-  // src/lib/household-sync.js
+  // src/lib/household-sync.ts
   async function sbSignIn(email, password) {
     if (!supabaseClient) throw new Error("Supabase isn't configured yet.");
     const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
@@ -5738,7 +5738,7 @@ document.addEventListener('DOMContentLoaded',function(){
     return { values, setters };
   }
 
-  // src/lib/push.js
+  // src/lib/push.ts
   var NOTIFY_HORIZON_DAYS = 90;
   var DEFAULT_NOTIFY_HOUR = 8;
   function pushSupported() {
@@ -5938,7 +5938,7 @@ document.addEventListener('DOMContentLoaded',function(){
     return { ok: true, count: rows.length };
   }
 
-  // src/lib/ai.js
+  // src/lib/ai.ts
   var AI_MODEL = "claude-opus-5";
   var AI_PROXY_FN = "ai-proxy";
   var _aiProxyAvailable = null;
@@ -6106,7 +6106,7 @@ Also pick the best-fitting category from: ${categories.join(", ")}` : ""}` }
     return { ...aiReadResponse(await res.json(), schema), via: "direct" };
   }
 
-  // src/components/forms.js
+  // src/components/forms.tsx
   function EntryForm({ initial, onSave, onCancel, categories, templates = [], onSaveTemplate = null, apiKey = "", isOffline = false }) {
     const { accounts: formAccounts } = useContext(HouseholdContext);
     const accounts = Array.isArray(formAccounts) && formAccounts.length ? formAccounts : [];
@@ -6864,7 +6864,7 @@ ${text}` }],
     })));
   }
 
-  // src/components/primitives.js
+  // src/components/primitives.tsx
   function getCatColor(category, categories, categoryColors = {}) {
     if (categoryColors && categoryColors[category]) return categoryColors[category];
     const sorted = [...categories].sort((a, b) => a.localeCompare(b));
@@ -7673,7 +7673,7 @@ ${text}` }],
     );
   };
 
-  // src/components/csv-import.js
+  // src/components/csv-import.tsx
   function parseCSV(text) {
     const rows = [];
     let row = [], field = "", inQuotes = false;
@@ -7852,8 +7852,8 @@ ${text}` }],
         const near = byAmount[String(Math.abs(amountCents))];
         if (!near || !dateStr) return null;
         const t = parseDate(dateStr);
-        if (!t || isNaN(t)) return null;
-        return near.find((o) => Math.abs((o.date - t) / 864e5) <= OCCURRENCE_DAY_WINDOW) || null;
+        if (!t || isNaN(t.getTime())) return null;
+        return near.find((o) => Math.abs((o.date - t.getTime()) / 864e5) <= OCCURRENCE_DAY_WINDOW) || null;
       };
       return dataRows.map((r, i) => {
         const date = dateCol >= 0 ? parseCsvDate(r[dateCol]) : null;
@@ -8095,7 +8095,7 @@ ${list}` }],
     )))));
   }
 
-  // src/components/entries.js
+  // src/components/entries.tsx
   function EntriesView({ entries, setEntries, saveEntryEdit = null, addEntry, categories, categoryColors = {}, activeYear, apiKey = "", isOffline = false, onDeleted = () => {
   }, templates = [], setTemplates, globalSearch = "", allYearFlows = null, colOrder = DEFAULT_ENTRIES_COLS, setColOrder = () => {
   }, filter = "all", setFilter = () => {
@@ -8740,7 +8740,7 @@ ${list}` }],
     ));
   }
 
-  // src/lib/cat-detail.js
+  // src/lib/cat-detail.ts
   function categoryDetail(flow, category) {
     const events = (Array.isArray(flow) ? flow : []).filter(
       (e) => e && e.type === "expense" && (e.category || "") === category
@@ -8778,7 +8778,7 @@ ${list}` }],
     };
   }
 
-  // src/components/budget.js
+  // src/components/budget.tsx
   var TodayLine = () => /* @__PURE__ */ React.createElement("tr", { key: "today-marker" }, /* @__PURE__ */ React.createElement("td", { colSpan: 8, className: "today-line-td" }, /* @__PURE__ */ React.createElement("div", { className: "today-line-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }), /* @__PURE__ */ React.createElement("span", { className: "today-label" }, "TODAY"), /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }))));
   var TodayLineCard = () => /* @__PURE__ */ React.createElement("div", { key: "today-marker-card", className: "today-line-card-wrap" }, /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }), /* @__PURE__ */ React.createElement("span", { className: "today-label" }, "TODAY"), /* @__PURE__ */ React.createElement("div", { className: "today-line-strip" }));
   function BudgetView({ apiKey = "", isOffline = false, flow, prevYearFlow = [], prevYearConfigured = false, openBal, entries = [], setOverride, clearOverride, categories, categoryColors = {}, setEntries, saveEntryEdit = null, addEntry, pushUndo = () => {
@@ -10210,7 +10210,7 @@ ${list}` }],
     );
   }
 
-  // src/components/plan-dashboard-shared.js
+  // src/components/plan-dashboard-shared.ts
   var DASH_AXIS_TICK_X = { fontFamily: "var(--font-ui)", fontSize: 11, fill: "var(--textMid)" };
   var DASH_AXIS_TICK_Y = { fontFamily: "var(--font-mono)", fontSize: 11, fill: "var(--textMid)" };
   var projectPayoffBalances = (bal, rate, pmt, months) => {
@@ -10225,7 +10225,7 @@ ${list}` }],
     return points;
   };
 
-  // src/components/forecast-plan.js
+  // src/components/forecast-plan.tsx
   function ForecastView({ apiKey = "", isOffline = false, yearFlows, yearConfigs, openBalByYear, alertThreshold = DEFAULT_ALERT_THRESHOLD, globalSearch = "", budgetTargets = {}, horizon = 90, setHorizon = () => {
   }, categories = [], categoryColors = {}, addEntry = null, templates = [], setTemplates = null, completed = {}, toggleComplete = () => {
   }, entries = [], scenarioOn = false, setScenarioOn = () => {
@@ -11309,7 +11309,7 @@ Fill every field of the response schema. Rules:
     ].map(({ icon, label }) => /* @__PURE__ */ React.createElement("div", { key: label, className: "ai-feature-card" }, /* @__PURE__ */ React.createElement("div", { className: "ai-feature-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: icon, size: 20 })), /* @__PURE__ */ React.createElement("div", { className: "ai-feature-label" }, label)))))));
   }
 
-  // src/lib/networth.js
+  // src/lib/networth.ts
   var ASSET_KINDS = [
     { id: "property", label: "Property" },
     { id: "vehicle", label: "Vehicle" },
@@ -11370,7 +11370,7 @@ Fill every field of the response schema. Rules:
     };
   }
 
-  // src/components/plan.js
+  // src/components/plan.tsx
   var StratCompare = ({ av, sn, base, pick, onPick }) => {
     const better = (a, b, lowerWins = true) => a === b ? null : lowerWins ? a < b : a > b;
     const rows = [
@@ -11893,7 +11893,10 @@ Fill every field of the response schema. Rules:
           key: k,
           label: debtData[k]?.label || "",
           monthlyPmt: parseFloat(debtData[k]?.payment) || 0,
-          isAuto: false
+          isAuto: false,
+          perOccurrence: void 0,
+          recurDesc: void 0,
+          timesPerYear: void 0
         };
       });
       const allRows = [...autoRows, ...manualRows].filter((r) => {
@@ -12496,7 +12499,7 @@ Fill every field of the response schema. Rules:
     })());
   }
 
-  // src/lib/drift.js
+  // src/lib/drift.ts
   var driftActualOf = (ov) => {
     if (!ov || ov.skipped) return void 0;
     if (ov.actualAmount !== void 0) return ov.actualAmount;
@@ -12583,7 +12586,7 @@ Fill every field of the response schema. Rules:
     return (entries || []).map((e) => driftForEntry(e, overridesByYr, opts)).filter(Boolean).sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
   }
 
-  // src/components/dashboard.js
+  // src/components/dashboard.tsx
   var GlanceTile = ({ title, children }) => /* @__PURE__ */ React.createElement("div", { className: "glance-tile" }, /* @__PURE__ */ React.createElement("div", { className: "glance-tile-title" }, title), children);
   function MonthlyBriefCard({ flow, activeYear, categories = [], apiKey = "", isOffline = false }) {
     const [brief, setBrief] = useState(null);
@@ -12672,7 +12675,7 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
       }
     };
     if (!delta) return null;
-    return /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row-between mb-12" }, /* @__PURE__ */ React.createElement(SectionTitle, { style: { marginBottom: 0 } }, "What changed in ", MONTHS[thisMonth]), /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement(Card, { className: "mb-16" }, /* @__PURE__ */ React.createElement("div", { className: "cf-row-between mb-12" }, /* @__PURE__ */ React.createElement(SectionTitle, { className: "mb-0" }, "What changed in ", MONTHS[thisMonth]), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: run,
@@ -12982,7 +12985,7 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
           if (d > end) return;
           if (low === null || ev.balance < low.balance) low = { balance: ev.balance, month: ev.month, day: ev.day, date: d };
         });
-        const daysToLow = low ? Math.max(0, Math.round((low.date - new Date(activeYear, todayM, todayD)) / 864e5)) : null;
+        const daysToLow = low ? Math.max(0, Math.round((low.date - new Date(activeYear, todayM, todayD).getTime()) / 864e5)) : null;
         const due = flow.filter((ev) => ev.type === "expense" && ev.month === todayM && ev.day >= todayD && !completed[ev.id]).reduce((s, ev) => s + ev.amount, 0);
         const dueCount = flow.filter((ev) => ev.type === "expense" && ev.month === todayM && ev.day >= todayD && !completed[ev.id]).length;
         return { balanceNow, low, daysToLow, due: roundMoney(due), dueCount, month: MONTHS[todayM] };
@@ -12999,7 +13002,7 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
         const start = new Date(activeYear, todayM, todayD);
         const closeByOffset = /* @__PURE__ */ new Map();
         flow.forEach((ev) => {
-          const off = Math.round((new Date(activeYear, ev.month, ev.day) - start) / 864e5);
+          const off = Math.round((new Date(activeYear, ev.month, ev.day).getTime() - start.getTime()) / 864e5);
           if (off >= 0 && off <= RUNWAY_DAYS) closeByOffset.set(off, ev.balance);
         });
         let bal = getCurrentBalance(flow, openBal, activeYear);
@@ -14517,7 +14520,7 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
     );
   }
 
-  // src/lib/year-copy.js
+  // src/lib/year-copy.ts
   function syncSingleEntriesToYear(entries, fromYear, toYear, fromOvs = {}, toOvs = {}, deletedCopyIds = {}) {
     const srcs = [];
     const tgts = [];
@@ -14729,7 +14732,7 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
     return parts;
   }
 
-  // src/components/settings.js
+  // src/components/settings.tsx
   function AlertsPanel({ flow, alertThreshold, setTab, findings = [], gotoForecast = () => {
   } }) {
     const episodes = lowBalanceEpisodes(flow, alertThreshold);
@@ -16063,7 +16066,7 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
             const reader = new FileReader();
             reader.onload = (ev) => {
               try {
-                const parsed = JSON.parse(ev.target.result);
+                const parsed = JSON.parse(String(ev.target.result));
                 const looksLikeBackup = parsed && typeof parsed === "object" && !Array.isArray(parsed) && (parsed.exportedAt !== void 0 || parsed.schemaVersion !== void 0 || HOUSEHOLD_BACKUP_FIELDS.some((f) => f.key in parsed));
                 if (!looksLikeBackup) {
                   setYearMsg("❌ That file isn't a CashFlow backup. Choose a CashFlow_Backup_*.json file exported from Settings.");
@@ -16435,7 +16438,7 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
     }
   };
 
-  // src/components/auth-misc.js
+  // src/components/auth-misc.tsx
   function MoneyInput({ value, onChange, style, inputRef, ...rest }) {
     const [focused, setFocused] = useState(false);
     const display = (() => {
@@ -16864,7 +16867,7 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
           out.push({ name, ok: false, detail: e.message });
         }
       };
-      const entry = { id: 1, desc: "T", type: "expense", amount: 100, repeats: true, recurEvery: 1, recurUnit: "month", startDate: "2026-01-15", recurEnd: "" };
+      const entry = { id: 1, desc: "T", type: "expense", amount: 100, category: "Test", repeats: true, recurEvery: 1, recurUnit: "month", startDate: "2026-01-15", recurEnd: "" };
       const evs = expandEntries([entry], 2026, {});
       t("expandEntries monthly = 12 events", () => evs.length === 12);
       t("expandEntries carries recurUnit", () => evs[0].recurUnit === "month");
@@ -17233,7 +17236,8 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
           const host = document.createElement("div");
           const root2 = ReactDOM.createRoot(host);
           try {
-            if (ReactDOM.flushSync) ReactDOM.flushSync(() => root2.render(el));
+            const { flushSync } = ReactDOM;
+            if (flushSync) flushSync(() => root2.render(el));
             else root2.render(el);
             return true;
           } finally {
@@ -17277,7 +17281,7 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
           activeYear: 2026
         }
       ));
-      renderCheck("UndoToast", /* @__PURE__ */ React.createElement(UndoToast, { entry: { desc: "Test" }, count: 2, onUndo: noop, onDismiss: noop }));
+      renderCheck("UndoToast", /* @__PURE__ */ React.createElement(UndoToast, { label: "Test", count: 2, onUndo: noop, onDismiss: noop }));
       renderCheck("ReceiptLightbox", /* @__PURE__ */ React.createElement(
         ReceiptLightbox,
         {
@@ -17315,8 +17319,6 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
           categories: ["A"],
           setEntries: noop,
           addEntry: noop,
-          view: "monthly",
-          setView: noop,
           monthIdx: 0,
           setMonthIdx: noop
         }
@@ -17479,7 +17481,7 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
           "data-active": value === s.id,
           "aria-pressed": value === s.id,
           tabIndex: value === s.id ? 0 : -1,
-          className: "budget-subtab-pill budget-subtab-btn" + (s.cls ? " " + s.cls : ""),
+          className: "budget-subtab-pill budget-subtab-btn",
           onClick: () => {
             haptic();
             onChange(s.id);
@@ -17556,7 +17558,7 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
     );
   }
 
-  // src/lib/app-data.js
+  // src/lib/app-data.ts
   var CategoriesContext = createContext({ categories: [], categoryColors: {} });
   var HouseholdContext = createContext({ members: [], sessionUser: null, accounts: [], canWrite: true, myRole: null, logActivity: () => {
   } });
@@ -17871,7 +17873,7 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
       tone: e.low.balance < 0 ? "critical" : "warn",
       // What it would take to not have this episode at all.
       shortfall: alertThreshold - e.low.balance,
-      days: e.recover ? Math.max(1, Math.round((e.recover.date - e.start.date) / 864e5)) : Math.max(1, Math.round((end - e.start.date) / 864e5)),
+      days: e.recover ? Math.max(1, Math.round((e.recover.date.getTime() - e.start.date.getTime()) / 864e5)) : Math.max(1, Math.round((end.getTime() - e.start.date.getTime()) / 864e5)),
       openEnded: !e.recover
     }));
   }
@@ -17972,7 +17974,7 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
     const cleaned = (entries || []).map((e) => {
       if (!e || !e.attachment) return e;
       const d = parseDate(e.startDate);
-      if (!d || isNaN(d)) return e;
+      if (!d || isNaN(d.getTime())) return e;
       const year = d.getFullYear();
       const occId = `${e.id}-${year}-${d.getMonth()}-${d.getDate()}`;
       ovs[year] = ovs[year] || {};
@@ -18269,7 +18271,7 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
     "#8E4585"
   ];
 
-  // src/components/misc-ui.js
+  // src/components/misc-ui.tsx
   function SyncDivergenceModal({ divergence, onKeepLocal, onUseCloud }) {
     const [busy, setBusy] = useState(false);
     if (!divergence) return null;
@@ -18333,8 +18335,8 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
       accounts.map((a) => /* @__PURE__ */ React.createElement("option", { key: a.id, value: a.id }, a.name))
     ));
   }
-  function Icon({ name, size = 20, strokeWidth = 2, style }) {
-    const common = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth, strokeLinecap: "round", strokeLinejoin: "round", style, "aria-hidden": "true", focusable: "false" };
+  function Icon({ name, size = 20, strokeWidth = 2, style, className }) {
+    const common = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth, strokeLinecap: "round", strokeLinejoin: "round", style, className, "aria-hidden": "true", focusable: "false" };
     switch (name) {
       case "plus":
         return /* @__PURE__ */ React.createElement("svg", { ...common }, /* @__PURE__ */ React.createElement("path", { d: "M12 5v14" }), /* @__PURE__ */ React.createElement("path", { d: "M5 12h14" }));
@@ -18621,7 +18623,7 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
     const sinceDays = (() => {
       const from = parseDate(lastReconciled);
       if (!from) return null;
-      const days = Math.round((new Date(todayStr()) - from) / 864e5);
+      const days = Math.round((new Date(todayStr()).getTime() - from.getTime()) / 864e5);
       return Number.isFinite(days) && days >= 0 ? days : null;
     })();
     const parsed = actual.trim() === "" ? null : Number(actual);
@@ -19091,7 +19093,7 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
     )), /* @__PURE__ */ React.createElement("div", { className: "household-signout-wrap" }, /* @__PURE__ */ React.createElement("button", { onClick: signOut, className: "household-signout-btn" }, "Sign out"))));
   }
 
-  // src/lib/format.js
+  // src/lib/format.tsx
   var roundMoney = (n) => Math.round(Number(n) + Number.EPSILON);
   var CURRENCIES = [
     { code: "CAD", name: "Canadian dollar" },
@@ -19284,7 +19286,7 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
     }
   }
 
-  // src/lib/dates.js
+  // src/lib/dates.ts
   var isLeapYear = (y) => y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0);
   var daysInMonth = (m, y) => MONTH_DAYS[m] + (m === 1 && isLeapYear(y) ? 1 : 0);
   function parseDate(str) {
@@ -19514,7 +19516,7 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
       }
     });
     events.sort((a, b) => {
-      const d = a.date - b.date;
+      const d = a.date.getTime() - b.date.getTime();
       if (d !== 0) return d;
       if (a.type === "income" && b.type !== "income") return -1;
       if (b.type === "income" && a.type !== "income") return 1;
@@ -19646,7 +19648,7 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
     return past.length > 0 ? past[past.length - 1].balance : openBal;
   }
 
-  // src/lib/migrate.js
+  // src/lib/migrate.ts
   var dollarsToCents = (x) => {
     const n = Number(x);
     return isFinite(n) ? Math.round(n * 100) : 0;
@@ -19959,7 +19961,7 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
   }
   migrateData();
 
-  // src/lib/sinking.js
+  // src/lib/sinking.ts
   function addMonthsClamped(dateStr, months) {
     const d = parseDate(dateStr);
     if (!d || !Number.isFinite(months)) return "";
@@ -20056,7 +20058,7 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
     }
   }
 
-  // src/lib/help-shots.js
+  // src/lib/help-shots.ts
   var HELP_SHOTS = {
     "settings-years": {
       "w": 917,
@@ -20100,7 +20102,7 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
     }
   };
 
-  // src/lib/anomaly.js
+  // src/lib/anomaly.ts
   var ANOMALY_DEFAULTS = {
     // How many months of history to average over. Six is long enough for a
     // quarterly bill to appear twice and short enough that last winter's
@@ -20179,7 +20181,7 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
     }));
   }
 
-  // src/components/help.js
+  // src/components/help.tsx
   var HELP_SECTIONS = [
     {
       id: "help-start",
@@ -20522,7 +20524,7 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
     ))), HELP_SECTIONS.map((s) => /* @__PURE__ */ React.createElement(Card, { key: s.id, id: s.id, className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, s.title), s.blocks.map(renderBlock))));
   }
 
-  // src/app/use-idle-lock.js
+  // src/app/use-idle-lock.ts
   var LOCK_KEY = "cf_last_active_at";
   function useIdleLock({ sessionUser, session, authLoading }) {
     const [lockTimeout, setLockTimeout] = useLS("cf_lock_timeout", 15);
@@ -20582,7 +20584,7 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
     return { locked, setLocked, lockTimeout, setLockTimeout, bioAvailable, isCoarsePointer };
   }
 
-  // src/app/use-route.js
+  // src/app/use-route.ts
   function useRoute() {
     const [tab, setTab] = useState(() => {
       const fromHash = parseTabHash().tab;
@@ -20686,7 +20688,7 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
     return { tab, setTab, flowSub, setFlowSub, planSub, setPlanSub, youSub, setYouSub };
   }
 
-  // src/app/use-dialog-focus.js
+  // src/app/use-dialog-focus.ts
   function useDialogFocus() {
     useEffect(() => {
       const OVERLAY = ".modal-overlay,.ctx-menu-desktop,.ctx-menu-backdrop";
@@ -20747,7 +20749,7 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
     }, []);
   }
 
-  // src/app/use-online-status.js
+  // src/app/use-online-status.ts
   function useOnlineStatus() {
     const [isOffline, setIsOffline] = useState(() => {
       try {
@@ -20769,7 +20771,7 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
     return isOffline;
   }
 
-  // src/app/use-pull-to-refresh.js
+  // src/app/use-pull-to-refresh.ts
   function usePullToRefresh(houseLoadRef) {
     const [pullProgress, setPullProgress] = useState(0);
     const [pullActive, setPullActive] = useState(false);
@@ -20816,7 +20818,7 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
     return { pullProgress, pullActive };
   }
 
-  // src/app/use-install-prompt.js
+  // src/app/use-install-prompt.ts
   function useInstallPrompt() {
     const [installPrompt, setInstallPrompt] = useState(null);
     const [showInstall, setShowInstall] = useState(false);
@@ -20849,7 +20851,7 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
     return { installPrompt, showInstall, doInstall };
   }
 
-  // src/app/use-flows.js
+  // src/app/use-flows.ts
   function useFlows({ entries, yearConfigs, overridesByYr, holidays, holidayRegionCode, accounts, activeYear }) {
     const yearFlows = useMemo(() => {
       setStoredHolidays(holidays);
@@ -20909,7 +20911,7 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
     return { yearFlows, scenarioOn, setScenarioOn, scenarioAdj, setScenarioAdj, scenarioActive, scenarioFlows, sortedConfigs, openBalOf, accountFilter, setAccountFilter, activeAccount, accountYearFlows, viewFlows, activeFlow, activeOpenBal, prevYearConfigured, prevYearFlow };
   }
 
-  // src/app/use-keyboard-shortcuts.js
+  // src/app/use-keyboard-shortcuts.ts
   function useKeyboardShortcuts({ setTab, setFlowSub, setPlanSub, setBudgetMonth, setGlobalSearch, undoStackRef, undoLast, tab }) {
     useEffect(() => {
       const TAB_KEYS = { "1": "today", "2": "flow", "3": "envelopes", "4": "plan" };
@@ -21010,7 +21012,7 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
     }, [tab]);
   }
 
-  // src/app/use-notifications.js
+  // src/app/use-notifications.ts
   function useNotifications({ household, yearFlows, completed, alertThresh, activeYear, activeFlow, navLowInfo, todayKey }) {
     const [notifyEnabled, setNotifyEnabled] = useLS("cf_notify_enabled", false);
     const [notifPerm, setNotifPerm] = useState(() => {
@@ -21096,7 +21098,7 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
     return { notifyEnabled, setNotifyEnabled, notifPerm, notifyHour, setNotifyHour, pushState, enableNotifications, disableNotifications };
   }
 
-  // src/app/use-backup-nudge.js
+  // src/app/use-backup-nudge.ts
   function useBackupNudge(houseValues) {
     const [showBackupNudge, setShowBackupNudge] = useState(false);
     useEffect(() => {
@@ -21115,7 +21117,7 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
     return { showBackupNudge, dismissBackup };
   }
 
-  // src/app/use-theme-and-format.js
+  // src/app/use-theme-and-format.ts
   function useThemeAndFormat({ darkMode, sessionUser, locale, currency }) {
     const [, setMoneyTick] = useState(0);
     useEffect(() => {
@@ -21136,7 +21138,7 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
     }, [locale, currency]);
   }
 
-  // src/app/use-global-search.js
+  // src/app/use-global-search.ts
   function useGlobalSearch({ tab, flowSub, activeYear, setTab, setFlowSub }) {
     const [globalSearch, setGlobalSearch] = useState("");
     const prevSearchRef = useRef("");
@@ -21157,7 +21159,7 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
     return { globalSearch, setGlobalSearch, searchScopeLabel };
   }
 
-  // src/app/use-undo-stack.js
+  // src/app/use-undo-stack.ts
   function useUndoStack() {
     const [undoStack, setUndoStack] = useState([]);
     const pushUndo = useCallback((label, revert) => {
@@ -21177,7 +21179,7 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
     return { undoStack, pushUndo, undoStackRef, undoLast, clearUndo };
   }
 
-  // src/app/use-low-balance.js
+  // src/app/use-low-balance.ts
   function useLowBalance({ activeFlow, viewFlows, activeYear, alertThresh }) {
     const navLowInfo = useMemo(() => {
       try {
@@ -21210,7 +21212,7 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
     return { navLowInfo, navLowAlert, lowBannerKey, showLowBanner, setLowBannerDismissed };
   }
 
-  // src/app/use-budget-actions.js
+  // src/app/use-budget-actions.ts
   var logDesc = (d) => {
     const t = String(d == null ? "" : d).trim() || "Entry";
     return t.length > 40 ? t.slice(0, 39) + "…" : t;
@@ -21318,7 +21320,7 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
     return { pushUndoEntryDelete, addEntry, saveEntryEdit, applyDriftFix, setOverride, clearOverride, markOccurrencesPaid, toggleComplete, latestYear, addNextYearInline };
   }
 
-  // src/app/use-goal-rollovers.js
+  // src/app/use-goal-rollovers.ts
   function useGoalRollovers({ goals, entries, setGoals, setEntries, logActivity }) {
     useEffect(() => {
       const plan = planGoalRollovers(goals, entries, todayStr());
@@ -21331,14 +21333,14 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
     }, [goals, entries, setGoals, setEntries, logActivity]);
   }
 
-  // src/app/use-app-notices.js
+  // src/app/use-app-notices.tsx
   function useAppNotices({ activeFlow, activeYear, debtData, debtExtra, canWrite, showLowBanner, tab, navLowInfo, alertThresh, lowBannerKey, setLowBannerDismissed, setTab, showBackupNudge, dismissBackup, entries, setEntries, yearConfigs, setActiveYear, setYouSub }) {
     const appFindings = useMemo(() => {
       const simDebts = Object.entries(debtData || {}).map(([key, v]) => ({
         key,
-        bal: parseFloat(v && v.balance) || 0,
-        rate: parseFloat(v && v.rate) || 0,
-        pmt: parseFloat(v && v.payment) || 0
+        bal: parseFloat(String(v?.balance)) || 0,
+        rate: parseFloat(String(v?.rate)) || 0,
+        pmt: parseFloat(String(v?.payment)) || 0
       })).filter((d) => d.bal > 0 && d.pmt > 0 && !(debtData[d.key] || {}).hidden);
       const extra = Math.round((parseFloat(debtExtra) || 0) * 100);
       const now = /* @__PURE__ */ new Date();
@@ -21431,7 +21433,7 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
     return { appFindings, appNotices };
   }
 
-  // src/App.js
+  // src/App.tsx
   function App() {
     if (typeof location !== "undefined" && location.search.includes("selftest")) return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(SelfTestView, null));
     const {

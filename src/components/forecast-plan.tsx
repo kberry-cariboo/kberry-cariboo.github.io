@@ -8,11 +8,37 @@ import { Card, CatChip, ChartTip, GridPagination, HelpTip, KpiCard, LedgerRow, P
 import { AddEntryModal } from "./forms.js";
 import { Icon } from "./misc-ui.js";
 import { DASH_AXIS_TICK_X, DASH_AXIS_TICK_Y } from "./plan-dashboard-shared.js";
+import type { Cents, Entry, FlowRow, Goal, YearConfig } from "../types.js";
+  export interface ForecastViewProps {
+    apiKey?: string;
+    isOffline?: boolean;
+    yearFlows: any;
+    yearConfigs: YearConfig[];
+    openBalByYear: any;
+    alertThreshold?: number;
+    globalSearch?: string;
+    budgetTargets?: Record<string, any>;
+    horizon?: number;
+    setHorizon?: (...args: any[]) => any;
+    categories?: string[];
+    categoryColors?: Record<string, any>;
+    addEntry?: any;
+    templates?: any[];
+    setTemplates?: any;
+    completed?: Record<string, any>;
+    toggleComplete?: (...args: any[]) => any;
+    entries?: Entry[];
+    scenarioOn?: boolean;
+    setScenarioOn?: (...args: any[]) => any;
+    scenarioAdj?: Record<string, any>;
+    setScenarioAdj?: (...args: any[]) => any;
+    scenarioFlows?: any;
+  }
   export function ForecastView({ apiKey = "", isOffline = false, yearFlows, yearConfigs, openBalByYear, alertThreshold = DEFAULT_ALERT_THRESHOLD, globalSearch = "", budgetTargets = {}, horizon = 90, setHorizon = () => {
   }, categories = [], categoryColors = {}, addEntry = null, templates = [], setTemplates = null, completed = {}, toggleComplete = () => {
   }, entries = [], scenarioOn = false, setScenarioOn = () => {
   }, scenarioAdj = {}, setScenarioAdj = () => {
-  }, scenarioFlows = null }) {
+  }, scenarioFlows = null }: ForecastViewProps) {
     const isMobile = useIsMobile();
     const [showAddEntry, setShowAddEntry] = useState(false);
     const [pgSize, setPgSize] = useLS("cf_forecastPageSize", 20);
@@ -556,7 +582,14 @@ import { DASH_AXIS_TICK_X, DASH_AXIS_TICK_Y } from "./plan-dashboard-shared.js";
       </Card>)}
     </div>;
   }
-  export function OnboardingWizard({ yearConfigs, setYearConfigs, addEntry, categories, setTab }) {
+  export interface OnboardingWizardProps {
+    yearConfigs: YearConfig[];
+    setYearConfigs: (...args: any[]) => any;
+    addEntry: (...args: any[]) => any;
+    categories: string[];
+    setTab: (...args: any[]) => any;
+  }
+  export function OnboardingWizard({ yearConfigs, setYearConfigs, addEntry, categories, setTab }: OnboardingWizardProps) {
     const [step, setStep] = useState(0);
     const [openBal, setOpenBal] = useState("");
     const [income, setIncome] = useState({ desc: "", amount: "", category: "Income" });
@@ -725,14 +758,25 @@ import { DASH_AXIS_TICK_X, DASH_AXIS_TICK_Y } from "./plan-dashboard-shared.js";
       {steps[step]}
     </Card>;
   }
-  export function BoldText({ text = "" }) {
+  export interface BoldTextProps {
+    text?: string;
+  }
+  export function BoldText({ text = "" }: BoldTextProps) {
     const parts = text.split(/\*\*([^*]+)\*\*/g);
     return React.createElement(React.Fragment, null, ...parts.map(
       (p, i) => i % 2 === 1 ? <strong key={i}>{p}</strong> : p
     ));
   }
+  export interface VizRowProps {
+    label: any;
+    fillPct: any;
+    fillColor: any;
+    value: any;
+    sub?: any;
+    rowTitle: any;
+  }
   // Hoisted out of AIInsightsView (was remounted every parent render).
-  export const VizRow = ({ label, fillPct, fillColor, value, sub, rowTitle }) => <div
+  export const VizRow = ({ label, fillPct, fillColor, value, sub, rowTitle }: VizRowProps) => <div
     title={rowTitle || void 0}
     className="vizrow-wrap"
   >
@@ -750,8 +794,21 @@ import { DASH_AXIS_TICK_X, DASH_AXIS_TICK_Y } from "./plan-dashboard-shared.js";
       />
     </div>
   </div>;
+  export interface AIInsightsViewProps {
+    flow: FlowRow[];
+    openBal: Cents;
+    yearConfigs: YearConfig[];
+    budgetTargets: any;
+    activeYear: number;
+    categories?: string[];
+    apiKey?: string;
+    goals?: Goal[];
+    debtData?: Record<string, any>;
+    isOffline?: boolean;
+    setTab?: (...args: any[]) => any;
+  }
   export function AIInsightsView({ flow, openBal, yearConfigs, budgetTargets, activeYear, categories = [], apiKey = "", goals = [], debtData = {}, isOffline = false, setTab = () => {
-  } }) {
+  } }: AIInsightsViewProps) {
     const [loading, setLoading] = useState(false);
     const [report, setReport] = useState(null);
     const [err, setErr] = useState("");
@@ -823,7 +880,7 @@ import { DASH_AXIS_TICK_X, DASH_AXIS_TICK_Y } from "./plan-dashboard-shared.js";
         surplus: m.surplus,
         closingBalance: m.close
       }));
-      const expenseCats = {}, incomeCats = {};
+      const expenseCats: Record<string, number> = {}, incomeCats: Record<string, number> = {};
       flow.filter((e) => e.month <= currentMonth).forEach((e) => {
         // Classified by flow direction, not by type, so these two add up to
         // the totalIncome/totalExpenses printed above them in the same
@@ -962,7 +1019,7 @@ ${ctx.incomeCategories.map((c) => `  ${c.category}: ${fmt(c.total)}`).join("\n")
 ${ctx.debtObligations.length ? `DEBT / CREDIT OBLIGATIONS (YTD paid):
 ${ctx.debtObligations.map((d) => `  ${d.category}: ${fmt(d.ytdPaid)}`).join("\n")}` : "No debt categories identified."}
 
-${(ctx.debtTrackerItems?.length) ? `DEBT TRACKER (user-entered balances & rates):
+${ctx.debtTrackerItems?.length ? `DEBT TRACKER (user-entered balances & rates):
 ${ctx.debtTrackerItems.map((d) => `  ${d.name}: Balance ${fmt(d.balance)}, Rate ${d.rate}%, Payment ${fmt(d.monthlyPayment)}/mo`).join("\n")}` : "No debt balances entered in tracker yet."}
 
 ${ctx.hasBudgetTargets ? `BUDGET VS ACTUAL (top variances):

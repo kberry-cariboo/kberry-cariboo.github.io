@@ -11,8 +11,8 @@ import { toast } from "../components/auth-misc.js";
     useEffect(() => {
       const TAB_KEYS = { "1": "today", "2": "flow", "3": "envelopes", "4": "plan" };
       const handler = (e) => {
-        const tag = ((e.target?.tagName) || "").toLowerCase();
-        const isInput = tag === "input" || tag === "textarea" || tag === "select" || (e.target?.isContentEditable);
+        const tag = (e.target?.tagName || "").toLowerCase();
+        const isInput = tag === "input" || tag === "textarea" || tag === "select" || e.target?.isContentEditable;
         if (isInput) return;
         if (e.key === "Escape") {
           setGlobalSearch("");
@@ -45,7 +45,7 @@ import { toast } from "../components/auth-misc.js";
         }
         if (e.key === "/") {
           e.preventDefault();
-          const el = document.getElementById("global-search");
+          const el = document.getElementById("global-search") as HTMLInputElement | null;
           if (el) {
             el.focus();
             el.select();

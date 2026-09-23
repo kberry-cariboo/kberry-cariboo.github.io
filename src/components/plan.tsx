@@ -9,6 +9,14 @@ import { ContextMenu } from "./forms.js";
 import { Icon } from "./misc-ui.js";
 import { DASH_AXIS_TICK_X, DASH_AXIS_TICK_Y, projectPayoffBalances } from "./plan-dashboard-shared.js";
 import { MoneyInput, toast } from "./auth-misc.js";
+import type { Cents, Entry, FlowRow, Goal, YearConfig } from "../types.js";
+  export interface StratCompareProps {
+    av: any;
+    sn: any;
+    base: any;
+    pick: any;
+    onPick: (...args: any[]) => any;
+  }
   // Hoisted out of PlanView's render body — an inline component
   // definition creates a new type each render and forces React to remount.
   // The screen exists to compare two strategies, and it used to stack them as
@@ -19,7 +27,7 @@ import { MoneyInput, toast } from "./auth-misc.js";
   // The payoff order was a 10px sentence of arrows wrapping to four lines. It
   // is a numbered list now, for the chosen strategy only, because that is the
   // form an ordered list of nine things has always wanted.
-  export const StratCompare = ({ av, sn, base, pick, onPick }) => {
+  export const StratCompare = ({ av, sn, base, pick, onPick }: StratCompareProps) => {
     const better = (a, b, lowerWins = true) => a === b ? null : (lowerWins ? a < b : a > b);
     const rows = [
       { label: "Debt-free", a: av.debtFreeDate, b: sn.debtFreeDate, win: better(av.months, sn.months) },
@@ -86,6 +94,31 @@ import { MoneyInput, toast } from "./auth-misc.js";
     </>;
   };
 
+  export interface PlanViewProps {
+    flow: FlowRow[];
+    openBal: Cents;
+    assets?: any[];
+    setAssets?: (...args: any[]) => any;
+    entries?: Entry[];
+    setEntries?: (...args: any[]) => any;
+    goals?: Goal[];
+    setGoals?: (...args: any[]) => any;
+    categories?: string[];
+    alertThreshold?: number;
+    activeYear?: number;
+    debtData?: Record<string, any>;
+    setDebtData?: (...args: any[]) => any;
+    globalSearch?: string;
+    yearConfigs?: YearConfig[];
+    setActiveYear?: (...args: any[]) => any;
+    setDeletedCopyIds?: (...args: any[]) => any;
+    planSub?: string;
+    setPlanSub?: (...args: any[]) => any;
+    debtExtra?: string;
+    setDebtExtra?: (...args: any[]) => any;
+    debtSimExcluded?: any[];
+    setDebtSimExcluded?: (...args: any[]) => any;
+  }
   export function PlanView({ flow, openBal, assets = [], setAssets = () => {
   }, entries = [], setEntries = () => {
   }, goals = [], setGoals = () => {
@@ -99,7 +132,7 @@ import { MoneyInput, toast } from "./auth-misc.js";
   // looking at the same numbers.
   }, debtExtra = "100", setDebtExtra = () => {
   }, debtSimExcluded = [], setDebtSimExcluded = () => {
-  } }) {
+  } }: PlanViewProps) {
     const gq = (globalSearch || "").trim().toLowerCase();
     const activeGoals = goals.filter((g) => !g.archived);
     const archivedGoalsCount = goals.length - activeGoals.length;
@@ -118,7 +151,7 @@ import { MoneyInput, toast } from "./auth-misc.js";
     const [assetForm, setAssetForm] = useState(null);
     const [showGoalForm, setShowGoalForm] = useState(false);
     const [goalForm, setGoalForm] = useState(null);
-    const [goalErrors, setGoalErrors] = useState({});
+    const [goalErrors, setGoalErrors] = useState<Record<string, string>>({});
     const [goalCtx, setGoalCtx] = useState(null);
     const [showFundForm, setShowFundForm] = useState(false);
     const [fundForm, setFundForm] = useState(null);
@@ -148,7 +181,7 @@ import { MoneyInput, toast } from "./auth-misc.js";
       return () => window.removeEventListener("keydown", h);
     }, [confirmGoalDelete, showDebtPicker, showFundForm, showGoalForm, showDebtForm]);
     const saveGoal = () => {
-      const errs = {};
+      const errs: Record<string, string> = {};
       const name = (goalForm.name || "").trim();
       const target = dollarsToCents(goalForm.target);
       const saved = dollarsToCents(goalForm.saved);
@@ -599,7 +632,7 @@ import { MoneyInput, toast } from "./auth-misc.js";
         "vehicle",
         "tractor"
       ];
-      const autoGroups = {};
+      const autoGroups: Record<string, FlowRow[]> = {};
       flow.filter((ev) => ev.type === "expense" && debtKeywords.some(
         (k) => ev.desc.toLowerCase().includes(k) || ev.category.toLowerCase().includes(k)
       )).forEach((ev) => {
@@ -626,7 +659,7 @@ import { MoneyInput, toast } from "./auth-misc.js";
       // per-entry contributions are summed.
       const toMonthlyFromEvs = (evs) => {
         if (!evs || !evs.length) return 0;
-        const byEntry = {};
+        const byEntry: Record<string, FlowRow[]> = {};
         evs.forEach((ev) => {
           const eid = ev.entryId != null ? ev.entryId : ev.id;
           (byEntry[eid] || (byEntry[eid] = [])).push(ev);
@@ -688,7 +721,10 @@ import { MoneyInput, toast } from "./auth-misc.js";
           key: k,
           label: (debtData[k]?.label) || "",
           monthlyPmt: parseFloat(debtData[k]?.payment) || 0,
-          isAuto: false
+          isAuto: false,
+          perOccurrence: undefined,
+          recurDesc: undefined,
+          timesPerYear: undefined
         };
       });
       const allRows = [...autoRows, ...manualRows].filter((r) => {
@@ -1280,7 +1316,7 @@ import { MoneyInput, toast } from "./auth-misc.js";
           // several same-named entries previously loaded only its own share
           // of the payment, same bug the Debt Payoff Tracker's own monthly
           // total had.
-          const groupedByDesc = {};
+          const groupedByDesc: Record<string, Entry[]> = {};
           recurExpenses.forEach((e) => {
             const k = e.desc || "";
             (groupedByDesc[k] || (groupedByDesc[k] = [])).push(e);

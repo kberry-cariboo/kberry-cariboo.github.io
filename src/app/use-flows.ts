@@ -50,7 +50,7 @@ import { accountOpenings, useLS } from "../lib/app-data.js";
       return buildYearFlows(scenarioEntries, yearConfigs, overridesByYr);
     }, [scenarioEntries, yearConfigs, overridesByYr, scenarioActive]);
     const sortedConfigs = [...yearConfigs].sort((a, b) => a.year - b.year);
-    const openBalOf = (flowsByYear, firstOpening) => {
+    const openBalOf = (flowsByYear, firstOpening?) => {
       const idx = sortedConfigs.findIndex((yc) => yc.year === activeYear);
       if (idx <= 0) return firstOpening !== void 0 ? firstOpening : yearConfigs.find((yc) => yc.year === activeYear)?.openingBalance ?? 0;
       const prevFlow = flowsByYear[sortedConfigs[idx - 1].year];

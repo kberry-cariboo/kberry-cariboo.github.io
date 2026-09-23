@@ -6,6 +6,35 @@ import { Card, CatChip, ConfirmDialog, EmptyState, GridPagination, PillToggle, S
 import { ContextMenu, EntryForm, FilterPill } from "./forms.js";
 import { CsvImportModal } from "./csv-import.js";
 import { Icon } from "./misc-ui.js";
+import type { Entry } from "../types.js";
+  export interface EntriesViewProps {
+    entries: Entry[];
+    setEntries: (...args: any[]) => any;
+    saveEntryEdit?: any;
+    addEntry: (...args: any[]) => any;
+    categories: string[];
+    categoryColors?: Record<string, any>;
+    activeYear: number;
+    apiKey?: string;
+    isOffline?: boolean;
+    onDeleted?: (...args: any[]) => any;
+    templates?: any[];
+    setTemplates?: (...args: any[]) => any;
+    globalSearch?: string;
+    allYearFlows?: any;
+    colOrder?: string[];
+    setColOrder?: (...args: any[]) => any;
+    filter?: string;
+    setFilter?: (...args: any[]) => any;
+    filterCats?: any[];
+    setFilterCats?: (...args: any[]) => any;
+    filterScheds?: any[];
+    setFilterScheds?: (...args: any[]) => any;
+    pushUndo?: (...args: any[]) => any;
+    setGlobalSearch?: (...args: any[]) => any;
+    filterStatus?: any[];
+    setFilterStatus?: (...args: any[]) => any;
+  }
   export function EntriesView({ entries, setEntries, saveEntryEdit = null, addEntry, categories, categoryColors = {}, activeYear, apiKey = "", isOffline = false, onDeleted = () => {
   }, templates = [], setTemplates, globalSearch = "", allYearFlows = null, colOrder = DEFAULT_ENTRIES_COLS, setColOrder = () => {
   }, filter = "all", setFilter = () => {
@@ -14,7 +43,7 @@ import { Icon } from "./misc-ui.js";
   }, pushUndo = () => {
   }, setGlobalSearch = () => {
   }, filterStatus = [], setFilterStatus = () => {
-  } }) {
+  } }: EntriesViewProps) {
     const cols = Array.isArray(colOrder) && colOrder.length ? colOrder : DEFAULT_ENTRIES_COLS;
     const [showForm, setShowForm] = useState(false);
     const [editing, setEditing] = useState(null);

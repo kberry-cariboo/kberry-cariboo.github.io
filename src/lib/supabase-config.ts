@@ -14,4 +14,4 @@
   // anything from the script's own source.
   export const VAPID_PUBLIC_KEY = "BGbemiiYRInroq-BSlKEpaETX129HajcS-cxognl96Al5OjLKIAcMbXfGRwGmxjBbN_yFX7KJgErCj6WThQYIWs";
   export const isSupabaseConfigured = () => !SUPABASE_URL.includes("YOUR-PROJECT") && !SUPABASE_ANON_KEY.includes("YOUR-ANON");
-  export const supabaseClient = isSupabaseConfigured() ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+  export const supabaseClient = isSupabaseConfigured() ? window.supabase!.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;

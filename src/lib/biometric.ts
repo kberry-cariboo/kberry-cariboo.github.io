@@ -58,7 +58,7 @@ import { safeStorage } from "./runtime.js";
       }
     });
     if (!cred) throw new Error("No credential returned.");
-    const credId = b64urlEncode(cred.rawId);
+    const credId = b64urlEncode((cred as PublicKeyCredential).rawId);
     try {
       localStorage.setItem("cf_webauthn_" + userId, credId);
     } catch (e) {

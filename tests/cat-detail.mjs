@@ -17,7 +17,7 @@ const read = (p) => readFileSync(join(ROOT, p), 'utf8');
 
 // The source is ES modules; loadSrc bundles these (and what they import) and
 // runs them against the stand-ins passed here.
-const load = () => loadSrc(['src/lib/cat-detail.js'], {});
+const load = () => loadSrc(['src/lib/cat-detail.ts'], {});
 const { categoryDetail } = load();
 
 const results = [];

@@ -7,7 +7,7 @@
 // browser: every name in `globals` (React, localStorage, window, ...) is in
 // scope for the bundle exactly as the real ones are in the page.
 //
-//   const { expandEntries } = loadSrc(['src/lib/dates.js'], { React, localStorage, window });
+//   const { expandEntries } = loadSrc(['src/lib/dates.ts'], { React, localStorage, window });
 //
 // Anything a module touches while loading and the test does not supply falls
 // back to a harmless stand-in (see STUBS), because importing one lib module can

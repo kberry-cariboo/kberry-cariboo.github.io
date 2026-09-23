@@ -223,7 +223,7 @@ import { useAppNotices } from "./app/use-app-notices.js";
       setActivity((prev) => [{
         id: genId(),
         at: (new Date()).toISOString(),
-        by: (sessionUser?.id) || void 0,
+        by: sessionUser?.id || void 0,
         kind,
         what
       }, ...Array.isArray(prev) ? prev : []].slice(0, ACTIVITY_LIMIT));
@@ -473,13 +473,13 @@ import { useAppNotices } from "./app/use-app-notices.js";
       </button>;
     })()}
                 {(() => {
-      const initials = ((sessionUser?.fullName) || "?").split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+      const initials = (sessionUser?.fullName || "?").split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
       return <div className="relative">
         <button
           onClick={() => setMenuOpen((v) => !v)}
           aria-label="User menu"
           aria-expanded={menuOpen}
-          title={`Signed in as ${(sessionUser?.fullName) || ""}`}
+          title={`Signed in as ${sessionUser?.fullName || ""}`}
           className="user-avatar-btn"
           // Settings, Alerts and Help are reached from this menu rather than
           // from the tab bar, so while you are in one of them the bar shows
@@ -495,10 +495,10 @@ import { useAppNotices } from "./app/use-app-notices.js";
           <div className="user-menu-panel">
             <div className="user-menu-header">
               <div className="user-menu-name">
-                {(sessionUser?.fullName) || ""}
+                {sessionUser?.fullName || ""}
               </div>
               <div className="user-menu-email">
-                {(sessionUser?.email) || ""}
+                {sessionUser?.email || ""}
               </div>
             </div>
             {[
@@ -507,7 +507,7 @@ import { useAppNotices } from "./app/use-app-notices.js";
           setTab("you");
         } },
         { label: "Edit Profile", icon: "user", action: () => {
-          setPf({ fullName: (sessionUser?.fullName) || "", email: (sessionUser?.email) || "" });
+          setPf({ fullName: sessionUser?.fullName || "", email: sessionUser?.email || "" });
           setPfErr("");
           setPfOk("");
           setProfileForm("profile");
@@ -1020,5 +1020,5 @@ import { useAppNotices } from "./app/use-app-notices.js";
       </CategoriesContext.Provider>
     </HouseholdContext.Provider>;
   }
-  export const root = ReactDOM.createRoot(document.getElementById("root"));
+  export const root = ReactDOM.createRoot(document.getElementById("root")!);
   root.render(<App />);

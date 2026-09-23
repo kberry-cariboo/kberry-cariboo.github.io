@@ -2,6 +2,7 @@ import { useMemo } from "../lib/runtime.js";
 import { fmt } from "../lib/format.js";
 import { categoryAnomalies, categoryAnomalyFindings } from "../lib/anomaly.js";
 import { MONTHS, computeSpendingInsight, debtStrategyFinding, spendingInsightFinding } from "../lib/app-data.js";
+import type { DebtFigures } from "../types.js";
   // What the app has to say: findings (what it has worked out) and notices
   // (the banners at the top). Moved out of App as is.
   export function useAppNotices({ activeFlow, activeYear, debtData, debtExtra, canWrite, showLowBanner, tab, navLowInfo, alertThresh, lowBannerKey, setLowBannerDismissed, setTab, showBackupNudge, dismissBackup, entries, setEntries, yearConfigs, setActiveYear, setYouSub }) {
@@ -10,12 +11,12 @@ import { MONTHS, computeSpendingInsight, debtStrategyFinding, spendingInsightFin
     // place you can go to see everything the app has to say — the screens that
     // compute them still show them in context, from these same helpers.
     const appFindings = useMemo(() => {
-      const simDebts = Object.entries(debtData || {})
+      const simDebts = Object.entries((debtData || {}) as Record<string, DebtFigures>)
         .map(([key, v]) => ({
           key,
-          bal: parseFloat(v && v.balance) || 0,
-          rate: parseFloat(v && v.rate) || 0,
-          pmt: parseFloat(v && v.payment) || 0
+          bal: parseFloat(String(v?.balance)) || 0,
+          rate: parseFloat(String(v?.rate)) || 0,
+          pmt: parseFloat(String(v?.payment)) || 0
         }))
         .filter((d) => d.bal > 0 && d.pmt > 0 && !(debtData[d.key] || {}).hidden);
       const extra = Math.round((parseFloat(debtExtra) || 0) * 100);

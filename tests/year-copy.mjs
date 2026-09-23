@@ -6,7 +6,7 @@
 // twice, and it has to distinguish work the sync did from work the user did in
 // the target year — while three separate buttons trigger it.
 //
-// So the logic lives in src/lib/year-copy.js as pure functions over plain data,
+// So the logic lives in src/lib/year-copy.ts as pure functions over plain data,
 // and this drives them directly: no browser, no React, no localStorage. The
 // three buttons are covered in tests/regression.mjs; what is checked here is
 // what they all delegate to.
@@ -32,7 +32,7 @@ const localStorage = {
 const noHook = () => { throw new Error('year copy must not need React'); };
 // The source is ES modules; loadSrc bundles these (and what they import) and
 // runs them against the stand-ins passed here.
-const load = (React, localStorage, window) => loadSrc(['src/lib/dates.js', 'src/lib/year-copy.js'], { React, localStorage, window });
+const load = (React, localStorage, window) => loadSrc(['src/lib/dates.ts', 'src/lib/year-copy.ts'], { React, localStorage, window });
 const {
   syncSingleEntriesToYear, copyOccurrenceOverridesToYear, mirrorRecurringAmountsToYear,
   planYearRollforward, applyYearRollforward, expandEntries,

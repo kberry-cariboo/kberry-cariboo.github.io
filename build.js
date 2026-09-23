@@ -11,15 +11,15 @@ const crypto = require("crypto");
 const ROOT = __dirname;
 const read = (p) => fs.readFileSync(path.join(ROOT, p), "utf8");
 
-// The app is ES modules under src/, entered at src/main.js. esbuild bundles
+// The app is ES modules under src/, entered at src/main.ts. esbuild bundles
 // them into one IIFE that goes inline into index.html, between the bootstrap
 // head (service worker registration, CF_VERSION, the error screen) and tail.
 // It is the build's one dependency (package.json, pinned exactly).
 const esbuild = require("esbuild");
-// Components are written in JSX, compiled to React.createElement against the
-// vendored React global (there is no automatic runtime to import).
+// The source is TypeScript. esbuild only strips the types (tsc checks them:
+// `npm run typecheck`), and compiles JSX to React.createElement against the
+// vendored React global, since there is no automatic runtime to import.
 const JSX_OPTIONS = {
-  loader: { ".js": "jsx" },
   jsx: "transform",
   jsxFactory: "React.createElement",
   jsxFragment: "React.Fragment",
@@ -27,7 +27,7 @@ const JSX_OPTIONS = {
 function bundleApp() {
   const res = esbuild.buildSync({
     ...JSX_OPTIONS,
-    entryPoints: [path.join(ROOT, "src/main.js")],
+    entryPoints: [path.join(ROOT, "src/main.ts")],
     bundle: true,
     format: "iife",
     target: "es2020",
@@ -89,7 +89,7 @@ function contentSecurityPolicy(html) {
     console.error(`build.js: expected 4 inline scripts to pin in the CSP, found ${hashes.length}`);
     process.exit(1);
   }
-  const cfg = read("src/lib/supabase-config.js").match(/const SUPABASE_URL = "([^"]+)"/);
+  const cfg = read("src/lib/supabase-config.ts").match(/const SUPABASE_URL = "([^"]+)"/);
   const supa = cfg && /^https:\/\//.test(cfg[1]) ? new URL(cfg[1]).host : null;
   const policy = [
     "default-src 'self'",
@@ -118,7 +118,7 @@ function build() {
   try {
     bundled = bundleApp();
   } catch (err) {
-    console.error("build.js: esbuild could not bundle src/main.js:\n" + (err.errors || []).map((e) => `  ${e.location ? e.location.file + ":" + e.location.line + " " : ""}${e.text}`).join("\n"));
+    console.error("build.js: esbuild could not bundle src/main.ts:\n" + (err.errors || []).map((e) => `  ${e.location ? e.location.file + ":" + e.location.line + " " : ""}${e.text}`).join("\n"));
     process.exit(1);
   }
   const appCode =

@@ -74,7 +74,7 @@
   };
   // One entry's finding, or null when it has not drifted. Exposed separately
   // so the reasoning is testable a case at a time.
-  export function driftForEntry(entry, overridesByYr, opts = {}) {
+  export function driftForEntry(entry, overridesByYr, opts: Partial<typeof DRIFT_DEFAULTS> & { asOf?: string } = {}) {
     const o = { ...DRIFT_DEFAULTS, ...opts };
     // A one-time entry has no plan to drift from, and a zero amount has no
     // percentage to be off by.
@@ -129,7 +129,7 @@
   // rather than the percentage: a mortgage $90 out matters more than a
   // subscription 40% out at $4, and the list exists to be acted on from the
   // top.
-  export function findAmountDrift(entries, overridesByYr, opts = {}) {
+  export function findAmountDrift(entries, overridesByYr, opts: Partial<typeof DRIFT_DEFAULTS> & { asOf?: string } = {}) {
     return (entries || [])
       .map((e) => driftForEntry(e, overridesByYr, opts))
       .filter(Boolean)

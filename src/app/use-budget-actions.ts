@@ -104,7 +104,7 @@ import { toast } from "../components/auth-misc.js";
         // rent?". The id is stamped rather than the name: names are editable
         // in Settings, and a stored copy would go stale the moment someone
         // corrected theirs. Every reader resolves it against the member list.
-        yOvs[eventId] = { ...existing, ...patch, _savedAt: (new Date()).toISOString(), _by: (sessionUser?.id) || void 0, _history: history };
+        yOvs[eventId] = { ...existing, ...patch, _savedAt: (new Date()).toISOString(), _by: sessionUser?.id || void 0, _history: history };
         return { ...prev, [activeYear]: yOvs };
       });
     };

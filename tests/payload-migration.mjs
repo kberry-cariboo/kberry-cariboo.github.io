@@ -1,6 +1,6 @@
 // Does a payload get migrated exactly once, no matter which version it came from?
 //
-// migrateHouseholdPayload (src/lib/migrate.js) upgrades a payload arriving from
+// migrateHouseholdPayload (src/lib/migrate.ts) upgrades a payload arriving from
 // outside this device's localStorage: a household load from Supabase, or a
 // backup file being restored in Settings. It is the one migration path with no
 // durable "already done" marker behind it — migrateData stamps
@@ -28,7 +28,7 @@ import { loadSrc } from './load-src.mjs';
 // there and not to BY_VERSION below should fail here, not pass against a stale
 // duplicate. loadSrc bundles it (and what it imports) and runs it against the
 // stand-ins passed here.
-const load = (_React, localStorage) => loadSrc(['src/lib/migrate.js'], { localStorage });
+const load = (_React, localStorage) => loadSrc(['src/lib/migrate.ts'], { localStorage });
 const noHook = () => { throw new Error('payload migration must not need React'); };
 // migrate.js runs migrateData() at module scope. It has nothing to do here, but
 // it needs somewhere to look: an empty store makes it take the fresh-install

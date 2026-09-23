@@ -97,7 +97,7 @@ const walk = (dir) => {
     // inline-motion check to accept an expression made React's bundle match
     // it on the first try.
     if (e.isDirectory()) { if (e.name !== 'vendor') walk(join(dir, e.name)); }
-    else if (e.name.endsWith('.js')) jsFiles.push(join(dir, e.name));
+    else if (/\.(js|tsx?)$/.test(e.name)) jsFiles.push(join(dir, e.name));
   }
 };
 walk('src');
@@ -138,10 +138,10 @@ check('every smooth scroll asks prefers-reduced-motion first',
 
 // A guard that is never called is not a guard. This is the function those call
 // sites use; if it is renamed or dropped, the check above passes vacuously.
-const appData = readFileSync(join(ROOT, 'src/lib/app-data.js'), 'utf8');
+const appData = readFileSync(join(ROOT, 'src/lib/app-data.ts'), 'utf8');
 check('the reduced-motion guard reads the media query it claims to',
   /function prefersReducedMotion\(\)[\s\S]{0,300}matchMedia\([^)]*prefers-reduced-motion:\s*reduce/.test(appData),
-  'src/lib/app-data.js no longer defines prefersReducedMotion() over matchMedia');
+  'src/lib/app-data.ts no longer defines prefersReducedMotion() over matchMedia');
 
 const smoothSites = jsFiles.reduce((n, rel) =>
   n + (stripComments(readFileSync(join(ROOT, rel), 'utf8')).match(/["']smooth["']/g) || []).length, 0);

@@ -5,12 +5,18 @@ import { fmt, memberName } from "../lib/format.js";
 import { HouseholdContext, LOGO_SRC, MONTHS, autoFocusOnDesktop, compressReceiptImage, haptic, prefersReducedMotion } from "../lib/app-data.js";
 import { aiCanRun, aiErrorMessage, aiExtractReceipt } from "../lib/ai.js";
 import { FieldError, FieldLabel, HelpTip, SheetHandle } from "./primitives.js";
+import type { Account } from "../types.js";
+  export interface SyncDivergenceModalProps {
+    divergence: any;
+    onKeepLocal: (...args: any[]) => any;
+    onUseCloud: (...args: any[]) => any;
+  }
   // Shown only when this device has edits the server never received *and* the
   // cloud copy also changed since. Both outcomes lose somebody's work, so the
   // app refuses to guess — it stops syncing and asks. Local state is left
   // exactly as-is until a button is pressed, so dismissing by accident can't
   // destroy anything (there is deliberately no dismiss).
-  export function SyncDivergenceModal({ divergence, onKeepLocal, onUseCloud }) {
+  export function SyncDivergenceModal({ divergence, onKeepLocal, onUseCloud }: SyncDivergenceModalProps) {
     const [busy, setBusy] = useState(false);
     if (!divergence) return null;
     const when = (() => {
@@ -70,7 +76,11 @@ import { FieldError, FieldLabel, HelpTip, SheetHandle } from "./primitives.js";
     </div>;
   }
 
-  export function ReceiptLightbox({ src, onClose }) {
+  export interface ReceiptLightboxProps {
+    src: any;
+    onClose: (...args: any[]) => any;
+  }
+  export function ReceiptLightbox({ src, onClose }: ReceiptLightboxProps) {
     useEffect(() => {
       const h = (e) => {
         if (e.key === "Escape") onClose();
@@ -84,6 +94,11 @@ import { FieldError, FieldLabel, HelpTip, SheetHandle } from "./primitives.js";
       <button onClick={onClose} aria-label="Close" className="receipt-lightbox-close">✕</button>
     </div>;
   }
+  export interface AccountFilterProps {
+    accounts?: Account[];
+    value?: string;
+    onChange?: (...args: any[]) => any;
+  }
   // The account filter. Only rendered once a household has more than one
   // account — with a single account "All accounts" and "Chequing" are the same
   // set, and a control whose two options do the same thing is worse than no
@@ -93,7 +108,7 @@ import { FieldError, FieldLabel, HelpTip, SheetHandle } from "./primitives.js";
   // flow and an opening balance, so narrowing is a matter of handing them a
   // smaller pair; none of them knows this exists.
   export function AccountFilter({ accounts = [], value = "", onChange = () => {
-  } }) {
+  } }: AccountFilterProps) {
     if (!Array.isArray(accounts) || accounts.length < 2) return null;
     return <div className="account-filter" data-noprint={true}>
       <label htmlFor="account-filter-select" className="account-filter-label">Account</label>
@@ -108,8 +123,15 @@ import { FieldError, FieldLabel, HelpTip, SheetHandle } from "./primitives.js";
       </select>
     </div>;
   }
-  export function Icon({ name, size = 20, strokeWidth = 2, style }) {
-    const common = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth, strokeLinecap: "round", strokeLinejoin: "round", style, "aria-hidden": "true", focusable: "false" };
+  export interface IconProps {
+    name: string;
+    size?: number;
+    strokeWidth?: number;
+    style?: React.CSSProperties;
+    className?: string;
+  }
+  export function Icon({ name, size = 20, strokeWidth = 2, style, className }: IconProps) {
+    const common: React.SVGProps<SVGSVGElement> = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth, strokeLinecap: "round", strokeLinejoin: "round", style, className, "aria-hidden": "true", focusable: "false" };
     switch (name) {
       case "plus":
         return <svg {...common}><path d="M12 5v14" /><path d="M5 12h14" /></svg>;
@@ -383,6 +405,10 @@ import { FieldError, FieldLabel, HelpTip, SheetHandle } from "./primitives.js";
         return null;
     }
   }
+  export interface SectionNavProps {
+    sections?: any[];
+    label?: string;
+  }
   // Help runs 22 phone screens across 39 headings and Settings 7.9 across 15.
   // Both offered a link index at the top and nothing after it, so fifteen
   // screens down the way back was a long scroll. This is that index, made
@@ -392,7 +418,7 @@ import { FieldError, FieldLabel, HelpTip, SheetHandle } from "./primitives.js";
   // On a phone it replaces the index strip rather than joining it — the strip
   // is a two-column grid of fourteen pills, about 200px, and it is only useful
   // at the top of the page. Desktop keeps the strip and never renders this.
-  export function SectionNav({ sections = [], label = "Section" }) {
+  export function SectionNav({ sections = [], label = "Section" }: SectionNavProps) {
     const [open, setOpen] = useState(false);
     const [current, setCurrent] = useState(null);
     // Scroll position, not intersection. "First section currently on screen"
@@ -478,7 +504,10 @@ import { FieldError, FieldLabel, HelpTip, SheetHandle } from "./primitives.js";
   // is one tap. Sorting is by severity, not by which effect happened to run
   // first, so the thing that matters is the thing you read.
   export const NOTICE_RANK = { critical: 0, warn: 1, info: 2 };
-  export function NoticeStack({ notices = [] }) {
+  export interface NoticeStackProps {
+    notices?: any[];
+  }
+  export function NoticeStack({ notices = [] }: NoticeStackProps) {
     const [open, setOpen] = useState(false);
     const list = useMemo(
       () => notices.filter(Boolean).slice().sort((a, b) => NOTICE_RANK[a.tone] - NOTICE_RANK[b.tone]),
@@ -533,6 +562,12 @@ import { FieldError, FieldLabel, HelpTip, SheetHandle } from "./primitives.js";
       {open && <div className="notice-stack-body">{list.map(row)}</div>}
     </div>;
   }
+  export interface BottomNavProps {
+    tab: any;
+    setTab: (...args: any[]) => any;
+    lowAlert?: boolean;
+    onCompose?: (...args: any[]) => any;
+  }
   // Four destinations and one action. Settings, Help and the account moved
   // behind the avatar as "You" — they are things you visit occasionally, and
   // they were taking a fifth of the thumb's reach from the money.
@@ -540,7 +575,7 @@ import { FieldError, FieldLabel, HelpTip, SheetHandle } from "./primitives.js";
   // The centre button is the one thing the old nav had no room for: adding an
   // entry. It was reachable only through Budget → Entries → the toolbar, which
   // is three taps for the app's most common act.
-  export function BottomNav({ tab, setTab, lowAlert = false, onCompose }) {
+  export function BottomNav({ tab, setTab, lowAlert = false, onCompose }: BottomNavProps) {
     const items = [
       { id: "today", icon: "home", label: "Today" },
       { id: "flow", icon: "trending-up", label: "Flow" },
@@ -587,6 +622,13 @@ import { FieldError, FieldLabel, HelpTip, SheetHandle } from "./primitives.js";
     </button>)}
     </nav>;
   }
+  export interface ReconcileModalProps {
+    projected: any;
+    categories?: string[];
+    lastReconciled?: any;
+    onCancel: (...args: any[]) => any;
+    onConfirm: (...args: any[]) => any;
+  }
   // "The app says $2,140. What does the bank actually say?"
   //
   // Every balance in the app is projected from one figure — the year's opening
@@ -604,7 +646,7 @@ import { FieldError, FieldLabel, HelpTip, SheetHandle } from "./primitives.js";
   // Actual, distort a category, or turn up in the AI's spending analysis. It
   // is visible in the ledger on the day it was made, and can be deleted like
   // any other entry if it was a mistake.
-  export function ReconcileModal({ projected, categories = [], lastReconciled = null, onCancel, onConfirm }) {
+  export function ReconcileModal({ projected, categories = [], lastReconciled = null, onCancel, onConfirm }: ReconcileModalProps) {
     const [actual, setActual] = useState("");
     const [err, setErr] = useState("");
     // How long the projection has been running unchecked. The adjustment about
@@ -615,7 +657,7 @@ import { FieldError, FieldLabel, HelpTip, SheetHandle } from "./primitives.js";
     const sinceDays = (() => {
       const from = parseDate(lastReconciled);
       if (!from) return null;
-      const days = Math.round((new Date(todayStr()) - from) / 864e5);
+      const days = Math.round(((new Date(todayStr())).getTime() - from.getTime()) / 864e5);
       return Number.isFinite(days) && days >= 0 ? days : null;
     })();
     const parsed = actual.trim() === "" ? null : Number(actual);
@@ -720,7 +762,20 @@ import { FieldError, FieldLabel, HelpTip, SheetHandle } from "./primitives.js";
     });
     return latest;
   }
-  export function OccurrenceEditModal({ ev, orig, onSave, onCancel, onReset, onDelete, onEditEntry = null, onSkip = null, apiKey = "", isOffline = false, categories = [] }) {
+  export interface OccurrenceEditModalProps {
+    ev: any;
+    orig: any;
+    onSave: (...args: any[]) => any;
+    onCancel: (...args: any[]) => any;
+    onReset: (...args: any[]) => any;
+    onDelete?: (...args: any[]) => any;
+    onEditEntry?: any;
+    onSkip?: any;
+    apiKey?: string;
+    isOffline?: boolean;
+    categories?: string[];
+  }
+  export function OccurrenceEditModal({ ev, orig, onSave, onCancel, onReset, onDelete, onEditEntry = null, onSkip = null, apiKey = "", isOffline = false, categories = [] }: OccurrenceEditModalProps) {
     const [desc, setDesc] = useState(ev.desc || (orig.desc || ""));
     const plannedCents = ev.plannedAmount !== void 0 ? ev.plannedAmount : ev.amount;
     const [amount, setAmount] = useState(String(centsToDollars(plannedCents)));
@@ -1090,7 +1145,13 @@ import { FieldError, FieldLabel, HelpTip, SheetHandle } from "./primitives.js";
       </div>
     </div>;
   }
-  export function HouseholdOnboardingView({ email, createHousehold, joinHousehold, signOut }) {
+  export interface HouseholdOnboardingViewProps {
+    email: any;
+    createHousehold: any;
+    joinHousehold: any;
+    signOut: any;
+  }
+  export function HouseholdOnboardingView({ email, createHousehold, joinHousehold, signOut }: HouseholdOnboardingViewProps) {
     const [mode, setMode] = useState("create");
     const [fullName, setFullName] = useState("");
     const [code, setCode] = useState("");

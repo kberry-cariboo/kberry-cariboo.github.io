@@ -111,7 +111,7 @@ import { daysInMonth, expandEntries } from "./dates.js";
       if (t.edited) return;
       const desired = { startDate: `${toYear}-${s.effMD}`, amount: s.amount, notes: s.notes };
       const original = { startDate: `${toYear}-${s.rawMD}`, amount: s.e.amount, notes: s.e.notes || "" };
-      const patch = {};
+      const patch: Record<string, unknown> = {};
       ["startDate", "amount", "notes"].forEach((f) => {
         const cur = f === "notes" ? t.e.notes || "" : t.e[f];
         if (cur !== desired[f] && cur === original[f]) patch[f] = desired[f];

@@ -7,6 +7,7 @@ import { DEFAULT_CURRENCY, DEFAULT_LOCALE, downloadBlob } from "./format.js";
 import { receiptSig, receiptStoreAll, receiptStoreClear, receiptStoreDelete, receiptStorePut } from "./receipt-store.js";
 import { DEFAULT_ALERT_THRESHOLD, DEFAULT_BUDGET_COLS, DEFAULT_CATEGORIES, DEFAULT_CATEGORY_COLORS, DEFAULT_ENTRIES_COLS, useLS } from "./app-data.js";
 import { toast } from "../components/auth-misc.js";
+import type { DebtFigures, HouseholdData, HouseholdPayload, MemberPrefs, OverridesByYear, Setters } from "../types.js";
   // ── Centralized Supabase auth calls ────────────────────────────────
   // Every supabase.auth touchpoint lives in this file (these helpers plus
   // useHousehold below); components never call supabaseClient directly.
@@ -81,7 +82,7 @@ import { toast } from "../components/auth-misc.js";
   // Overrides without their receipt images: what goes to the server (receipts
   // travel separately, via put_receipt) and what goes into localStorage
   // (receipts live in IndexedDB — see receipt-store.js).
-  export function stripOverrideAttachments(byYr) {
+  export function stripOverrideAttachments(byYr: OverridesByYear): OverridesByYear {
     const out = {};
     Object.keys(byYr || {}).forEach((year) => {
       const yOvs = byYr[year] || {};
@@ -101,7 +102,7 @@ import { toast } from "../components/auth-misc.js";
   }
   // String figures to numbers; "" (not filled in) and anything unparseable
   // are left exactly as they were.
-  export function normaliseDebtFigures(debts) {
+  export function normaliseDebtFigures(debts: Record<string, unknown>): Record<string, DebtFigures> {
     const out = {};
     Object.keys(debts).forEach((k) => {
       const d = debts[k];
@@ -116,6 +117,21 @@ import { toast } from "../components/auth-misc.js";
       out[k] = copy;
     });
     return out;
+  }
+  // A row of HOUSEHOLD_FIELDS or MEMBER_PREF_FIELDS.
+  export interface FieldSpec<K extends string = string> {
+    key: K;
+    /** Its localStorage key on this device. */
+    storage: string;
+    initial: () => unknown;
+    /** Which guard accepts a value arriving from the server (HOUSEHOLD_GUARDS). */
+    kind?: "array" | "object" | "value" | "truthy";
+    /** In household backups. */
+    backup?: boolean;
+    /** What is written to localStorage, when not the value itself. */
+    toStorage?: (v: any) => unknown;
+    /** A guard of its own, in place of `kind`'s. */
+    apply?: (v: any, set: (v: any) => void) => void;
   }
   export const HOUSEHOLD_FIELDS = [
     { key: "entries", storage: "cf_entries", initial: () => [], kind: "array", backup: true },
@@ -195,7 +211,12 @@ import { toast } from "../components/auth-misc.js";
     { key: "accounts", storage: "cf_accounts", initial: () => [{ id: DEFAULT_ACCOUNT_ID, name: DEFAULT_ACCOUNT_NAME, kind: "chequing" }], backup: true, apply: (v, set) => {
       if (Array.isArray(v) && v.length > 0) set(v);
     } }
-  ];
+  ] satisfies FieldSpec<keyof HouseholdData>[];
+  // The table and the HouseholdData type describe the same fields: a key in
+  // one and not the other is a compile error here, not a field that silently
+  // never syncs.
+  type UndeclaredHouseholdField = Exclude<keyof HouseholdData, (typeof HOUSEHOLD_FIELDS)[number]["key"]>;
+  export const HOUSEHOLD_FIELDS_COMPLETE: [UndeclaredHouseholdField] extends [never] ? true : UndeclaredHouseholdField = true;
   // One member's view of the household — not the household. These used to be
   // rows of the table above, so they synced to everyone: switching to dark
   // mode, reordering a grid or filtering Entries changed every other member's
@@ -241,7 +262,9 @@ import { toast } from "../components/auth-misc.js";
     { key: "regFilterCats", storage: "cf_reg_filter_cats", initial: () => [], kind: "array" },
     { key: "regFilterScheds", storage: "cf_reg_filter_scheds", initial: () => [], kind: "array" },
     { key: "regFilterStatus", storage: "cf_reg_filter_status", initial: () => [], kind: "array" },
-  ];
+  ] satisfies FieldSpec<keyof MemberPrefs>[];
+  type UndeclaredMemberPref = Exclude<keyof MemberPrefs, (typeof MEMBER_PREF_FIELDS)[number]["key"]>;
+  export const MEMBER_PREF_FIELDS_COMPLETE: [UndeclaredMemberPref] extends [never] ? true : UndeclaredMemberPref = true;
   // Long enough to answer "what happened while I was away" across a busy week,
   // short enough that the log never becomes the largest thing in the payload:
   // 200 records at ~120 bytes is ~24 KB against a household of a few hundred KB.
@@ -256,12 +279,12 @@ import { toast } from "../components/auth-misc.js";
   // used to repeat every field three more times — one useLS call, one entry in
   // a houseValues literal, one in a houseSetters literal — and omitting either
   // literal produced a field that looked wired but never left the device.
-  export function useHouseholdState() {
-    const values = {};
+  export function useHouseholdState(): { values: HouseholdData; setters: Setters<HouseholdData> } {
+    const values = {} as HouseholdData;
     const setters = [];
     for (const f of HOUSEHOLD_FIELDS) {
       const [value, set] = useLS(f.storage, f.initial, f.toStorage);
-      values[f.key] = value;
+      (values as Record<keyof HouseholdData, unknown>)[f.key] = value;
       setters.push(set);
     }
     // `values` is rebuilt every render (plain reads, no computation) so
@@ -273,12 +296,12 @@ import { toast } from "../components/auth-misc.js";
       () => HOUSEHOLD_FIELDS.reduce((o, f, i) => {
         o[f.key] = setters[i];
         return o;
-      }, {}),
+      }, {} as Setters<HouseholdData>),
       []
     );
     return { values, setters: stableSetters };
   }
-  export const HOUSEHOLD_GUARDS = {
+  export const HOUSEHOLD_GUARDS: Record<NonNullable<FieldSpec["kind"]>, (v: any, set: (v: any) => void) => void> = {
     array: (v, set) => {
       if (Array.isArray(v)) set(v);
     },
@@ -292,7 +315,7 @@ import { toast } from "../components/auth-misc.js";
       if (v) set(v);
     }
   };
-  export const houseApply = (f) => f.apply || HOUSEHOLD_GUARDS[f.kind] || HOUSEHOLD_GUARDS.value;
+  export const houseApply = (f: FieldSpec) => f.apply || HOUSEHOLD_GUARDS[f.kind] || HOUSEHOLD_GUARDS.value;
   // What the payload carries, and what a second household's leftovers are
   // cleared from — both were separate hand-written lists.
   export const HOUSEHOLD_SYNCED_FIELDS = HOUSEHOLD_FIELDS.map((f) => ({ key: f.key, apply: houseApply(f) }));
@@ -601,7 +624,7 @@ import { toast } from "../components/auth-misc.js";
     // Receipts in the server's manifest that this device has not fetched yet.
     // Absent from state because they have not arrived, not because anyone
     // removed them — so a save must never delete them for being absent.
-    const pendingReceipts = useRef(new Set());
+    const pendingReceipts = useRef(new Set<string>());
     // This device's IndexedDB copy, { ownerKey: { dataUrl, sig } }, read once
     // on mount. A load waits for the read, so a manifest entry already held
     // here with the same fingerprint is not fetched again.
@@ -713,10 +736,10 @@ import { toast } from "../components/auth-misc.js";
     // gets sent and by the baseline the autosave compares against, so the two
     // can never be normalised differently and disagree about what "unchanged"
     // means.
-    const normaliseFields = (src) => {
-      const out = {};
+    const normaliseFields = (src: HouseholdData): HouseholdPayload => {
+      const out = {} as HouseholdPayload;
       HOUSEHOLD_SYNCED_FIELDS.forEach(({ key }) => {
-        out[key] = src[key];
+        (out as Record<keyof HouseholdData, unknown>)[key] = src[key];
       });
       out.entries = stripAttachments(out.entries);
       out.overridesByYr = stripOverrideAttachments(out.overridesByYr);
@@ -757,7 +780,7 @@ import { toast } from "../components/auth-misc.js";
       if (!supabaseClient) return;
       const batch = pendingReceipts.current;
       for (const key of Array.from(batch)) {
-        let got;
+        let got: { b64?: string; mime?: string } | null;
         try {
           const { data, error } = await supabaseClient.rpc("get_receipt", { p_owner_key: key });
           if (error) continue;
@@ -807,7 +830,7 @@ import { toast } from "../components/auth-misc.js";
         lastSavedAtRef.current = payload.savedAt || null;
         const receipts = (data && data.receipts) || [];
         const rmap = {};
-        const pending = new Set();
+        const pending = new Set<string>();
         receipts.forEach((r) => {
           if (!r || !r.ownerKey) return;
           if (r.b64) {
@@ -1156,19 +1179,19 @@ import { toast } from "../components/auth-misc.js";
   // opens.
   export const PREFS_UNSAVED_KEY = "cf_prefs_unsaved";
   export function useMemberPrefs(household) {
-    const values = {};
+    const values = {} as MemberPrefs;
     const setterList = [];
     // useLS in a loop, safe for the same reason as useHouseholdState: the
     // table is a module constant, so the hooks never change number or order.
     for (const f of MEMBER_PREF_FIELDS) {
       const [value, set] = useLS(f.storage, f.initial);
-      values[f.key] = value;
+      (values as Record<keyof MemberPrefs, unknown>)[f.key] = value;
       setterList.push(set);
     }
     const setters = useMemo(() => MEMBER_PREF_FIELDS.reduce((o, f, i) => {
       o[f.key] = setterList[i];
       return o;
-    }, {}), []);
+    }, {} as Setters<MemberPrefs>), []);
     const valuesRef = useRef(values);
     valuesRef.current = values;
     const pick = (src) => MEMBER_PREF_FIELDS.reduce((o, f) => {
@@ -1214,7 +1237,7 @@ import { toast } from "../components/auth-misc.js";
         MEMBER_PREF_FIELDS.forEach((f) => {
           if (data[f.key] === void 0) return;
           houseApply(f)(data[f.key], (v) => {
-            merged[f.key] = v;
+            (merged as Record<keyof MemberPrefs, unknown>)[f.key] = v;
             setters[f.key](v);
           });
         });

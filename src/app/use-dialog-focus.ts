@@ -58,7 +58,7 @@ import { useEffect } from "../lib/runtime.js";
           const overlays = document.querySelectorAll(".modal-overlay");
           if (!overlays || !overlays.length) return;
           const modal = overlays[overlays.length - 1];
-          const focusables = modal.querySelectorAll('button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])');
+          const focusables = modal.querySelectorAll<HTMLElement>('button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])');
           if (!focusables.length) {
             e.preventDefault();
             return;

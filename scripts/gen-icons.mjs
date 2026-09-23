@@ -31,7 +31,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-// The app's navy — src/lib/app-data.js LIGHT.navy / headerBg. The old icons
+// The app's navy — src/lib/app-data.ts LIGHT.navy / headerBg. The old icons
 // were still on #1C2B3A, the pre-redesign navy.
 const PLATE = '#14413A';
 const markData = 'data:image/png;base64,' + readFileSync(join(ROOT, 'images/brand/mark.png')).toString('base64');

@@ -30,7 +30,7 @@
         return null;
       }
     },
-    get(key, which) {
+    get(key, which?) {
       try {
         const a = safeStorage.area(which);
         return a ? a.getItem(key) : null;
@@ -38,7 +38,7 @@
         return null;
       }
     },
-    set(key, value, which) {
+    set(key, value, which?) {
       try {
         const a = safeStorage.area(which);
         if (a) a.setItem(key, value);
@@ -47,7 +47,7 @@
         return false;
       }
     },
-    remove(key, which) {
+    remove(key, which?) {
       try {
         const a = safeStorage.area(which);
         if (a) a.removeItem(key);
