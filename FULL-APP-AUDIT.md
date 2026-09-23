@@ -399,9 +399,9 @@ These ten fields are now each member's own row in `member_preferences`, not hous
   - This turned up a bigger bug: occurrences never carried `userId`, so the dashboard's "My entries" filter never filtered anything. It does now (unit test and browser test), and "All users" stays the default, which is what everyone has been seeing.
 - **S3, index keys:** both template lists are now keyed by their unique description. The other 20-odd index keys are on static lists (Help blocks, chart slices, menu items, CSV headers) that never reorder and hold no per-row state, so they're left as they are.
 
-### Batch 5: §2, architecture
+### Batch 5 (build v195): §2, architecture
 
-Seven commits, each validated before it was pushed: fast suites, the SQL suites against Postgres 16, and the full browser group (regression 216/216, layout sweep, focus rings, settings sweep, cloud sync).
+Each commit was validated before it was pushed: fast suites, the SQL suites against Postgres 16, and the full browser group (regression 216/216, layout sweep, focus rings, settings sweep, cloud sync).
 
 - **§2.7 Tooling:** `package.json` with pinned devDependencies (esbuild, TypeScript, ESLint, Playwright) and a lockfile. `scripts/test.mjs` runs the fast, sql and browser groups with one exit code, and `npm run check` is the pre-push minimum.
 - **§2.6 Security:**
@@ -423,9 +423,17 @@ Seven commits, each validated before it was pushed: fast suites, the SQL suites 
   - The "What changed in …" card gave `SectionTitle` a `style` it ignores, so the intended flush heading kept a 12 px margin. Fixed.
   - Two in-app self-tests passed props that no longer exist (`UndoToast entry=`, `BudgetView view=`). Fixed.
   - Open: the self-test "renders: …" checks cannot fail. The vendored `ReactDOM` global is `react-dom/client` (only `createRoot`, `hydrateRoot` and `version`), so `flushSync` is always undefined and the render runs asynchronously, after the check has passed. The fix is to expose `flushSync` from the vendor bundle, or make those checks async.
+- **§2.3 Sync, row by row, and live:**
+  - Each save stamps the fields it wrote (`household_field_versions`). `save_household_fields` sends only changed fields and refuses one that someone else wrote since, so edits to different fields never collide.
+  - When the same field was written, the client merges its copy with the server's row by row (`src/lib/sync-merge.ts`: entries, goals, per-occurrence overrides, paid marks, the activity log as a union) and sends the result.
+  - "Please redo your last change" is gone. The dialog only appears for two different edits to the same row, names those rows, and keeps everything else from both sides whichever answer is chosen.
+  - The merge base is kept in IndexedDB, so offline edits carried across a reload merge too.
+  - Realtime: the versions table is in the `supabase_realtime` publication (RLS-scoped), and another member's save is merged in within a second or two.
+  - Older databases and tabs keep working: `save_household` still exists and stamps versions too.
+  - Tests: `tests/field-versions.sql` (10 checks, mutation-checked against a disabled conflict check), `tests/sync-merge.mjs` (23), two `sync-sql` scenarios against real SQL (concurrent add merged and re-sent; a Realtime event applied without a reload), and two browser tests (a same-row clash, and offline edits merging after a reload).
+  - Not done: sending individual rows rather than whole changed fields. A changed field still travels whole, which is a bandwidth cost, not a correctness one, at a household's size.
 - **Not done yet:**
   - `strict` mode: 1,824 errors today, 844 of them from `strictNullChecks` alone. That's the next typing increment, best done module by module starting with `lib/`.
-  - §2.3 row-level sync and Realtime is next.
   - Lazy-loading (§2.8), splitting `regression.mjs` (§2.7.3), the `scope` column (§2.4) and the naming and design-system items in §2.9 are still open.
 
 ## 6. Suggested order

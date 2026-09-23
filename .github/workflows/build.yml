@@ -221,6 +221,12 @@ jobs:
       - name: Check repeating goals roll over
         run: node tests/sinking.mjs
 
+      # Browser-free: drives src/lib/sync-merge.ts directly. Two members
+      # editing at once keep both their changes unless they changed the same
+      # row differently.
+      - name: Check concurrent edits merge row by row
+        run: node tests/sync-merge.mjs
+
       # Browser-free: drives src/lib/anomaly.ts directly. Most of the file is
       # about staying quiet — a biweekly bill's two-and-three-payment months
       # and one holiday sitting in the baseline both look enormous against a
@@ -313,6 +319,12 @@ jobs:
       # do not cascade cleared first.
       - name: Check leaving, removing and deleting accounts
         run: psql -v ON_ERROR_STOP=1 -f tests/member-lifecycle.sql
+
+      # Per-field versions: edits to different fields never conflict, a
+      # field written since you last saw it does, and a refused save writes
+      # nothing.
+      - name: Check per-field save versions
+        run: psql -v ON_ERROR_STOP=1 -f tests/field-versions.sql
 
       - name: Check every payload field survives a save and a load
         run: CF_TEST_PG=1 node tests/payload-roundtrip.mjs

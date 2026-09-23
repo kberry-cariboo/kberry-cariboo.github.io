@@ -87,6 +87,10 @@ const server = createServer((req, res) => {
         if (name === 'get_receipt') return reply({ data: JSON.parse(psql(`select coalesce(get_receipt(${lit(args.p_owner_key)})::text, 'null');`, UID)), error: null });
         if (name === 'put_receipt') { psql(`select put_receipt(${lit(args.p_owner_key)}, ${lit(args.p_mime)}, ${lit(args.p_b64)});`, UID); return reply({ data: null, error: null }); }
         if (name === 'delete_receipt') { psql(`select delete_receipt(${lit(args.p_owner_key)});`, UID); return reply({ data: null, error: null }); }
+        if (name === 'save_household_fields') {
+          const data = psql(`select save_household_fields($cfp$${JSON.stringify(args.p_data || {})}$cfp$::jsonb, $cfp$${JSON.stringify(args.p_base || {})}$cfp$::jsonb)::text;`, UID);
+          return reply({ data: JSON.parse(data), error: null });
+        }
         if (name === 'save_household') {
           const expected = args.p_expected_saved_at ? `'${args.p_expected_saved_at}'::timestamptz` : 'null';
           const data = psql(`select save_household($cfp$${JSON.stringify(args.p_data || {})}$cfp$::jsonb, ${expected})::text;`, UID);
@@ -140,7 +144,9 @@ const stub = `
     from: (t) => chain(t),
     // The only interesting line: RPCs go over the wire to the real functions.
     rpc: (name, args) => fetch('/rpc/' + name, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(args || {}) }).then((r) => r.json()),
-    channel: () => { const ch = { on: () => ch, subscribe: () => ({ unsubscribe(){} }) }; return ch; },
+    // Realtime: the handlers are kept so a test can deliver the event a
+    // Supabase project would send when another device saves.
+    channel: () => { const ch = { on: (_e, _f, cb) => { (window.__rt = window.__rt || []).push(cb); return ch; }, subscribe: () => ch }; return ch; },
     removeChannel(){},
   };
   Object.defineProperty(window, 'supabase', { get: () => ({ createClient: () => fc }), set: () => {} });
@@ -301,6 +307,51 @@ if ((shown.match(/Boxing Day/g) || []).length > 1) fail('Boxing Day is listed mo
   if (still !== '1') fail('the receipt is no longer on the server: ' + still);
   else pass('the server still has it');
 }
+
+// ── Two devices saving at once ─────────────────────────────────────────────
+// Another device adds an entry while this one, not having heard, adds its own.
+// The whole-household check refused the second save and reloaded, throwing
+// this device's entry away ("please redo your last change"). Per-field versions
+// refuse it too, but the client merges the two lists and saves again: both
+// entries survive, on the server and on screen, with no reload.
+const otherDevice = (desc) => {
+  const cat = psql(`select category from entries where household_id = '${HID}' limit 1;`) || 'Housing';
+  const row = { id: 'other-' + desc.replace(/\W+/g, '-').toLowerCase(), desc, type: 'expense', amount: 1234, category: cat, startDate: `${year}-03-03`, repeats: false };
+  psql(`select save_household_fields(jsonb_build_object(
+          'entries', (load_household(false)->'data'->'entries') || $cfj$[${JSON.stringify(row)}]$cfj$::jsonb,
+          'schemaVersion', load_household(false)->'data'->'schemaVersion'),
+        load_household(false)->'versions')::text;`, UID);
+};
+await page.goto(BASE + '#/budget/entries', { waitUntil: 'load' });
+await page.waitForTimeout(2500);
+otherDevice('Other Device Entry');
+rpcLog.length = 0;
+await page.getByRole('button', { name: '+ Add Entry' }).first().click();
+await page.getByPlaceholder('e.g. Mortgage payment').waitFor();
+await page.getByPlaceholder('e.g. Mortgage payment').fill('Local Concurrent Entry');
+await page.getByPlaceholder('0.00').first().fill('12.00');
+await page.locator('#ef-category').selectOption({ index: 1 });
+await page.getByRole('button', { name: 'Save Entry' }).scrollIntoViewIfNeeded();
+await page.getByRole('button', { name: 'Save Entry' }).click();
+await page.waitForTimeout(7000);
+const both = psql(`select string_agg(description, ',' order by description) from entries where household_id = '${HID}' and description in ('Other Device Entry', 'Local Concurrent Entry');`);
+if (both !== 'Local Concurrent Entry,Other Device Entry') fail('after two devices each added an entry the server has: ' + JSON.stringify(both));
+else pass('both devices\' entries are on the server');
+if (rpcLog.filter((n) => n === 'save_household_fields').length < 2) fail('the refused save was not merged and sent again: ' + rpcLog.join(','));
+else pass('the refused save was merged and sent again');
+if (await page.getByText('Other Device Entry').count() === 0) fail('the other device\'s entry is not on screen without a reload');
+else pass('the other device\'s entry is on screen, no reload');
+if (await page.getByText('You both changed the same thing').count() > 0) fail('two different entries were treated as a clash');
+
+// ── Realtime ───────────────────────────────────────────────────────────────
+// A save elsewhere stamps household_field_versions; Supabase sends the change
+// to every subscriber. Delivered by hand here (a plain Postgres has no
+// Realtime), it should bring the other device's entry in within seconds.
+otherDevice('Realtime Entry');
+await page.evaluate(() => (window.__rt || []).forEach((h) => h({ new: { field: 'entries', version: new Date().toISOString() } })));
+await page.waitForTimeout(3500);
+if (await page.getByText('Realtime Entry').count() === 0) fail('a change announced over Realtime did not appear without a reload');
+else pass('a change announced over Realtime appears without a reload');
 
 if (pageErrors.length) fail('page errors: ' + pageErrors[0]);
 

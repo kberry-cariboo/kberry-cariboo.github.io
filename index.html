@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-4llOHAxiMfr87wWhUsmKzAqwi1bMLkdCK5o7UBFhUG4=' 'sha256-lJc7oPue1vzJz8L4R8FNqJJYZWoH4eylFQyhuUMNZKk=' 'sha256-hO6b9FaVwd07oVlba8+w8JZyQ0YxNR/8jr6RQFRdX/Y=' 'sha256-kouBUBt2XhHcawv4bPzyd+inmzhAa570WNl/xAlUkBU='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://vhwrflyqcubvybolbifl.supabase.co wss://vhwrflyqcubvybolbifl.supabase.co https://api.anthropic.com https://canada-holidays.ca; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'"/>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-4llOHAxiMfr87wWhUsmKzAqwi1bMLkdCK5o7UBFhUG4=' 'sha256-lJc7oPue1vzJz8L4R8FNqJJYZWoH4eylFQyhuUMNZKk=' 'sha256-hO6b9FaVwd07oVlba8+w8JZyQ0YxNR/8jr6RQFRdX/Y=' 'sha256-aTnWPUMtUbEMAtj9ziB9veC+U4SKvxVA5nBYUTZ4EX0='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://vhwrflyqcubvybolbifl.supabase.co wss://vhwrflyqcubvybolbifl.supabase.co https://api.anthropic.com https://canada-holidays.ca; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 <title>CashFlow Budget</title>
 <meta name="theme-color" content="#14413A"/>
@@ -716,6 +716,8 @@
           text-overflow:ellipsis;white-space:nowrap;}
         .cf-menu-item--bordered{border-bottom:1px solid var(--border);}
         .profile-modal-card{padding:var(--space-28);max-width:400px;width:100%;}
+        .sync-clash-list{margin:0 0 var(--space-8);padding-left:var(--space-20);}
+        .sync-clash-list li{margin:2px 0;overflow-wrap:anywhere;}
         .form-note-text{font-size:var(--fs-xs);color:var(--textLt);margin-bottom:var(--space-14);}
         .form-err-text{color:var(--red);font-size:var(--fs-xs);margin-bottom:var(--space-10);}
         .form-ok-text{color:var(--greenDk);font-size:var(--fs-xs);margin-bottom:var(--space-10);}
@@ -4390,7 +4392,7 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
 // is exactly what happened across the notification work: four rounds of
 // changes all shipped under v177, and the app kept showing the old Settings
 // copy after the new one was live.)
-const CF_VERSION='v194';
+const CF_VERSION='v195';
 if('serviceWorker'in navigator){
 try{
   const hadController=!!navigator.serviceWorker.controller;
@@ -4814,35 +4816,35 @@ document.addEventListener('DOMContentLoaded',function(){
     return _receiptDb;
   }
   async function receiptTx(mode, fn) {
-    const db = await receiptDb();
-    if (!db) return null;
+    const db2 = await receiptDb();
+    if (!db2) return null;
     return new Promise((resolve) => {
       try {
-        const tx = db.transaction(RECEIPT_STORE, mode);
-        const req = fn(tx.objectStore(RECEIPT_STORE));
-        tx.oncomplete = () => resolve(req ? req.result : true);
-        tx.onerror = tx.onabort = () => resolve(null);
+        const tx2 = db2.transaction(RECEIPT_STORE, mode);
+        const req = fn(tx2.objectStore(RECEIPT_STORE));
+        tx2.oncomplete = () => resolve(req ? req.result : true);
+        tx2.onerror = tx2.onabort = () => resolve(null);
       } catch (e) {
         resolve(null);
       }
     });
   }
   async function receiptStoreAll() {
-    const db = await receiptDb();
-    if (!db) return {};
+    const db2 = await receiptDb();
+    if (!db2) return {};
     return new Promise((resolve) => {
       const out = {};
       try {
-        const tx = db.transaction(RECEIPT_STORE, "readonly");
-        const req = tx.objectStore(RECEIPT_STORE).openCursor();
+        const tx2 = db2.transaction(RECEIPT_STORE, "readonly");
+        const req = tx2.objectStore(RECEIPT_STORE).openCursor();
         req.onsuccess = () => {
           const c = req.result;
           if (!c) return;
           if (c.value && c.value.dataUrl) out[c.key] = c.value;
           c.continue();
         };
-        tx.oncomplete = () => resolve(out);
-        tx.onerror = tx.onabort = () => resolve(out);
+        tx2.oncomplete = () => resolve(out);
+        tx2.onerror = tx2.onabort = () => resolve(out);
       } catch (e) {
         resolve(out);
       }
@@ -4864,6 +4866,223 @@ document.addEventListener('DOMContentLoaded',function(){
       return null;
     }
   }
+
+  // src/lib/sync-merge.ts
+  var byId = (r) => String(r && r.id);
+  var ACTIVITY_LIMIT = 200;
+  var FIELD_SHAPES = {
+    entries: { kind: "rows", key: byId },
+    goals: { kind: "rows", key: byId },
+    assets: { kind: "rows", key: byId },
+    accounts: { kind: "rows", key: byId },
+    templates: { kind: "rows", key: (t) => String(t && t.desc) },
+    yearConfigs: { kind: "rows", key: (y) => String(y && y.year) },
+    activity: { kind: "log", limit: ACTIVITY_LIMIT },
+    overridesByYr: { kind: "map", depth: 2 },
+    holidays: { kind: "map", depth: 2 },
+    completed: { kind: "map", depth: 1 },
+    categoryColors: { kind: "map", depth: 1 },
+    debtData: { kind: "map", depth: 1 },
+    deletedCopyIds: { kind: "map", depth: 1 },
+    budgetTargets: { kind: "map", depth: 1 },
+    categories: { kind: "list" },
+    debtSimExcluded: { kind: "list" },
+    activeYear: { kind: "value" },
+    alertThreshold: { kind: "value" },
+    debtExtra: { kind: "value" },
+    currency: { kind: "value" },
+    locale: { kind: "value" },
+    holidayRegion: { kind: "value" }
+  };
+  var IGNORED = /* @__PURE__ */ new Set(["_history", "attachment"]);
+  var ISO = /^\d{4}-\d{2}-\d{2}T[\d:.]+(Z|[+-]\d{2}:?\d{2})$/;
+  function canonical(v) {
+    if (Array.isArray(v)) return v.map(canonical);
+    if (v && typeof v === "object") {
+      const out = {};
+      for (const k of Object.keys(v).sort()) {
+        if (IGNORED.has(k)) continue;
+        const c = canonical(v[k]);
+        if (c === void 0 || c === null || c === "") continue;
+        if (Array.isArray(c) && c.length === 0) continue;
+        out[k] = c;
+      }
+      return out;
+    }
+    if (typeof v === "string" && ISO.test(v)) {
+      const t = Date.parse(v);
+      if (!Number.isNaN(t)) return new Date(t).toISOString();
+    }
+    return v;
+  }
+  var sameRow = (a, b) => JSON.stringify(canonical(a)) === JSON.stringify(canonical(b));
+  function mergeRow(key, b, l, r, clashes, onClash) {
+    if (sameRow(l, b)) return r;
+    if (sameRow(r, b)) return l;
+    if (sameRow(l, r)) return l;
+    clashes.push(key);
+    return onClash === "remote" ? r : l;
+  }
+  function mergeRows(shape, base, local, remote, onClash) {
+    const index = (arr) => new Map((Array.isArray(arr) ? arr : []).map((row) => [shape.key(row), row]));
+    const b = index(base), l = index(local), r = index(remote);
+    const clashes = [];
+    const merged = /* @__PURE__ */ new Map();
+    for (const k of /* @__PURE__ */ new Set([...b.keys(), ...l.keys(), ...r.keys()])) {
+      const v = mergeRow(k, b.get(k), l.get(k), r.get(k), clashes, onClash);
+      if (v !== void 0) merged.set(k, v);
+    }
+    const order = [...r.keys(), ...[...l.keys()].filter((k) => !r.has(k))];
+    return { value: order.filter((k) => merged.has(k)).map((k) => merged.get(k)), clashes };
+  }
+  function mergeMap(depth, base, local, remote, onClash, prefix = "") {
+    const obj = (o) => o && typeof o === "object" && !Array.isArray(o) ? o : {};
+    const b = obj(base), l = obj(local), r = obj(remote);
+    const clashes = [];
+    const out = {};
+    for (const k of /* @__PURE__ */ new Set([...Object.keys(b), ...Object.keys(l), ...Object.keys(r)])) {
+      if (depth === 2 && (k in l || k in r)) {
+        const inner = mergeMap(1, b[k], l[k], r[k], onClash, prefix + k + "/");
+        clashes.push(...inner.clashes);
+        if (Object.keys(inner.value).length || k in l && k in r) out[k] = inner.value;
+        continue;
+      }
+      const v = mergeRow(prefix + k, b[k], l[k], r[k], clashes, onClash);
+      if (v !== void 0) out[k] = v;
+    }
+    return { value: out, clashes };
+  }
+  function mergeList(base, local, remote) {
+    const arr = (a) => Array.isArray(a) ? a : [];
+    const b = new Set(arr(base)), l = new Set(arr(local)), r = new Set(arr(remote));
+    const keep = (x) => (l.has(x) || !b.has(x)) && (r.has(x) || !b.has(x));
+    const order = [...arr(remote), ...arr(local).filter((x) => !r.has(x))];
+    return { value: [...new Set(order)].filter(keep), clashes: [] };
+  }
+  function mergeLog(limit, local, remote) {
+    const all = /* @__PURE__ */ new Map();
+    for (const rec of [...Array.isArray(remote) ? remote : [], ...Array.isArray(local) ? local : []]) {
+      if (rec && rec.id != null && !all.has(String(rec.id))) all.set(String(rec.id), rec);
+    }
+    const value = [...all.values()].sort((a, b) => String(b.at || "").localeCompare(String(a.at || ""))).slice(0, limit);
+    return { value, clashes: [] };
+  }
+  function mergeField(field, base, local, remote, onClash = "local") {
+    const shape = FIELD_SHAPES[field];
+    if (!shape) throw new Error("No merge rule for household field " + String(field));
+    switch (shape.kind) {
+      case "rows":
+        return mergeRows(shape, base, local, remote, onClash);
+      case "map":
+        return mergeMap(shape.depth, base, local, remote, onClash);
+      case "list":
+        return mergeList(base, local, remote);
+      case "log":
+        return mergeLog(shape.limit, local, remote);
+      default: {
+        const clashes = [];
+        const value = mergeRow(String(field), base, local, remote, clashes, onClash);
+        return { value, clashes };
+      }
+    }
+  }
+  function mergeFields(fields, base, local, remote, onClash = "local") {
+    const merged = {};
+    const clashes = {};
+    for (const f of fields) {
+      const res = mergeField(f, base[f], local[f], remote[f], onClash);
+      merged[f] = res.value;
+      if (res.clashes.length) clashes[f] = res.clashes;
+    }
+    return { merged, clashes };
+  }
+  var FIELD_NAMES = {
+    entries: "Entry",
+    goals: "Goal",
+    assets: "Asset",
+    accounts: "Account",
+    templates: "Template",
+    yearConfigs: "Budget year",
+    overridesByYr: "Occurrence",
+    holidays: "Holiday",
+    completed: "Paid mark",
+    categoryColors: "Category colour",
+    debtData: "Debt",
+    deletedCopyIds: "Copied entry",
+    budgetTargets: "Envelope",
+    categories: "Categories",
+    debtSimExcluded: "Payoff plan",
+    activeYear: "Active year",
+    alertThreshold: "Low-balance alert",
+    debtExtra: "Extra debt payment",
+    currency: "Currency",
+    locale: "Number format",
+    holidayRegion: "Holiday region",
+    activity: "Activity"
+  };
+  function describeClashes(clashes, data, months, other = {}) {
+    const find = (field, id) => (data[field] || []).find((x) => String(x.id) === id) || (other[field] || []).find((x) => String(x.id) === id);
+    const entryName = (id) => {
+      const e = find("entries", id);
+      return e ? "“" + e.desc + "”" : "an entry";
+    };
+    const out = [];
+    for (const field of Object.keys(clashes)) {
+      const label = FIELD_NAMES[field] || String(field);
+      for (const key of clashes[field] || []) {
+        if (FIELD_SHAPES[field] && FIELD_SHAPES[field].kind === "value") out.push(label);
+        else if (field === "entries") out.push(find("entries", key) ? "Entry " + entryName(key) : "An entry");
+        else if (field === "goals" || field === "assets" || field === "accounts") {
+          const row = find(field, key);
+          out.push(label + (row && row.name ? " “" + row.name + "”" : ""));
+        } else if (field === "overridesByYr") {
+          const m = /^(\d+)\/(.*)-(\d{4})-(\d{1,2})-(\d{1,2})(-in)?$/.exec(key);
+          out.push(m ? entryName(m[2]) + " on " + (months[+m[4]] || "?") + " " + m[5] + ", " + m[3] : label);
+        } else out.push(label + " “" + key.split("/").pop() + "”");
+      }
+    }
+    return out;
+  }
+
+  // src/lib/sync-base.ts
+  var DB = "cf-sync";
+  var STORE = "base";
+  var db = null;
+  function open() {
+    if (db) return db;
+    db = new Promise((resolve, reject) => {
+      try {
+        const req = indexedDB.open(DB, 1);
+        req.onupgradeneeded = () => req.result.createObjectStore(STORE);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+        req.onblocked = () => reject(new Error("sync store blocked"));
+      } catch (e) {
+        reject(e);
+      }
+    }).catch(() => {
+      db = null;
+      return null;
+    });
+    return db;
+  }
+  async function tx(mode, fn) {
+    const d = await open();
+    if (!d) return null;
+    return new Promise((resolve) => {
+      try {
+        const t = d.transaction(STORE, mode);
+        const req = fn(t.objectStore(STORE));
+        t.oncomplete = () => resolve(req ? req.result : null);
+        t.onerror = t.onabort = () => resolve(null);
+      } catch (e) {
+        resolve(null);
+      }
+    });
+  }
+  var syncBaseGet = (householdId) => tx("readonly", (s) => s.get(householdId));
+  var syncBasePut = (base) => tx("readwrite", (s) => s.put(base, base.householdId));
+  var syncBaseClear = () => tx("readwrite", (s) => s.clear());
 
   // src/lib/household-sync.ts
   async function sbSignIn(email, password) {
@@ -5035,7 +5254,6 @@ document.addEventListener('DOMContentLoaded',function(){
     { key: "regFilterScheds", storage: "cf_reg_filter_scheds", initial: () => [], kind: "array" },
     { key: "regFilterStatus", storage: "cf_reg_filter_status", initial: () => [], kind: "array" }
   ];
-  var ACTIVITY_LIMIT = 200;
   function useHouseholdState() {
     const values = {};
     const setters = [];
@@ -5053,6 +5271,10 @@ document.addEventListener('DOMContentLoaded',function(){
     );
     return { values, setters: stableSetters };
   }
+  var pickFields = (src, keys) => keys.reduce((o, k) => {
+    o[k] = src[k];
+    return o;
+  }, {});
   var HOUSEHOLD_GUARDS = {
     array: (v, set) => {
       if (Array.isArray(v)) set(v);
@@ -5088,6 +5310,7 @@ document.addEventListener('DOMContentLoaded',function(){
       HOUSEHOLD_LOCAL_STORAGE_KEYS.forEach((k) => localStorage.removeItem(k));
       MEMBER_PREF_FIELDS.forEach((f) => localStorage.removeItem(f.storage));
       receiptStoreClear();
+      syncBaseClear();
       localStorage.removeItem(PREFS_UNSAVED_KEY);
       Object.keys(localStorage).filter((k) => k.startsWith("cf_ai_report_")).forEach((k) => localStorage.removeItem(k));
     } catch (e) {
@@ -5293,6 +5516,13 @@ document.addEventListener('DOMContentLoaded',function(){
     const idbLoaded = useRef(false);
     const failedLoadSig = useRef(null);
     const lastSavedAtRef = useRef(null);
+    const baseRef = useRef(null);
+    const baseRead = useRef(null);
+    const fieldsRpc = useRef(true);
+    const setBase = (b) => {
+      baseRef.current = b;
+      if (b) syncBasePut(b);
+    };
     const applyPayload = useCallback((d) => {
       if (!d) return {};
       const data = migrateHouseholdPayload(d, d.schemaVersion || 0);
@@ -5331,6 +5561,14 @@ document.addEventListener('DOMContentLoaded',function(){
         idbLoaded.current = true;
       });
     }, []);
+    useEffect(() => {
+      baseRef.current = null;
+      if (!household) return;
+      const hid = household.id;
+      baseRead.current = syncBaseGet(hid).then((b) => {
+        if (b && b.householdId === hid && !baseRef.current) baseRef.current = b;
+      });
+    }, [household && household.id]);
     useEffect(() => {
       if (!idbLoaded.current) return;
       const current = collectAttachments();
@@ -5378,8 +5616,10 @@ document.addEventListener('DOMContentLoaded',function(){
     const syncedSig = useRef(null);
     const valuesRef = useRef(values);
     valuesRef.current = values;
-    const adoptLoaded = (applied) => {
-      syncedSig.current = sigOf(normaliseFields(Object.assign({}, valuesRef.current, applied)));
+    const adoptLoaded = (applied, versions = null) => {
+      const snap = normaliseFields(Object.assign({}, valuesRef.current, applied));
+      syncedSig.current = sigOf(snap);
+      if (versions && household) setBase({ householdId: household.id, data: snap, versions });
     };
     const fetchPendingReceipts = useCallback(async () => {
       if (!supabaseClient) return;
@@ -5401,6 +5641,104 @@ document.addEventListener('DOMContentLoaded',function(){
         setters.overridesByYr((prev) => attachReceiptImages(prev, { [key]: url }));
       }
     }, [setters]);
+    const fetchServer = async () => {
+      if (idbRead.current) await idbRead.current;
+      if (baseRead.current) await baseRead.current;
+      let res = await supabaseClient.rpc("load_household", { p_receipt_bodies: false });
+      if (res.error && /p_receipt_bodies|Could not find the function|function .*load_household.* does not exist/i.test(res.error.message || "")) {
+        res = await supabaseClient.rpc("load_household");
+      }
+      const { data, error } = res;
+      if (error) throw error;
+      const payload = data && data.data || {};
+      const versions = data && data.versions && typeof data.versions === "object" ? data.versions : null;
+      const receipts = data && data.receipts || [];
+      const rmap = {};
+      const pending = /* @__PURE__ */ new Set();
+      receipts.forEach((r) => {
+        if (!r || !r.ownerKey) return;
+        if (r.b64) {
+          rmap[r.ownerKey] = "data:" + (r.mime || "image/jpeg") + ";base64," + r.b64;
+          return;
+        }
+        const held = idbReceipts.current[r.ownerKey];
+        if (held && held.dataUrl && r.sig && held.sig === r.sig) rmap[r.ownerKey] = held.dataUrl;
+        else pending.add(r.ownerKey);
+      });
+      pendingReceipts.current = pending;
+      receiptCache.current = Object.assign({}, rmap);
+      if (payload.overridesByYr && typeof payload.overridesByYr === "object") {
+        Object.keys(payload.overridesByYr).forEach((year) => {
+          const yOvs = payload.overridesByYr[year] || {};
+          Object.keys(yOvs).forEach((k) => {
+            const src = rmap["override:" + year + ":" + k];
+            if (src) yOvs[k] = Object.assign({}, yOvs[k], { attachment: src });
+          });
+        });
+      }
+      return { payload, rmap, versions };
+    };
+    const mergeLoaded = (srv, onClash = null, localIn = null) => {
+      const base = baseRef.current;
+      const data = migrateHouseholdPayload(srv.payload, srv.payload.schemaVersion || 0);
+      const keys = HOUSEHOLD_SYNCED_FIELDS.map((f) => f.key);
+      const changed = keys.filter((k) => String(srv.versions[k] ?? "") !== String(base.versions[k] ?? ""));
+      const captured = {};
+      HOUSEHOLD_SYNCED_FIELDS.forEach(({ key, apply }) => {
+        if (changed.includes(key)) apply(data[key], (v) => {
+          captured[key] = v;
+        });
+      });
+      const remote = normaliseFields(Object.assign({}, valuesRef.current, captured));
+      const local = localIn || normaliseFields(valuesRef.current);
+      const { merged, clashes } = mergeFields(changed, base.data, local, remote, onClash || "local");
+      if (Object.keys(clashes).length && !onClash) return { kind: "diverged", clashes, after: local, changed, applied: false };
+      const rawOverrides = valuesRef.current.overridesByYr || {};
+      let applied = false;
+      changed.forEach((k) => {
+        let v = merged[k];
+        if (k === "overridesByYr") {
+          const out = {};
+          Object.keys(v || {}).forEach((y) => {
+            out[y] = {};
+            Object.keys(v[y] || {}).forEach((occ) => {
+              const row = v[y][occ];
+              const mine = rawOverrides[y] && rawOverrides[y][occ];
+              const img = mine && sameRow(mine, row) ? mine.attachment || srv.rmap["override:" + y + ":" + occ] : srv.rmap["override:" + y + ":" + occ];
+              out[y][occ] = img ? Object.assign({}, row, { attachment: img }) : row;
+            });
+          });
+          v = out;
+        }
+        if (JSON.stringify(normaliseFields(Object.assign({}, valuesRef.current, { [k]: v }))[k]) !== JSON.stringify(local[k])) {
+          setters[k](v);
+          applied = true;
+        }
+      });
+      const after = Object.assign({}, local, merged);
+      const nextBase = { householdId: household.id, data: Object.assign({}, base.data, pickFields(remote, changed)), versions: srv.versions };
+      setBase(nextBase);
+      lastSavedAtRef.current = srv.payload.savedAt || null;
+      writeMarker(SYNCED_AT_KEY, srv.payload.savedAt || null);
+      const pending = keys.some((k) => JSON.stringify(after[k]) !== JSON.stringify(nextBase.data[k]));
+      if (!pending) syncedSig.current = sigOf(after);
+      return { kind: pending ? "pending" : "merged", clashes, after, changed, applied };
+    };
+    const sendAfterMerge = (m, silent = true) => {
+      if (m.applied) {
+        markUnsaved();
+        setStatus("syncing");
+        setMsg("Saving merged changes…");
+        return Promise.resolve(true);
+      }
+      return saveDataRef.current(silent);
+    };
+    const diverge = (srv, clashes) => {
+      setDivergence({ payload: srv.payload, rmap: srv.rmap, versions: srv.versions, clashes, names: clashes ? describeClashes(clashes, valuesRef.current, MONTHS, srv.payload) : null });
+      markUnsaved();
+      setStatus("error");
+      setMsg(clashes ? "⚠ You and another member changed the same thing" : "⚠ Unsaved changes here and newer changes in the cloud");
+    };
     const loadData = useCallback(async () => {
       if (!supabaseClient || !household) return false;
       if (saveTimer.current && initialized.current) {
@@ -5411,39 +5749,9 @@ document.addEventListener('DOMContentLoaded',function(){
       setStatus("syncing");
       setMsg("Loading…");
       try {
-        if (idbRead.current) await idbRead.current;
-        let res = await supabaseClient.rpc("load_household", { p_receipt_bodies: false });
-        if (res.error && /p_receipt_bodies|Could not find the function|function .*load_household.* does not exist/i.test(res.error.message || "")) {
-          res = await supabaseClient.rpc("load_household");
-        }
-        const { data, error } = res;
-        if (error) throw error;
-        const payload = data && data.data || {};
+        const srv = await fetchServer();
+        const { payload, versions } = srv;
         lastSavedAtRef.current = payload.savedAt || null;
-        const receipts = data && data.receipts || [];
-        const rmap = {};
-        const pending = /* @__PURE__ */ new Set();
-        receipts.forEach((r) => {
-          if (!r || !r.ownerKey) return;
-          if (r.b64) {
-            rmap[r.ownerKey] = "data:" + (r.mime || "image/jpeg") + ";base64," + r.b64;
-            return;
-          }
-          const held = idbReceipts.current[r.ownerKey];
-          if (held && held.dataUrl && r.sig && held.sig === r.sig) rmap[r.ownerKey] = held.dataUrl;
-          else pending.add(r.ownerKey);
-        });
-        pendingReceipts.current = pending;
-        receiptCache.current = Object.assign({}, rmap);
-        if (payload.overridesByYr && typeof payload.overridesByYr === "object") {
-          Object.keys(payload.overridesByYr).forEach((year) => {
-            const yOvs = payload.overridesByYr[year] || {};
-            Object.keys(yOvs).forEach((k) => {
-              const src = rmap["override:" + year + ":" + k];
-              if (src) yOvs[k] = Object.assign({}, yOvs[k], { attachment: src });
-            });
-          });
-        }
         if (readMarker(UNSAVED_KEY)) {
           const serverSavedAt = payload.savedAt || null;
           const lastAgreed = readMarker(SYNCED_AT_KEY);
@@ -5460,12 +5768,28 @@ document.addEventListener('DOMContentLoaded',function(){
             return false;
           }
           loadAttempted.current = true;
-          setDivergence({ payload, rmap });
-          setStatus("error");
-          setMsg("⚠ Unsaved changes here and newer changes in the cloud");
+          if (versions && baseRef.current && baseRef.current.householdId === household.id) {
+            const m = mergeLoaded(srv);
+            if (m.kind !== "diverged") {
+              initialized.current = true;
+              fetchPendingReceipts();
+              if (m.kind === "pending") {
+                const pushed = await sendAfterMerge(m);
+                if (pushed) toast("Merged the changes you made while offline with everyone else's.");
+                return pushed;
+              }
+              clearUnsaved();
+              setStatus("ok");
+              setMsg("Synced " + (/* @__PURE__ */ new Date()).toLocaleTimeString());
+              return true;
+            }
+            diverge(srv, m.clashes);
+            return false;
+          }
+          diverge(srv, null);
           return false;
         }
-        adoptLoaded(applyPayload(payload));
+        adoptLoaded(applyPayload(payload), versions);
         writeMarker(SYNCED_AT_KEY, payload.savedAt || null);
         initialized.current = true;
         loadAttempted.current = true;
@@ -5503,24 +5827,73 @@ document.addEventListener('DOMContentLoaded',function(){
         delete cached[key];
       }
     }, [collectAttachments]);
+    const saveFields = async (payload) => {
+      const keys = HOUSEHOLD_SYNCED_FIELDS.map((f) => f.key);
+      let local = payload;
+      for (let attempt = 0; attempt < 4; attempt++) {
+        const base = baseRef.current;
+        const changed = keys.filter((k) => JSON.stringify(local[k]) !== JSON.stringify(base.data[k]));
+        if (!changed.length) return { saved: true, sent: local };
+        const { data, error } = await supabaseClient.rpc("save_household_fields", {
+          p_data: Object.assign({ schemaVersion: SCHEMA_VERSION }, pickFields(local, changed)),
+          p_base: changed.reduce((o, k) => {
+            o[k] = base.versions[k] ?? null;
+            return o;
+          }, {})
+        });
+        if (error) {
+          if (/save_household_fields|Could not find the function/i.test(error.message || "")) {
+            fieldsRpc.current = false;
+            return false;
+          }
+          throw error;
+        }
+        if (data && Array.isArray(data.conflict)) {
+          const srv = await fetchServer();
+          if (!srv.versions) return false;
+          const m = mergeLoaded(srv, null, local);
+          if (m.kind === "diverged") {
+            diverge(srv, m.clashes);
+            return "diverged";
+          }
+          fetchPendingReceipts();
+          if (m.changed.length) toast("Merged changes another member made at the same time.");
+          local = m.after;
+          continue;
+        }
+        setBase({ householdId: household.id, data: Object.assign({}, base.data, pickFields(local, changed)), versions: data && data.versions || base.versions });
+        if (data && data.savedAt) {
+          lastSavedAtRef.current = data.savedAt;
+          writeMarker(SYNCED_AT_KEY, data.savedAt);
+        }
+        return { saved: true, sent: local };
+      }
+      throw new Error("Other members kept saving at the same moment — will retry.");
+    };
     const runSave = useCallback(async (silent = false) => {
       if (!supabaseClient || !household) return false;
       if (!silent) setStatus("syncing");
       savingNow.current = true;
       try {
         const payload = buildPayload();
-        const { data: newSavedAt, error } = await supabaseClient.rpc("save_household", {
-          p_data: payload,
-          p_expected_saved_at: lastSavedAtRef.current
-        });
-        if (error) throw error;
-        if (newSavedAt) {
-          lastSavedAtRef.current = newSavedAt;
-          writeMarker(SYNCED_AT_KEY, newSavedAt);
+        const byField = baseRef.current && baseRef.current.versions && baseRef.current.householdId === household.id && fieldsRpc.current;
+        const saved = byField ? await saveFields(payload) : false;
+        if (saved === "diverged") return false;
+        const sent = saved ? saved.sent : payload;
+        if (!saved) {
+          const { data: newSavedAt, error } = await supabaseClient.rpc("save_household", {
+            p_data: payload,
+            p_expected_saved_at: lastSavedAtRef.current
+          });
+          if (error) throw error;
+          if (newSavedAt) {
+            lastSavedAtRef.current = newSavedAt;
+            writeMarker(SYNCED_AT_KEY, newSavedAt);
+          }
         }
         await syncReceipts();
         clearUnsaved();
-        syncedSig.current = sigOf(payload);
+        syncedSig.current = sigOf(sent);
         setStatus("ok");
         setMsg("Saved " + (/* @__PURE__ */ new Date()).toLocaleTimeString());
         return true;
@@ -5580,16 +5953,43 @@ document.addEventListener('DOMContentLoaded',function(){
       }, 2e3);
       return () => clearTimeout(saveTimer.current);
     }, HOUSEHOLD_FIELDS.map((f) => values[f.key]));
+    const resolveClashes = async (onClash) => {
+      const srv = { payload: divergence.payload, rmap: divergence.rmap, versions: divergence.versions };
+      const m = mergeLoaded(srv, onClash);
+      initialized.current = true;
+      setDivergence(null);
+      if (m.kind === "pending") return sendAfterMerge(m, false);
+      clearUnsaved();
+      setStatus("ok");
+      setMsg("Synced " + (/* @__PURE__ */ new Date()).toLocaleTimeString());
+      return true;
+    };
     const keepLocalChanges = useCallback(async () => {
       if (!divergence) return;
+      if (divergence.clashes && baseRef.current) {
+        if (await resolveClashes("local")) toast("Kept your version of those; everything else from both of you is in.");
+        return;
+      }
       lastSavedAtRef.current = divergence.payload.savedAt || null;
+      if (divergence.versions && household) {
+        const captured = {};
+        const data = migrateHouseholdPayload(divergence.payload, divergence.payload.schemaVersion || 0);
+        HOUSEHOLD_SYNCED_FIELDS.forEach(({ key, apply }) => apply(data[key], (v) => {
+          captured[key] = v;
+        }));
+        setBase({ householdId: household.id, data: normaliseFields(Object.assign({}, valuesRef.current, captured)), versions: divergence.versions });
+      }
       initialized.current = true;
       setDivergence(null);
       const ok = await saveDataRef.current(false);
       if (ok) toast("This device's version is now the shared one.");
-    }, [divergence]);
-    const discardLocalChanges = useCallback(() => {
+    }, [divergence, household]);
+    const discardLocalChanges = useCallback(async () => {
       if (!divergence) return;
+      if (divergence.clashes && baseRef.current) {
+        if (await resolveClashes("remote")) toast("Took their version of those; your other changes are kept.");
+        return;
+      }
       const { payload, rmap } = divergence;
       receiptCache.current = Object.assign({}, rmap);
       if (payload.overridesByYr && typeof payload.overridesByYr === "object") {
@@ -5601,7 +6001,7 @@ document.addEventListener('DOMContentLoaded',function(){
           });
         });
       }
-      adoptLoaded(applyPayload(payload));
+      adoptLoaded(applyPayload(payload), divergence.versions || null);
       lastSavedAtRef.current = payload.savedAt || null;
       writeMarker(SYNCED_AT_KEY, payload.savedAt || null);
       clearUnsaved();
@@ -5611,7 +6011,52 @@ document.addEventListener('DOMContentLoaded',function(){
       setStatus("ok");
       setMsg("Synced " + (/* @__PURE__ */ new Date()).toLocaleTimeString());
       toast("Using the cloud version. This device's unsaved changes were discarded.", "error");
-    }, [divergence, applyPayload, clearUnsaved, fetchPendingReceipts]);
+    }, [divergence, household, applyPayload, clearUnsaved, fetchPendingReceipts]);
+    const divergenceRef = useRef(divergence);
+    divergenceRef.current = divergence;
+    const pullTimer = useRef(null);
+    const pull = useCallback(async () => {
+      pullTimer.current = null;
+      if (!initialized.current || divergenceRef.current || !baseRef.current || !baseRef.current.versions) return;
+      if (savingNow.current || saveTimer.current) {
+        pullTimer.current = setTimeout(pull, 1500);
+        return;
+      }
+      try {
+        const srv = await fetchServer();
+        if (!srv.versions) return;
+        const m = mergeLoaded(srv);
+        if (m.kind === "diverged") {
+          diverge(srv, m.clashes);
+          return;
+        }
+        fetchPendingReceipts();
+        if (m.kind === "pending") sendAfterMerge(m);
+        else if (m.changed.length) {
+          setStatus("ok");
+          setMsg("Updated from another device " + (/* @__PURE__ */ new Date()).toLocaleTimeString());
+        }
+      } catch (e) {
+      }
+    }, [household, fetchPendingReceipts]);
+    useEffect(() => {
+      if (!supabaseClient || !household || typeof supabaseClient.channel !== "function") return;
+      const channel = supabaseClient.channel("cf-household-" + household.id).on("postgres_changes", { event: "*", schema: "public", table: "household_field_versions", filter: "household_id=eq." + household.id }, (msg2) => {
+        const row = msg2 && msg2.new;
+        const base = baseRef.current;
+        if (!base || !base.versions) return;
+        if (row && row.field && base.versions[row.field] && Date.parse(base.versions[row.field]) === Date.parse(row.version)) return;
+        if (pullTimer.current) clearTimeout(pullTimer.current);
+        pullTimer.current = setTimeout(pull, 800);
+      }).subscribe();
+      return () => {
+        if (pullTimer.current) clearTimeout(pullTimer.current);
+        try {
+          supabaseClient.removeChannel(channel);
+        } catch (e) {
+        }
+      };
+    }, [household && household.id, pull]);
     useEffect(() => {
       if (!household) return;
       const retry = () => {
@@ -6793,7 +7238,7 @@ ${text}` }],
     );
   }
   function FilterPill({ label, allLabel, options, selected, onChange, inline = false }) {
-    const [open, setOpen] = useState(false);
+    const [open2, setOpen] = useState(false);
     const ref = useRef(null);
     useEffect(() => {
       const h = (e) => {
@@ -6812,7 +7257,7 @@ ${text}` }],
       "button",
       {
         onClick: () => setOpen((v) => !v),
-        "aria-expanded": open,
+        "aria-expanded": open2,
         className: "filter-pill-btn",
         style: {
           border: "1.5px solid " + (allSel ? "var(--border)" : "var(--primary)"),
@@ -6822,8 +7267,8 @@ ${text}` }],
         }
       },
       label2,
-      /* @__PURE__ */ React.createElement("span", { className: "filter-pill-chevron" + (open ? " filter-pill-chevron--open" : "") }, /* @__PURE__ */ React.createElement(Icon, { name: "chevron-down", size: 13, strokeWidth: 2.25 }))
-    ), open && /* @__PURE__ */ React.createElement("div", { className: "filter-pill-dropdown" + (inline ? " filter-pill-dropdown--inline" : "") }, /* @__PURE__ */ React.createElement(
+      /* @__PURE__ */ React.createElement("span", { className: "filter-pill-chevron" + (open2 ? " filter-pill-chevron--open" : "") }, /* @__PURE__ */ React.createElement(Icon, { name: "chevron-down", size: 13, strokeWidth: 2.25 }))
+    ), open2 && /* @__PURE__ */ React.createElement("div", { className: "filter-pill-dropdown" + (inline ? " filter-pill-dropdown--inline" : "") }, /* @__PURE__ */ React.createElement(
       "label",
       { className: "filter-pill-all-row" },
       /* @__PURE__ */ React.createElement(
@@ -7185,20 +7630,20 @@ ${text}` }],
     );
   };
   function TemplatePicker({ templates = [], onSelect }) {
-    const [open, setOpen] = useState(false);
+    const [open2, setOpen] = useState(false);
     if (!templates.length) return null;
     return /* @__PURE__ */ React.createElement("div", { className: "relative inline-block" }, /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: () => setOpen((v) => !v),
-        "aria-expanded": open,
+        "aria-expanded": open2,
         "aria-haspopup": "menu",
         className: "cf-btn cf-btn--secondary template-picker-btn"
       },
       /* @__PURE__ */ React.createElement(Icon, { name: "clipboard", size: 13 }),
       "Templates ",
-      open ? "▲" : "▼"
-    ), open && /* @__PURE__ */ React.createElement("div", { className: "cf-popover" }, templates.map((t, i) => /* @__PURE__ */ React.createElement(
+      open2 ? "▲" : "▼"
+    ), open2 && /* @__PURE__ */ React.createElement("div", { className: "cf-popover" }, templates.map((t, i) => /* @__PURE__ */ React.createElement(
       "button",
       {
         key: t.desc || i,
@@ -7523,12 +7968,12 @@ ${text}` }],
   }
   var HELPTIP_SEQ = 0;
   function HelpTip({ text, label = "", align = "start", icon = "?", variant = "" }) {
-    const [open, setOpen] = useState(false);
+    const [open2, setOpen] = useState(false);
     const [tipId] = useState(() => `helptip-${++HELPTIP_SEQ}`);
     const wrapRef = useRef(null);
     const [offset, setOffset] = useState(null);
     useLayoutEffect(() => {
-      if (!open) {
+      if (!open2) {
         setOffset(null);
         return;
       }
@@ -7547,9 +7992,9 @@ ${text}` }],
       place();
       window.addEventListener("resize", place);
       return () => window.removeEventListener("resize", place);
-    }, [open, align]);
+    }, [open2, align]);
     useEffect(() => {
-      if (!open) return;
+      if (!open2) return;
       const away = (e) => {
         if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
       };
@@ -7565,7 +8010,7 @@ ${text}` }],
         document.removeEventListener("pointerdown", away);
         document.removeEventListener("keydown", esc, true);
       };
-    }, [open]);
+    }, [open2]);
     if (!text) return null;
     return /* @__PURE__ */ React.createElement("span", { className: "helptip-wrap", ref: wrapRef }, /* @__PURE__ */ React.createElement(
       "button",
@@ -7573,7 +8018,7 @@ ${text}` }],
         type: "button",
         className: "helptip-btn" + (variant ? " helptip-btn--" + variant : ""),
         "aria-label": label ? `Help: ${label}` : "Help",
-        "aria-expanded": open,
+        "aria-expanded": open2,
         "aria-describedby": tipId,
         onClick: (e) => {
           e.preventDefault();
@@ -7596,7 +8041,7 @@ ${text}` }],
       {
         id: tipId,
         role: "tooltip",
-        className: "helptip-bubble" + (align === "end" ? " helptip-bubble--end" : "") + (open ? " is-open" : ""),
+        className: "helptip-bubble" + (align === "end" ? " helptip-bubble--end" : "") + (open2 ? " is-open" : ""),
         style: offset === null ? void 0 : { left: offset + "px", right: "auto" }
       },
       text
@@ -7643,21 +8088,21 @@ ${text}` }],
         // answer than a missing figure.
         /* @__PURE__ */ React.createElement("div", { className: "catd-summary" }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 catd-summary-amt" }, fmt(detail.total)), /* @__PURE__ */ React.createElement("span", { className: "catd-summary-sub" }, `across ${detail.count} ${detail.count === 1 ? "payment" : "payments"} in ${scope}`)),
         detail.rows.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "catd-none" }, `Nothing in ${scope} is filed under ${detail.category}. If you were expecting something here, it is filed under another category — Flow will show you which.`) : /* @__PURE__ */ React.createElement("div", { className: "catd-rows" }, detail.rows.map((r) => {
-          const open = !!openRows[r.key];
+          const open2 = !!openRows[r.key];
           return /* @__PURE__ */ React.createElement("div", { key: r.key, className: "catd-row" }, /* @__PURE__ */ React.createElement(
             "button",
             {
               type: "button",
               className: "catd-row-head",
-              "aria-expanded": open ? "true" : "false",
-              "aria-label": r.count > 1 ? `${r.desc}, ${fmt(r.total)} over ${r.count} payments — ${open ? "hide" : "show"} the dates` : `${r.desc}, ${fmt(r.total)}`,
+              "aria-expanded": open2 ? "true" : "false",
+              "aria-label": r.count > 1 ? `${r.desc}, ${fmt(r.total)} over ${r.count} payments — ${open2 ? "hide" : "show"} the dates` : `${r.desc}, ${fmt(r.total)}`,
               onClick: () => onToggleRow(r.key)
             },
-            /* @__PURE__ */ React.createElement("span", { className: "catd-caret", "aria-hidden": "true" }, r.count > 1 ? open ? "▾" : "▸" : ""),
+            /* @__PURE__ */ React.createElement("span", { className: "catd-caret", "aria-hidden": "true" }, r.count > 1 ? open2 ? "▾" : "▸" : ""),
             /* @__PURE__ */ React.createElement("span", { className: "catd-desc", title: r.desc }, r.desc),
             /* @__PURE__ */ React.createElement("span", { className: "catd-count" }, r.count > 1 ? `${r.count} payments` : fmtDate(r.occurrences[0] && r.occurrences[0].date, year)),
             /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 catd-amt" }, fmt(r.total))
-          ), open && r.count > 1 && /* @__PURE__ */ React.createElement("div", { className: "catd-occs" }, r.occurrences.map((o, oi) => /* @__PURE__ */ React.createElement(
+          ), open2 && r.count > 1 && /* @__PURE__ */ React.createElement("div", { className: "catd-occs" }, r.occurrences.map((o, oi) => /* @__PURE__ */ React.createElement(
             "div",
             { key: o.id || oi, className: "catd-occ" },
             /* @__PURE__ */ React.createElement("span", { className: "catd-occ-date" }, fmtDate(o.date, year)),
@@ -14296,7 +14741,7 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
             // accessibility tree, and these put them back.
             /* @__PURE__ */ React.createElement("table", { className: "forecast-table yoy-table", role: "table" }, /* @__PURE__ */ React.createElement("colgroup", null, /* @__PURE__ */ React.createElement("col", { className: "yoyd-col-name" }), /* @__PURE__ */ React.createElement("col", { className: "yoyd-col-year" }), /* @__PURE__ */ React.createElement("col", { className: "yoyd-col-year" }), /* @__PURE__ */ React.createElement("col", { className: "yoyd-col-effect" })), /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { className: "thead-row", role: "row" }, /* @__PURE__ */ React.createElement("th", { className: "yoy-th-desc", role: "columnheader" }, "Line"), /* @__PURE__ */ React.createElement("th", { className: "yoy-th-num yoyd-year-col", role: "columnheader" }, yoyDetail.prev.year), /* @__PURE__ */ React.createElement("th", { className: "yoy-th-num yoyd-year-col", role: "columnheader" }, yoyDetail.cur.year), /* @__PURE__ */ React.createElement("th", { className: "yoy-th-num", role: "columnheader" }, "Effect"))), /* @__PURE__ */ React.createElement("tbody", null, (yoyShowAll ? yoyDetail.rows : yoyDetail.rolled).map((r) => {
               const rowKey = r.kind + "|" + r.name;
-              const open = !!yoyOpenRows[rowKey];
+              const open2 = !!yoyOpenRows[rowKey];
               const kids = r.kind === "other" ? [] : r.children || [];
               return /* @__PURE__ */ React.createElement(React.Fragment, { key: rowKey }, /* @__PURE__ */ React.createElement("tr", { className: "yoy-tr" + (r.kind === "other" ? " yoyd-tr--other" : ""), role: "row" }, /* @__PURE__ */ React.createElement(
                 "td",
@@ -14316,11 +14761,11 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
                     {
                       type: "button",
                       className: "yoyd-expand",
-                      "aria-expanded": open ? "true" : "false",
-                      "aria-label": `${open ? "Hide" : "Show"} the entries behind ${r.name}`,
+                      "aria-expanded": open2 ? "true" : "false",
+                      "aria-label": `${open2 ? "Hide" : "Show"} the entries behind ${r.name}`,
                       onClick: () => setYoyOpenRows((prev) => ({ ...prev, [rowKey]: !prev[rowKey] }))
                     },
-                    open ? "▾" : "▸"
+                    open2 ? "▾" : "▸"
                   ) : null,
                   /* @__PURE__ */ React.createElement("span", { className: "yoyd-name", title: r.name }, r.name),
                   r.kind !== "other" && r.prev === 0 && /* @__PURE__ */ React.createElement("span", { className: "yoy-tag yoy-tag--new" }, "New"),
@@ -14354,7 +14799,7 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
                   }
                 ),
                 /* @__PURE__ */ React.createElement("span", { className: "yoyd-effect-val" }, fmt(r.effect, true))
-              )), open && kids.map((k) => /* @__PURE__ */ React.createElement(
+              )), open2 && kids.map((k) => /* @__PURE__ */ React.createElement(
                 "tr",
                 {
                   key: rowKey + "|" + k.name,
@@ -18306,7 +18751,7 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
         "aria-modal": "true",
         "aria-labelledby": "sync-divergence-title"
       },
-      /* @__PURE__ */ React.createElement("div", { className: "modal-card profile-modal-card" }, /* @__PURE__ */ React.createElement("div", { id: "sync-divergence-title", className: "settings-header-title mb-8" }, "Two versions of your budget"), /* @__PURE__ */ React.createElement("div", { className: "txm mb-14" }, "This device has changes that were never saved to the cloud", when ? ` (since ${when})` : "", ", and the cloud copy has changed too", cloudWhen ? ` (last saved ${cloudWhen})` : "", ". Keeping one means losing the other, so pick which to keep."), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap" }, /* @__PURE__ */ React.createElement("button", { onClick: run(onKeepLocal), disabled: busy, className: "cf-btn cf-btn--primary cf-btn--md" }, busy ? "Working…" : "Keep this device's version"), /* @__PURE__ */ React.createElement("button", { onClick: run(onUseCloud), disabled: busy, className: "cf-btn cf-btn--secondary cf-btn--md" }, "Use the cloud version")), /* @__PURE__ */ React.createElement("div", { className: "txl mt-14" }, "Not sure? Export a backup first from Settings → Data Backup & Restore — that saves this device's current version to a file either way."))
+      /* @__PURE__ */ React.createElement("div", { className: "modal-card profile-modal-card" }, /* @__PURE__ */ React.createElement("div", { id: "sync-divergence-title", className: "settings-header-title mb-8" }, divergence.names ? "You both changed the same thing" : "Two versions of your budget"), divergence.names ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "txm mb-8" }, "While you were editing, another member saved a different change to", divergence.names.length === 1 ? " this" : " these", ":"), /* @__PURE__ */ React.createElement("ul", { className: "txm mb-8 sync-clash-list" }, divergence.names.slice(0, 6).map((n, i) => /* @__PURE__ */ React.createElement("li", { key: i }, n)), divergence.names.length > 6 && /* @__PURE__ */ React.createElement("li", null, "and " + (divergence.names.length - 6) + " more")), /* @__PURE__ */ React.createElement("div", { className: "txm mb-14" }, "Everything else either of you changed is already combined. Pick whose version of ", divergence.names.length === 1 ? "this one" : "these", " to keep.")) : /* @__PURE__ */ React.createElement("div", { className: "txm mb-14" }, "This device has changes that were never saved to the cloud", when ? ` (since ${when})` : "", ", and the cloud copy has changed too", cloudWhen ? ` (last saved ${cloudWhen})` : "", ". Keeping one means losing the other, so pick which to keep."), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-12 cf-wrap" }, /* @__PURE__ */ React.createElement("button", { onClick: run(onKeepLocal), disabled: busy, className: "cf-btn cf-btn--primary cf-btn--md" }, busy ? "Working…" : divergence.names ? "Keep mine" : "Keep this device's version"), /* @__PURE__ */ React.createElement("button", { onClick: run(onUseCloud), disabled: busy, className: "cf-btn cf-btn--secondary cf-btn--md" }, divergence.names ? "Keep theirs" : "Use the cloud version")), /* @__PURE__ */ React.createElement("div", { className: "txl mt-14" }, "Not sure? Export a backup first from Settings → Data Backup & Restore — that saves this device's current version to a file either way."))
     );
   }
   function ReceiptLightbox({ src, onClose }) {
@@ -18454,7 +18899,7 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
     }
   }
   function SectionNav({ sections = [], label = "Section" }) {
-    const [open, setOpen] = useState(false);
+    const [open2, setOpen] = useState(false);
     const [current, setCurrent] = useState(null);
     useEffect(() => {
       if (!sections.length) return void 0;
@@ -18504,7 +18949,7 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
       /* @__PURE__ */ React.createElement("span", { className: "section-nav-here" }, here.title),
       /* @__PURE__ */ React.createElement("span", { className: "section-nav-count" }, sections.length, " sections"),
       /* @__PURE__ */ React.createElement("span", { className: "section-nav-chev" }, /* @__PURE__ */ React.createElement(Icon, { name: "chevron-down", size: 15, strokeWidth: 2.25 }))
-    ), open && /* @__PURE__ */ React.createElement("div", { className: "modal-overlay", role: "dialog", "aria-modal": "true", "aria-label": "Jump to a section" }, /* @__PURE__ */ React.createElement("div", { className: "modal-card entries-mobilefilters-card" }, /* @__PURE__ */ React.createElement(SheetHandle, { onDismiss: () => setOpen(false) }), /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg" }, "Jump to a section"), /* @__PURE__ */ React.createElement("div", { className: "section-nav-list" }, sections.map((s) => /* @__PURE__ */ React.createElement(
+    ), open2 && /* @__PURE__ */ React.createElement("div", { className: "modal-overlay", role: "dialog", "aria-modal": "true", "aria-label": "Jump to a section" }, /* @__PURE__ */ React.createElement("div", { className: "modal-card entries-mobilefilters-card" }, /* @__PURE__ */ React.createElement(SheetHandle, { onDismiss: () => setOpen(false) }), /* @__PURE__ */ React.createElement("div", { className: "modal-title-lg" }, "Jump to a section"), /* @__PURE__ */ React.createElement("div", { className: "section-nav-list" }, sections.map((s) => /* @__PURE__ */ React.createElement(
       "button",
       {
         key: s.id,
@@ -18517,7 +18962,7 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
   }
   var NOTICE_RANK = { critical: 0, warn: 1, info: 2 };
   function NoticeStack({ notices = [] }) {
-    const [open, setOpen] = useState(false);
+    const [open2, setOpen] = useState(false);
     const list = useMemo(
       () => notices.filter(Boolean).slice().sort((a, b) => NOTICE_RANK[a.tone] - NOTICE_RANK[b.tone]),
       [notices]
@@ -18555,16 +19000,16 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
       {
         className: "notice notice-summary",
         "data-tone": list[0].tone,
-        "aria-expanded": open ? "true" : "false",
+        "aria-expanded": open2 ? "true" : "false",
         onClick: () => {
           haptic();
-          setOpen(!open);
+          setOpen(!open2);
         }
       },
       /* @__PURE__ */ React.createElement("span", { className: "notice-icon", "aria-hidden": "true" }, /* @__PURE__ */ React.createElement(Icon, { name: list[0].icon || "alert-triangle", size: 16 })),
       /* @__PURE__ */ React.createElement("span", { className: "notice-msg" }, /* @__PURE__ */ React.createElement("strong", null, list.length, " notices"), " — ", list[0].plain),
-      /* @__PURE__ */ React.createElement("span", { className: "notice-chev", "aria-hidden": "true" }, open ? "⌃" : "⌄")
-    ), open && /* @__PURE__ */ React.createElement("div", { className: "notice-stack-body" }, list.map(row)));
+      /* @__PURE__ */ React.createElement("span", { className: "notice-chev", "aria-hidden": "true" }, open2 ? "⌃" : "⌄")
+    ), open2 && /* @__PURE__ */ React.createElement("div", { className: "notice-stack-body" }, list.map(row)));
   }
   function BottomNav({ tab, setTab, lowAlert = false, onCompose }) {
     const items = [
@@ -19628,14 +20073,14 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
     return MONTHS.map((m, i) => {
       const evs = flow.filter((ev) => ev.month === i);
       const prev = flow.filter((ev) => ev.month < i);
-      const open = prev.length > 0 ? prev[prev.length - 1].balance : openBal;
+      const open2 = prev.length > 0 ? prev[prev.length - 1].balance : openBal;
       const income = evs.filter((e) => e.type === "income").reduce((s, e) => s + e.amount, 0);
       const expense = evs.filter((e) => e.type === "expense").reduce((s, e) => s + e.amount, 0);
       const transfers = evs.filter((e) => e.type === "transfer");
       const transfersIn = transfers.filter(isInflowEvent).reduce((s, e) => s + e.amount, 0);
       const transfersOut = transfers.filter(isOutflowEvent).reduce((s, e) => s + e.amount, 0);
-      const close = evs.length > 0 ? evs[evs.length - 1].balance : open;
-      return { month: m, monthIdx: i, income, expense, transfersIn, transfersOut, surplus: roundMoney(close - open), open, close };
+      const close = evs.length > 0 ? evs[evs.length - 1].balance : open2;
+      return { month: m, monthIdx: i, income, expense, transfersIn, transfersOut, surplus: roundMoney(close - open2), open: open2, close };
     });
   }
   function getCurrentBalance(flow, openBal, year) {
@@ -19997,16 +20442,16 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
       const roll = planGoalRollover(g, today);
       if (roll) rolls.push(roll);
     });
-    const byId = new Map((Array.isArray(entries) ? entries : []).map((e) => [e.id, e]));
+    const byId2 = new Map((Array.isArray(entries) ? entries : []).map((e) => [e.id, e]));
     const extend = [];
     const payouts = [];
     rolls.forEach((roll) => {
       const goal = goals.find((g) => g.id === roll.goalId);
-      const contrib = goal && goal.entryId ? byId.get(goal.entryId) : null;
+      const contrib = goal && goal.entryId ? byId2.get(goal.entryId) : null;
       if (contrib && contrib.recurEnd && contrib.recurEnd < roll.to) {
         extend.push({ entryId: contrib.id, recurEnd: roll.to });
       }
-      const oldPayout = goal && goal.payoutEntryId ? byId.get(goal.payoutEntryId) : null;
+      const oldPayout = goal && goal.payoutEntryId ? byId2.get(goal.payoutEntryId) : null;
       if (oldPayout) {
         payouts.push({
           goalId: roll.goalId,
@@ -20642,8 +21087,8 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
         if (!parsed.tab) return;
         if (parsed.redirected) {
           try {
-            const canonical = "#/" + parsed.tab + (parsed.tab === "flow" && parsed.flowSub ? "/" + parsed.flowSub : "") + (parsed.tab === "plan" && parsed.planSub ? "/" + parsed.planSub : "") + (parsed.tab === "you" && parsed.youSub ? "/" + parsed.youSub : "");
-            if (location.hash !== canonical) history.replaceState(null, "", canonical);
+            const canonical2 = "#/" + parsed.tab + (parsed.tab === "flow" && parsed.flowSub ? "/" + parsed.flowSub : "") + (parsed.tab === "plan" && parsed.planSub ? "/" + parsed.planSub : "") + (parsed.tab === "you" && parsed.youSub ? "/" + parsed.youSub : "");
+            if (location.hash !== canonical2) history.replaceState(null, "", canonical2);
           } catch (e) {
           }
         }
@@ -20698,10 +21143,10 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
         if (el && el.closest && el !== document.body && !el.closest(OVERLAY)) lastOutside = el;
       };
       document.addEventListener("focusin", onFocusIn);
-      let open = document.querySelectorAll(OVERLAY).length;
+      let open2 = document.querySelectorAll(OVERLAY).length;
       const obs = new MutationObserver(() => {
         const now = document.querySelectorAll(OVERLAY).length;
-        if (now < open) {
+        if (now < open2) {
           const stray = !document.activeElement || document.activeElement === document.body;
           if (lastOutside && stray && document.contains(lastOutside)) {
             try {
@@ -20710,7 +21155,7 @@ Say what actually changed and whether it matters. Skip anything that moved trivi
             }
           }
         }
-        open = now;
+        open2 = now;
       });
       obs.observe(document.body, { childList: true, subtree: true });
       return () => {

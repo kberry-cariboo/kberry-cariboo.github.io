@@ -5,7 +5,9 @@ import { DEFAULT_HOLIDAY_REGION } from "./holidays.js";
 import { localDateStr } from "./dates.js";
 import { DEFAULT_CURRENCY, DEFAULT_LOCALE, downloadBlob } from "./format.js";
 import { receiptSig, receiptStoreAll, receiptStoreClear, receiptStoreDelete, receiptStorePut } from "./receipt-store.js";
-import { DEFAULT_ALERT_THRESHOLD, DEFAULT_BUDGET_COLS, DEFAULT_CATEGORIES, DEFAULT_CATEGORY_COLORS, DEFAULT_ENTRIES_COLS, useLS } from "./app-data.js";
+import { describeClashes, mergeFields, sameRow, type ClashRule } from "./sync-merge.js";
+import { syncBaseClear, syncBaseGet, syncBasePut, type SyncBase } from "./sync-base.js";
+import { DEFAULT_ALERT_THRESHOLD, DEFAULT_BUDGET_COLS, DEFAULT_CATEGORIES, DEFAULT_CATEGORY_COLORS, DEFAULT_ENTRIES_COLS, MONTHS, useLS } from "./app-data.js";
 import { toast } from "../components/auth-misc.js";
 import type { DebtFigures, HouseholdData, HouseholdPayload, MemberPrefs, OverridesByYear, Setters } from "../types.js";
   // ── Centralized Supabase auth calls ────────────────────────────────
@@ -265,10 +267,8 @@ import type { DebtFigures, HouseholdData, HouseholdPayload, MemberPrefs, Overrid
   ] satisfies FieldSpec<keyof MemberPrefs>[];
   type UndeclaredMemberPref = Exclude<keyof MemberPrefs, (typeof MEMBER_PREF_FIELDS)[number]["key"]>;
   export const MEMBER_PREF_FIELDS_COMPLETE: [UndeclaredMemberPref] extends [never] ? true : UndeclaredMemberPref = true;
-  // Long enough to answer "what happened while I was away" across a busy week,
-  // short enough that the log never becomes the largest thing in the payload:
-  // 200 records at ~120 bytes is ~24 KB against a household of a few hundred KB.
-  export const ACTIVITY_LIMIT = 200;
+  // How long the activity log gets (declared beside the merge that keeps it).
+  export { ACTIVITY_LIMIT } from "./sync-merge.js";
   // Creates the localStorage-backed state for every field in the table, in
   // table order, and returns the two objects useHouseholdData indexes by field
   // key. Calling useLS in a loop is safe here precisely because
@@ -301,6 +301,11 @@ import type { DebtFigures, HouseholdData, HouseholdPayload, MemberPrefs, Overrid
     );
     return { values, setters: stableSetters };
   }
+  // The named fields of a payload.
+  export const pickFields = <T extends object>(src: T, keys: string[]): Partial<T> => keys.reduce((o, k) => {
+    o[k] = src[k];
+    return o;
+  }, {} as Partial<T>);
   export const HOUSEHOLD_GUARDS: Record<NonNullable<FieldSpec["kind"]>, (v: any, set: (v: any) => void) => void> = {
     array: (v, set) => {
       if (Array.isArray(v)) set(v);
@@ -359,6 +364,8 @@ import type { DebtFigures, HouseholdData, HouseholdPayload, MemberPrefs, Overrid
       // Receipt photos are the household's too, and the most personal thing
       // it stores; a shared device must not keep them for the next person.
       receiptStoreClear();
+      // And this device's copy of the household as last synced (the merge base).
+      syncBaseClear();
       localStorage.removeItem(PREFS_UNSAVED_KEY);
       Object.keys(localStorage).filter((k) => k.startsWith("cf_ai_report_")).forEach((k) => localStorage.removeItem(k));
     } catch (e) {
@@ -638,6 +645,19 @@ import type { DebtFigures, HouseholdData, HouseholdPayload, MemberPrefs, Overrid
     // every save so the server can detect a concurrent save from another
     // device/member and reject instead of silently overwriting it (AR2).
     const lastSavedAtRef = useRef(null);
+    // The household as this device last agreed with the server on, with the
+    // server's version of each field (see save_household_fields and
+    // sync-merge.ts). Null until a load against a database that versions its
+    // fields; without it saves go the old whole-household way.
+    const baseRef = useRef<SyncBase | null>(null);
+    const baseRead = useRef<Promise<unknown> | null>(null);
+    // False once the database has turned out not to have save_household_fields
+    // (schema.sql not re-run yet): every save then uses save_household.
+    const fieldsRpc = useRef(true);
+    const setBase = (b: SyncBase | null) => {
+      baseRef.current = b;
+      if (b) syncBasePut(b);
+    };
     const applyPayload = useCallback((d) => {
       if (!d) return {};
       // A payload saved by an older, un-migrated client (another device that
@@ -696,6 +716,16 @@ import type { DebtFigures, HouseholdData, HouseholdPayload, MemberPrefs, Overrid
         idbLoaded.current = true;
       });
     }, []);
+    // The merge base this device kept for the household, read before the
+    // first load so offline edits carried across a reload can be merged.
+    useEffect(() => {
+      baseRef.current = null;
+      if (!household) return;
+      const hid = household.id;
+      baseRead.current = syncBaseGet(hid).then((b) => {
+        if (b && b.householdId === hid && !baseRef.current) baseRef.current = b;
+      });
+    }, [household && household.id]);
     // Keep IndexedDB in step with the images in state: store new or changed
     // ones, drop ones no override carries any more. Only once the mount read is
     // done — before it, state has none of them, and every one would look
@@ -769,8 +799,10 @@ import type { DebtFigures, HouseholdData, HouseholdPayload, MemberPrefs, Overrid
     valuesRef.current = values;
     // The baseline the autosave compares against: the fields the load just
     // applied, over the ones it left alone.
-    const adoptLoaded = (applied) => {
-      syncedSig.current = sigOf(normaliseFields(Object.assign({}, valuesRef.current, applied)));
+    const adoptLoaded = (applied, versions: Record<string, string> | null = null) => {
+      const snap = normaliseFields(Object.assign({}, valuesRef.current, applied));
+      syncedSig.current = sigOf(snap);
+      if (versions && household) setBase({ householdId: household.id, data: snap, versions });
     };
     // Fetches, one at a time, the receipts the manifest listed and this device
     // lacked, and puts each into its override as it arrives. An error (offline)
@@ -797,6 +829,130 @@ import type { DebtFigures, HouseholdData, HouseholdPayload, MemberPrefs, Overrid
         setters.overridesByYr((prev) => attachReceiptImages(prev, { [key]: url }));
       }
     }, [setters]);
+    // The household as the server has it: the payload (receipt images put
+    // back where this device already holds them), the receipt manifest, and
+    // each field's version (null from a database that does not version them).
+    // Resets the receipt bookkeeping to the server's manifest, as every load
+    // always has.
+    const fetchServer = async () => {
+      if (idbRead.current) await idbRead.current;
+      if (baseRead.current) await baseRead.current;
+      // The manifest form: every receipt's key and fingerprint, no images.
+      // A database from before it has only the zero-argument function, which
+      // returns the images inline; that answer is handled below as well.
+      let res = await supabaseClient.rpc("load_household", { p_receipt_bodies: false });
+      if (res.error && /p_receipt_bodies|Could not find the function|function .*load_household.* does not exist/i.test(res.error.message || "")) {
+        res = await supabaseClient.rpc("load_household");
+      }
+      const { data, error } = res;
+      if (error) throw error;
+      const payload = (data && data.data) || {};
+      const versions: Record<string, string> | null = (data && data.versions && typeof data.versions === "object") ? data.versions : null;
+      const receipts = (data && data.receipts) || [];
+      const rmap: Record<string, string> = {};
+      const pending = new Set<string>();
+      receipts.forEach((r) => {
+        if (!r || !r.ownerKey) return;
+        if (r.b64) {
+          rmap[r.ownerKey] = "data:" + (r.mime || "image/jpeg") + ";base64," + r.b64;
+          return;
+        }
+        const held = idbReceipts.current[r.ownerKey];
+        if (held && held.dataUrl && r.sig && held.sig === r.sig) rmap[r.ownerKey] = held.dataUrl;
+        else pending.add(r.ownerKey);
+      });
+      pendingReceipts.current = pending;
+      receiptCache.current = Object.assign({}, rmap);
+      // Re-attach receipt images to the occurrences they belong to so the
+      // rest of the app keeps seeing plain `attachment` data URLs.
+      if (payload.overridesByYr && typeof payload.overridesByYr === "object") {
+        Object.keys(payload.overridesByYr).forEach((year) => {
+          const yOvs = payload.overridesByYr[year] || {};
+          Object.keys(yOvs).forEach((k) => {
+            const src = rmap["override:" + year + ":" + k];
+            if (src) yOvs[k] = Object.assign({}, yOvs[k], { attachment: src });
+          });
+        });
+      }
+      return { payload, rmap, versions };
+    };
+    type ServerCopy = Awaited<ReturnType<typeof fetchServer>>;
+    // Merges the fields the server has a newer version of into this device's
+    // copy (sync-merge.ts), puts the result into state and makes the server's
+    // copy the new base. `local` is this device's normalised copy when the
+    // caller already has a newer one than state (a save retrying after a
+    // merge). With clashes and onClash unset, nothing is applied: the caller
+    // asks. `pending` means this device still has changes to send; `applied`
+    // that state was changed, so a save has to wait for it to render (the
+    // autosave does) — saving now would send the copy from before the merge.
+    const mergeLoaded = (srv: ServerCopy, onClash: ClashRule | null = null, localIn: HouseholdPayload | null = null) => {
+      const base = baseRef.current;
+      const data = migrateHouseholdPayload(srv.payload, srv.payload.schemaVersion || 0);
+      const keys = HOUSEHOLD_SYNCED_FIELDS.map((f) => f.key);
+      const changed = keys.filter((k) => String(srv.versions[k] ?? "") !== String(base.versions[k] ?? ""));
+      const captured = {};
+      HOUSEHOLD_SYNCED_FIELDS.forEach(({ key, apply }) => {
+        if (changed.includes(key)) apply(data[key], (v) => {
+          captured[key] = v;
+        });
+      });
+      const remote = normaliseFields(Object.assign({}, valuesRef.current, captured));
+      const local = localIn || normaliseFields(valuesRef.current);
+      const { merged, clashes } = mergeFields(changed, base.data, local, remote, onClash || "local");
+      if (Object.keys(clashes).length && !onClash) return { kind: "diverged" as const, clashes, after: local, changed, applied: false };
+      const rawOverrides = valuesRef.current.overridesByYr || {};
+      let applied = false;
+      changed.forEach((k) => {
+        let v = merged[k];
+        // Receipt images: a row this device has as it was merged keeps its own
+        // image; any other row shows the server's (fetched later if needed).
+        if (k === "overridesByYr") {
+          const out = {};
+          Object.keys(v || {}).forEach((y) => {
+            out[y] = {};
+            Object.keys(v[y] || {}).forEach((occ) => {
+              const row = v[y][occ];
+              const mine = rawOverrides[y] && rawOverrides[y][occ];
+              const img = mine && sameRow(mine, row) ? (mine.attachment || srv.rmap["override:" + y + ":" + occ]) : srv.rmap["override:" + y + ":" + occ];
+              out[y][occ] = img ? Object.assign({}, row, { attachment: img }) : row;
+            });
+          });
+          v = out;
+        }
+        if (JSON.stringify(normaliseFields(Object.assign({}, valuesRef.current, { [k]: v }))[k]) !== JSON.stringify(local[k])) {
+          setters[k](v);
+          applied = true;
+        }
+      });
+      const after = Object.assign({}, local, merged) as HouseholdPayload;
+      const nextBase = { householdId: household.id, data: Object.assign({}, base.data, pickFields(remote, changed)), versions: srv.versions };
+      setBase(nextBase);
+      lastSavedAtRef.current = srv.payload.savedAt || null;
+      writeMarker(SYNCED_AT_KEY, srv.payload.savedAt || null);
+      const pending = keys.some((k) => JSON.stringify(after[k]) !== JSON.stringify(nextBase.data[k]));
+      if (!pending) syncedSig.current = sigOf(after);
+      return { kind: pending ? "pending" as const : "merged" as const, clashes, after, changed, applied };
+    };
+    // Sends what a merge left to send: now, when state already holds it, or
+    // through the autosave once the merged state has rendered.
+    const sendAfterMerge = (m: { applied: boolean }, silent = true) => {
+      if (m.applied) {
+        markUnsaved();
+        setStatus("syncing");
+        setMsg("Saving merged changes…");
+        return Promise.resolve(true);
+      }
+      return saveDataRef.current(silent);
+    };
+    // Stops and asks (SyncDivergenceModal). `clashes` names the rows both
+    // sides changed differently; null when there is no base to merge from and
+    // the choice is between the two whole copies.
+    const diverge = (srv: ServerCopy, clashes: Record<string, string[]> | null) => {
+      setDivergence({ payload: srv.payload, rmap: srv.rmap, versions: srv.versions, clashes, names: clashes ? describeClashes(clashes, valuesRef.current, MONTHS, srv.payload) : null });
+      markUnsaved();
+      setStatus("error");
+      setMsg(clashes ? "⚠ You and another member changed the same thing" : "⚠ Unsaved changes here and newer changes in the cloud");
+    };
     const loadData = useCallback(async () => {
       if (!supabaseClient || !household) return false;
       // Flush any pending debounced save first — otherwise a pull-to-refresh
@@ -816,44 +972,9 @@ import type { DebtFigures, HouseholdData, HouseholdPayload, MemberPrefs, Overrid
       setStatus("syncing");
       setMsg("Loading…");
       try {
-        if (idbRead.current) await idbRead.current;
-        // The manifest form: every receipt's key and fingerprint, no images.
-        // A database from before it has only the zero-argument function, which
-        // returns the images inline; that answer is handled below as well.
-        let res = await supabaseClient.rpc("load_household", { p_receipt_bodies: false });
-        if (res.error && /p_receipt_bodies|Could not find the function|function .*load_household.* does not exist/i.test(res.error.message || "")) {
-          res = await supabaseClient.rpc("load_household");
-        }
-        const { data, error } = res;
-        if (error) throw error;
-        const payload = (data && data.data) || {};
+        const srv = await fetchServer();
+        const { payload, versions } = srv;
         lastSavedAtRef.current = payload.savedAt || null;
-        const receipts = (data && data.receipts) || [];
-        const rmap = {};
-        const pending = new Set<string>();
-        receipts.forEach((r) => {
-          if (!r || !r.ownerKey) return;
-          if (r.b64) {
-            rmap[r.ownerKey] = "data:" + (r.mime || "image/jpeg") + ";base64," + r.b64;
-            return;
-          }
-          const held = idbReceipts.current[r.ownerKey];
-          if (held && held.dataUrl && r.sig && held.sig === r.sig) rmap[r.ownerKey] = held.dataUrl;
-          else pending.add(r.ownerKey);
-        });
-        pendingReceipts.current = pending;
-        receiptCache.current = Object.assign({}, rmap);
-        // Re-attach receipt images to the occurrences they belong to so the
-        // rest of the app keeps seeing plain `attachment` data URLs.
-        if (payload.overridesByYr && typeof payload.overridesByYr === "object") {
-          Object.keys(payload.overridesByYr).forEach((year) => {
-            const yOvs = payload.overridesByYr[year] || {};
-            Object.keys(yOvs).forEach((k) => {
-              const src = rmap["override:" + year + ":" + k];
-              if (src) yOvs[k] = Object.assign({}, yOvs[k], { attachment: src });
-            });
-          });
-        }
         // Unsaved local edits must never be silently overwritten by the
         // server copy. Which resolution is safe depends on whether the cloud
         // moved on while this device was offline.
@@ -876,15 +997,33 @@ import type { DebtFigures, HouseholdData, HouseholdPayload, MemberPrefs, Overrid
             setMsg("⚠ Unsaved changes on this device — will retry");
             return false;
           }
-          // Both sides moved. There is no correct automatic answer, so stop
-          // and let the user choose; local state is left untouched meanwhile.
+          // Both sides moved. With the copy both started from, merge them row
+          // by row: only two different edits to the same row need a person.
           loadAttempted.current = true;
-          setDivergence({ payload, rmap });
-          setStatus("error");
-          setMsg("⚠ Unsaved changes here and newer changes in the cloud");
+          if (versions && baseRef.current && baseRef.current.householdId === household.id) {
+            const m = mergeLoaded(srv);
+            if (m.kind !== "diverged") {
+              initialized.current = true;
+              fetchPendingReceipts();
+              if (m.kind === "pending") {
+                const pushed = await sendAfterMerge(m);
+                if (pushed) toast("Merged the changes you made while offline with everyone else's.");
+                return pushed;
+              }
+              clearUnsaved();
+              setStatus("ok");
+              setMsg("Synced " + (new Date()).toLocaleTimeString());
+              return true;
+            }
+            diverge(srv, m.clashes);
+            return false;
+          }
+          // Without it there is no correct automatic answer, so stop and let
+          // the user choose; local state is left untouched meanwhile.
+          diverge(srv, null);
           return false;
         }
-        adoptLoaded(applyPayload(payload));
+        adoptLoaded(applyPayload(payload), versions);
         writeMarker(SYNCED_AT_KEY, payload.savedAt || null);
         initialized.current = true;
         loadAttempted.current = true;
@@ -926,26 +1065,83 @@ import type { DebtFigures, HouseholdData, HouseholdPayload, MemberPrefs, Overrid
         delete cached[key];
       }
     }, [collectAttachments]);
+    // Sends only the fields that differ from the base, each with the version
+    // it was based on. A field someone else wrote since is merged row by row
+    // with theirs and sent again. true when saved; "diverged" when two edits
+    // to the same row need a person; false when this database has no
+    // save_household_fields (the caller saves the old way). `sent` is what
+    // the server now holds, merges included.
+    const saveFields = async (payload: HouseholdPayload): Promise<{ saved: true; sent: HouseholdPayload } | false | "diverged"> => {
+      const keys = HOUSEHOLD_SYNCED_FIELDS.map((f) => f.key);
+      let local = payload;
+      for (let attempt = 0; attempt < 4; attempt++) {
+        const base = baseRef.current;
+        const changed = keys.filter((k) => JSON.stringify(local[k]) !== JSON.stringify(base.data[k]));
+        if (!changed.length) return { saved: true, sent: local };
+        const { data, error } = await supabaseClient.rpc("save_household_fields", {
+          p_data: Object.assign({ schemaVersion: SCHEMA_VERSION }, pickFields(local, changed)),
+          p_base: changed.reduce((o, k) => {
+            o[k] = base.versions[k] ?? null;
+            return o;
+          }, {})
+        });
+        if (error) {
+          if (/save_household_fields|Could not find the function/i.test(error.message || "")) {
+            fieldsRpc.current = false;
+            return false;
+          }
+          throw error;
+        }
+        if (data && Array.isArray(data.conflict)) {
+          // Someone else wrote one of these fields since this device last saw
+          // it. Take their copy, merge ours into it, and go again.
+          const srv = await fetchServer();
+          if (!srv.versions) return false;
+          const m = mergeLoaded(srv, null, local);
+          if (m.kind === "diverged") {
+            diverge(srv, m.clashes);
+            return "diverged";
+          }
+          fetchPendingReceipts();
+          if (m.changed.length) toast("Merged changes another member made at the same time.");
+          local = m.after;
+          continue;
+        }
+        setBase({ householdId: household.id, data: Object.assign({}, base.data, pickFields(local, changed)), versions: (data && data.versions) || base.versions });
+        if (data && data.savedAt) {
+          lastSavedAtRef.current = data.savedAt;
+          writeMarker(SYNCED_AT_KEY, data.savedAt);
+        }
+        return { saved: true, sent: local };
+      }
+      throw new Error("Other members kept saving at the same moment — will retry.");
+    };
     const runSave = useCallback(async (silent = false) => {
       if (!supabaseClient || !household) return false;
       if (!silent) setStatus("syncing");
       savingNow.current = true;
       try {
         const payload = buildPayload();
-        const { data: newSavedAt, error } = await supabaseClient.rpc("save_household", {
-          p_data: payload,
-          p_expected_saved_at: lastSavedAtRef.current
-        });
-        if (error) throw error;
-        if (newSavedAt) {
-          lastSavedAtRef.current = newSavedAt;
-          writeMarker(SYNCED_AT_KEY, newSavedAt);
+        const byField = baseRef.current && baseRef.current.versions && baseRef.current.householdId === household.id && fieldsRpc.current;
+        const saved = byField ? await saveFields(payload) : false;
+        if (saved === "diverged") return false;
+        const sent = saved ? saved.sent : payload;
+        if (!saved) {
+          const { data: newSavedAt, error } = await supabaseClient.rpc("save_household", {
+            p_data: payload,
+            p_expected_saved_at: lastSavedAtRef.current
+          });
+          if (error) throw error;
+          if (newSavedAt) {
+            lastSavedAtRef.current = newSavedAt;
+            writeMarker(SYNCED_AT_KEY, newSavedAt);
+          }
         }
         await syncReceipts();
         clearUnsaved();
         // Only on success: a failed save must leave the previous signature in
         // place so the retry still sees a difference and goes through.
-        syncedSig.current = sigOf(payload);
+        syncedSig.current = sigOf(sent);
         setStatus("ok");
         setMsg("Saved " + (new Date()).toLocaleTimeString());
         return true;
@@ -1045,18 +1241,50 @@ import type { DebtFigures, HouseholdData, HouseholdPayload, MemberPrefs, Overrid
     // --- resolving a divergence -------------------------------------------
     // Deliberately only reachable from an explicit user choice; nothing here
     // runs automatically, because either branch discards somebody's work.
+    // With clashes (a row-level divergence) neither button discards anything
+    // but the other side's version of the rows both changed: every other
+    // change from both sides is merged in either way.
+    const resolveClashes = async (onClash: ClashRule) => {
+      const srv = { payload: divergence.payload, rmap: divergence.rmap, versions: divergence.versions };
+      const m = mergeLoaded(srv, onClash);
+      initialized.current = true;
+      setDivergence(null);
+      if (m.kind === "pending") return sendAfterMerge(m, false);
+      clearUnsaved();
+      setStatus("ok");
+      setMsg("Synced " + (new Date()).toLocaleTimeString());
+      return true;
+    };
     const keepLocalChanges = useCallback(async () => {
       if (!divergence) return;
+      if (divergence.clashes && baseRef.current) {
+        if (await resolveClashes("local")) toast("Kept your version of those; everything else from both of you is in.");
+        return;
+      }
       // Adopt the server's savedAt so the conflict check passes — we are
       // knowingly overwriting it.
       lastSavedAtRef.current = divergence.payload.savedAt || null;
+      // The same for the per-field check: the server's copy becomes the base,
+      // so every field this device has differently is sent, and wins.
+      if (divergence.versions && household) {
+        const captured = {};
+        const data = migrateHouseholdPayload(divergence.payload, divergence.payload.schemaVersion || 0);
+        HOUSEHOLD_SYNCED_FIELDS.forEach(({ key, apply }) => apply(data[key], (v) => {
+          captured[key] = v;
+        }));
+        setBase({ householdId: household.id, data: normaliseFields(Object.assign({}, valuesRef.current, captured)), versions: divergence.versions });
+      }
       initialized.current = true;
       setDivergence(null);
       const ok = await saveDataRef.current(false);
       if (ok) toast("This device's version is now the shared one.");
-    }, [divergence]);
-    const discardLocalChanges = useCallback(() => {
+    }, [divergence, household]);
+    const discardLocalChanges = useCallback(async () => {
       if (!divergence) return;
+      if (divergence.clashes && baseRef.current) {
+        if (await resolveClashes("remote")) toast("Took their version of those; your other changes are kept.");
+        return;
+      }
       const { payload, rmap } = divergence;
       receiptCache.current = Object.assign({}, rmap);
       if (payload.overridesByYr && typeof payload.overridesByYr === "object") {
@@ -1068,7 +1296,7 @@ import type { DebtFigures, HouseholdData, HouseholdPayload, MemberPrefs, Overrid
           });
         });
       }
-      adoptLoaded(applyPayload(payload));
+      adoptLoaded(applyPayload(payload), divergence.versions || null);
       lastSavedAtRef.current = payload.savedAt || null;
       writeMarker(SYNCED_AT_KEY, payload.savedAt || null);
       clearUnsaved();
@@ -1078,7 +1306,66 @@ import type { DebtFigures, HouseholdData, HouseholdPayload, MemberPrefs, Overrid
       setStatus("ok");
       setMsg("Synced " + (new Date()).toLocaleTimeString());
       toast("Using the cloud version. This device's unsaved changes were discarded.", "error");
-    }, [divergence, applyPayload, clearUnsaved, fetchPendingReceipts]);
+    }, [divergence, household, applyPayload, clearUnsaved, fetchPendingReceipts]);
+
+    // Another member's save, as it happens. Each save stamps the fields it
+    // wrote in household_field_versions, which is in Supabase's Realtime
+    // publication; a stamp this device doesn't already have means someone
+    // else saved, and their changes are merged in (pullAndMerge) within a
+    // second or two — instead of on this device's next reload, which is when
+    // a partner's edit used to appear.
+    const divergenceRef = useRef(divergence);
+    divergenceRef.current = divergence;
+    const pullTimer = useRef(null);
+    const pull = useCallback(async () => {
+      pullTimer.current = null;
+      if (!initialized.current || divergenceRef.current || !baseRef.current || !baseRef.current.versions) return;
+      // Mid-save or mid-edit: the save's own conflict check merges, so wait.
+      if (savingNow.current || saveTimer.current) {
+        pullTimer.current = setTimeout(pull, 1500);
+        return;
+      }
+      try {
+        const srv = await fetchServer();
+        if (!srv.versions) return;
+        const m = mergeLoaded(srv);
+        if (m.kind === "diverged") {
+          diverge(srv, m.clashes);
+          return;
+        }
+        fetchPendingReceipts();
+        if (m.kind === "pending") sendAfterMerge(m);
+        else if (m.changed.length) {
+          setStatus("ok");
+          setMsg("Updated from another device " + (new Date()).toLocaleTimeString());
+        }
+      } catch (e) {
+        // Offline or the server is unreachable: the next event, save or
+        // reconnect catches up.
+      }
+    }, [household, fetchPendingReceipts]);
+    useEffect(() => {
+      if (!supabaseClient || !household || typeof supabaseClient.channel !== "function") return;
+      const channel = supabaseClient.channel("cf-household-" + household.id)
+        .on("postgres_changes", { event: "*", schema: "public", table: "household_field_versions", filter: "household_id=eq." + household.id }, (msg) => {
+          const row = msg && msg.new;
+          const base = baseRef.current;
+          if (!base || !base.versions) return;
+          // This device's own save, already recorded when it returned.
+          if (row && row.field && base.versions[row.field] && Date.parse(base.versions[row.field]) === Date.parse(row.version)) return;
+          if (pullTimer.current) clearTimeout(pullTimer.current);
+          pullTimer.current = setTimeout(pull, 800);
+        })
+        .subscribe();
+      return () => {
+        if (pullTimer.current) clearTimeout(pullTimer.current);
+        try {
+          supabaseClient.removeChannel(channel);
+        } catch (e) {
+          // Already closed.
+        }
+      };
+    }, [household && household.id, pull]);
 
     // Retry whenever the device plausibly has connectivity again. Without
     // this, a save that failed offline was never attempted again until the

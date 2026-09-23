@@ -1797,6 +1797,75 @@ begin
 end $$;
 revoke execute on function cf_my_household() from public, anon, authenticated;
 
+-- Per-field versions -----------------------------------------------------------
+--
+-- One row per household field (a key of cf_payload_keys()), stamped whenever a
+-- save writes that field. The conflict check used to be one timestamp for the
+-- whole household, so two members editing different things — one the goals,
+-- one an entry — collided, and the loser was told to redo their change. With a
+-- version per field, save_household_fields refuses only a field someone else
+-- wrote since this device last saw it, and the client merges that field row
+-- by row (lib/sync-merge.ts) before trying again.
+--
+-- It is also what other devices listen to: the table is in the Realtime
+-- publication, so a partner's save reaches every open copy of the app within
+-- seconds instead of on its next reload.
+create table if not exists household_field_versions (
+  household_id uuid not null references households(id) on delete cascade,
+  field text not null,
+  version timestamptz not null,
+  updated_by uuid references auth.users(id) on delete set null,
+  primary key (household_id, field)
+);
+alter table household_field_versions enable row level security;
+drop policy if exists "member read household_field_versions" on household_field_versions;
+create policy "member read household_field_versions" on household_field_versions
+  for select using (is_household_member(household_id));
+-- Realtime delivers a row change to a subscriber only through its RLS policy,
+-- so members hear about their own household and nobody else's. The
+-- publication exists on Supabase; a plain Postgres (the test database) has
+-- none, and nothing here needs it.
+do $$
+begin
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime')
+     and not exists (select 1 from pg_publication_tables
+                     where pubname = 'supabase_realtime' and schemaname = 'public'
+                       and tablename = 'household_field_versions') then
+    execute 'alter publication supabase_realtime add table household_field_versions';
+  end if;
+end $$;
+
+-- Stamps every household field present in d as written now, by the caller.
+create or replace function cf_bump_field_versions(hid uuid, d jsonb)
+returns void
+language sql
+security definer
+set search_path = public
+as $$
+  insert into household_field_versions as v (household_id, field, version, updated_by)
+  -- clock_timestamp, not now(): two saves inside one transaction (a script, a
+  -- test) must still get different versions.
+  select hid, k, clock_timestamp(), auth.uid()
+  from jsonb_object_keys(d) k
+  where k = any (cf_payload_keys())
+  on conflict (household_id, field) do update
+    set version = excluded.version, updated_by = excluded.updated_by;
+$$;
+
+-- { field: version } for the household.
+create or replace function cf_field_versions(hid uuid)
+returns jsonb
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select coalesce(jsonb_object_agg(field, version), '{}'::jsonb)
+  from household_field_versions where household_id = hid;
+$$;
+revoke execute on function cf_bump_field_versions(uuid, jsonb) from public, anon, authenticated;
+revoke execute on function cf_field_versions(uuid) from public, anon, authenticated;
+
 -- Save the caller's full budget state into the normalized tables (atomic).
 -- The app strips receipt images out of the payload before calling this;
 -- receipts change through put_receipt / delete_receipt instead.
@@ -1819,6 +1888,7 @@ begin
       using errcode = '42501';
   end if;
   perform cf_apply_household_payload(hid, p_data);
+  perform cf_bump_field_versions(hid, p_data);
 end $$;
 
 -- Conflict-aware save (round-8 audit AR2): p_expected_saved_at is the
@@ -1858,10 +1928,62 @@ begin
   end if;
 
   perform cf_apply_household_payload(hid, p_data);
+  perform cf_bump_field_versions(hid, p_data);
 
   select updated_at into new_saved_at
   from household_settings where household_id = hid;
   return new_saved_at;
+end $$;
+
+-- Save only the fields that changed, each checked against the version this
+-- device last saw (save_household above checks one timestamp for everything).
+--
+-- p_data holds the changed fields (plus schemaVersion); p_base maps each of
+-- them to the version the caller's copy was based on (null for a field it has
+-- never seen a version of). A field someone else has written since is a
+-- conflict: nothing is written, and the answer says which fields, so the
+-- client can merge them row by row and send the result.
+--
+-- Returns { "versions": {...}, "savedAt": ts } when it saved, or
+-- { "conflict": [fields], "versions": {...} } when it did not.
+create or replace function save_household_fields(p_data jsonb, p_base jsonb)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  hid uuid := cf_my_household();
+  clashes text[];
+  saved_at timestamptz;
+begin
+  if not is_household_writer(hid) then
+    raise exception 'This account has view-only access to the household.'
+      using errcode = '42501';
+  end if;
+  if p_data is null or jsonb_typeof(p_data) <> 'object' then
+    raise exception 'Invalid payload: expected a JSON object.';
+  end if;
+  -- Saves are serialised per household. The settings row is what the older
+  -- save_household locks, so the two can't interleave either; the households
+  -- row covers a household that has never saved (no settings row yet).
+  perform 1 from households where id = hid for update;
+  perform 1 from household_settings where household_id = hid for update;
+
+  select array_agg(k order by k) into clashes
+  from jsonb_object_keys(p_data) k
+  left join household_field_versions v on v.household_id = hid and v.field = k
+  where k = any (cf_payload_keys())
+    and v.version is distinct from cf_ts(coalesce(p_base, '{}'::jsonb)->>k);
+
+  if clashes is not null then
+    return jsonb_build_object('conflict', to_jsonb(clashes), 'versions', cf_field_versions(hid));
+  end if;
+
+  perform cf_apply_household_payload(hid, p_data);
+  perform cf_bump_field_versions(hid, p_data);
+  select updated_at into saved_at from household_settings where household_id = hid;
+  return jsonb_build_object('versions', cf_field_versions(hid), 'savedAt', saved_at);
 end $$;
 
 -- Load the caller's full budget state, rebuilt from the normalized tables.
@@ -2107,7 +2229,7 @@ begin
   into rcpts
   from receipts r where r.household_id = hid;
 
-  return jsonb_build_object('data', payload, 'receipts', rcpts);
+  return jsonb_build_object('data', payload, 'receipts', rcpts, 'versions', cf_field_versions(hid));
 end $$;
 
 create or replace function load_household()
@@ -2934,5 +3056,6 @@ begin
   update household_invites set used_by = null where used_by = uid;
   update household_settings set updated_by = null where updated_by = uid;
   update household_data set updated_by = null where updated_by = uid;
+  -- household_field_versions.updated_by is on delete set null.
   delete from auth.users where id = uid;
 end $$;

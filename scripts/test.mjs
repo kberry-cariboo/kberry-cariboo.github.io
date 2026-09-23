@@ -26,11 +26,11 @@ const GROUPS = {
     node('theme-tokens.mjs'), node('breakpoints.mjs'), node('contrast.mjs'), node('motion.mjs'),
     node('networth.mjs'), node('cat-detail.mjs'), node('sinking.mjs'), node('anomaly.mjs'),
     node('drift.mjs'), node('help-ia.mjs'), node('help-shots.mjs'),
-    node('ai-proxy.mjs', '--experimental-strip-types'), node('vendor-hashes.mjs'),
+    node('ai-proxy.mjs', '--experimental-strip-types'), node('vendor-hashes.mjs'), node('sync-merge.mjs'),
   ],
   sql: [
     psql('supabase/schema-test.sql'), psql('tests/viewer-role.sql'), psql('tests/invite-flow.sql'),
-    psql('tests/member-prefs.sql'), psql('tests/receipts.sql'), psql('tests/ai-quota.sql'), psql('tests/member-lifecycle.sql'),
+    psql('tests/member-prefs.sql'), psql('tests/receipts.sql'), psql('tests/ai-quota.sql'), psql('tests/member-lifecycle.sql'), psql('tests/field-versions.sql'),
     node('payload-roundtrip.mjs'), node('sync-sql.mjs'),
   ],
   browser: [

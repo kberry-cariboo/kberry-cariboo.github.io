@@ -7,7 +7,8 @@ import { aiCanRun, aiErrorMessage, aiExtractReceipt } from "../lib/ai.js";
 import { FieldError, FieldLabel, HelpTip, SheetHandle } from "./primitives.js";
 import type { Account } from "../types.js";
   export interface SyncDivergenceModalProps {
-    divergence: any;
+    /** From useHouseholdData; `names` lists the rows both sides changed, when known. */
+    divergence: { payload: any; names?: string[] | null } | null;
     onKeepLocal: (...args: any[]) => any;
     onUseCloud: (...args: any[]) => any;
   }
@@ -52,21 +53,34 @@ import type { Account } from "../types.js";
     >
       <div className="modal-card profile-modal-card">
         <div id="sync-divergence-title" className="settings-header-title mb-8">
-          Two versions of your budget
+          {divergence.names ? "You both changed the same thing" : "Two versions of your budget"}
         </div>
-        <div className="txm mb-14">
+        {divergence.names ? <>
+          <div className="txm mb-8">
+            While you were editing, another member saved a different change to
+            {divergence.names.length === 1 ? " this" : " these"}:
+          </div>
+          <ul className="txm mb-8 sync-clash-list">
+            {divergence.names.slice(0, 6).map((n, i) => <li key={i}>{n}</li>)}
+            {divergence.names.length > 6 && <li>{"and " + (divergence.names.length - 6) + " more"}</li>}
+          </ul>
+          <div className="txm mb-14">
+            Everything else either of you changed is already combined. Pick whose
+            version of {divergence.names.length === 1 ? "this one" : "these"} to keep.
+          </div>
+        </> : <div className="txm mb-14">
           This device has changes that were never saved to the cloud
           {when ? ` (since ${when})` : ""}
           , and the cloud copy has changed too
           {cloudWhen ? ` (last saved ${cloudWhen})` : ""}
           . Keeping one means losing the other, so pick which to keep.
-        </div>
+        </div>}
         <div className="cf-row cf-gap-12 cf-wrap">
           <button onClick={run(onKeepLocal)} disabled={busy} className="cf-btn cf-btn--primary cf-btn--md">
-            {busy ? "Working\u2026" : "Keep this device's version"}
+            {busy ? "Working\u2026" : divergence.names ? "Keep mine" : "Keep this device's version"}
           </button>
           <button onClick={run(onUseCloud)} disabled={busy} className="cf-btn cf-btn--secondary cf-btn--md">
-            Use the cloud version
+            {divergence.names ? "Keep theirs" : "Use the cloud version"}
           </button>
         </div>
         <div className="txl mt-14">

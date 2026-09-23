@@ -433,7 +433,7 @@ your own instance:
    push-notification tables
    (`push_subscriptions`, `notification_schedule`, `notification_sends`), Row
    Level Security policies, and the RPC functions the app talks to
-   (`load_household`/`save_household`/`put_receipt`/`delete_receipt`,
+   (`load_household`/`save_household_fields`/`put_receipt`/`delete_receipt`,
    `save_push_subscription`/`delete_push_subscription`/
    `save_notification_schedule`, plus the household lifecycle RPCs).
 3. In your project's API settings, copy the **Project URL** and **anon public key**.
@@ -627,6 +627,35 @@ rules are in the database (`leave_household`, `remove_member`,
 A departing member's own preferences and push subscriptions go with them, and
 what they added stays with the household. `tests/member-lifecycle.sql` covers
 the rules.
+
+### Saving together: per-field versions, merging, Realtime
+
+Every save stamps the fields it wrote in `household_field_versions`. The app
+sends only the fields it changed (`save_household_fields`), each with the
+version its copy was based on, and the server refuses a field someone else has
+written since. When that happens the app loads their copy and merges it with
+its own row by row (`src/lib/sync-merge.ts`): each entry, goal, occurrence
+override and paid mark on its own. Two people editing different things, or one
+editing while the other adds, both keep their work, and the merged result is
+sent again. The only case left for a person is two different edits to the same
+row. The dialog names those rows ("Entry “Rent”") and keeps everything else
+from both sides whichever answer is chosen.
+
+The copy both sides started from (the merge base) is kept in IndexedDB, so
+edits made offline and carried across a reload merge the same way.
+
+`household_field_versions` is in Supabase's `supabase_realtime` publication
+(`schema.sql` adds it), so the app hears about another member's save as it
+happens and merges it in within a second or two. Realtime delivers a row only
+through its RLS policy, which lets members read their own household's rows and
+nobody else's. Nothing to configure beyond re-running `schema.sql`. Without
+Realtime, other members' changes still arrive on the next load or save.
+
+A database without `save_household_fields` (schema not re-run yet) keeps
+working: the app falls back to the whole-household `save_household`. That
+older save also stamps versions, so a tab still running an old build is seen
+by new ones. `tests/field-versions.sql`, `tests/sync-merge.mjs`,
+`tests/sync-sql.mjs` and the `sync:` browser tests cover it.
 
 ## AI features
 
