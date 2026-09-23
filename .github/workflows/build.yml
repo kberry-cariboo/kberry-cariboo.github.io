@@ -363,6 +363,17 @@ jobs:
       - name: Check the focus ring can be seen
         run: node tests/focus-ring.mjs
 
+      # Goes to all seventeen settings pages and the six other screens that
+      # offer an add form, and operates what it finds: every switch flipped
+      # and re-checked after a reload, every select moved and re-checked,
+      # every "+ Add" pressed, filled in and checked for the row it should
+      # have made. The layout sweep visits these screens but only measures
+      # whether anything overflows; nothing else presses anything. A settings
+      # toggle that flips on screen and forgets by the next visit looks
+      # entirely correct in a screenshot.
+      - name: Check settings and the add forms actually work
+        run: node tests/settings-sweep.mjs
+
       - name: Check for changes
         id: diff
         run: |

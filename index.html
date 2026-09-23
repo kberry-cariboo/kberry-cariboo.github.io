@@ -778,6 +778,12 @@
           font-size:var(--fs-xs);display:flex;align-items:center;gap:var(--space-8);transition:opacity var(--dur-slow);
           pointer-events:none;box-shadow:var(--shadowLg);}
         .ptr-spinner{display:inline-block;font-size:var(--fs-md);}
+        /* Spinning was an inline style in App.js carrying a raw 0.8s, which
+           an inline style puts beyond the reach of the reduced-motion rule —
+           the one place in the app still doing what the progress bar was
+           doing. It is a class now, at --dur-loop, which is what .ai-spinner
+           two hundred lines up has always used: one spinner speed, not two. */
+        .ptr-spinner--on{animation:spin var(--dur-loop) var(--ease-linear) infinite;}
         .content-area{padding:var(--space-28) var(--container-gutter);margin-top:0;outline:none;}
         .app-footer{text-align:center;padding:var(--space-18) var(--space-16) var(--space-28);font-size:var(--fs-2xs);
           color:var(--on-dark-30);background:var(--headerBg);margin-top:auto;}
@@ -2919,8 +2925,12 @@
           .header-inner{height:44px;}
           .header-logo-img,.logo-area img{height:22px;}
           .cf-bottomnav{padding-top:var(--space-2);}
-          .content-area{padding-top:var(--space-14);padding-bottom:var(--space-14);}
-          .content-area{padding-bottom:var(--space-20);}
+          /* 20px at the bottom, not 14: the bottom nav is restored in
+             landscape and the last row has to clear it. Two rules used to say
+             this, one after the other, and the second silently threw away the
+             first's padding-bottom — which is the kind of thing that reads as
+             deliberate right up until someone edits the wrong one. */
+          .content-area{padding-top:var(--space-14);padding-bottom:var(--space-20);}
         }
         @media (pointer:coarse){.attach-camera{display:inline-flex;}}
         /* Touch/no-hover devices: simple press feedback (hover handled by the pointer:fine block above) */
@@ -3073,8 +3083,6 @@
           .entry-form-row2{grid-template-columns:1fr;}
           /* Entries: switch to cards on mobile — table hidden */
           .entries-cards{display:block;}
-          /* Prevent focus zoom on Android/iOS: inputs must render ≥16px */
-          input,select,textarea{font-size:max(1rem, 16px);}
           .wm-arrow{width:44px;height:44px;line-height:42px;font-size:var(--fs-xl);}
           .entries-table-wrap{display:none;}
           /* No mobile max-width: the column fills the window all the way to
@@ -11371,7 +11379,14 @@ const RUNWAY_DAYS = 90;
     const [sortCol, setSortCol] = useState("startDate");
     const [sortDir, setSortDir] = useState("asc");
     const [pgPage, setPgPage] = useState(0);
-    const [pgSize, setPgSize] = useState(20);
+    // Remembered, like every other preference in this app. A reader who sets
+    // a table to 100 rows has said something about how they read it, and it
+    // was being thrown away on every navigation — three pagination controls
+    // did this, in an app where the account filter, the budget month, the
+    // debt strategy and every sub-tab are all kept. Distinct keys, because
+    // "how many ledger entries fit" and "how many forecast days fit" are
+    // different questions about different tables.
+    const [pgSize, setPgSize] = useLS("cf_entriesPageSize", 20);
     const [mobileLoaded, setMobileLoaded] = useState(1);
     const changePageSize = (v) => {
       setPgSize(v);
@@ -13057,7 +13072,7 @@ const RUNWAY_DAYS = 90;
     const [monthSummaryOpen, setMonthSummaryOpen] = useLS("cf_month_summary", false);
     const [selIds, setSelIds] = useState(() => /* @__PURE__ */ new Set());
     const [pgPage, setPgPage] = useState(0);
-    const [pgSize, setPgSize] = useState("all");
+    const [pgSize, setPgSize] = useLS("cf_budgetPageSize", "all");
     const [mobileLoaded, setMobileLoaded] = useState(1);
     const changePageSize = (v) => {
       setPgSize(v);
@@ -13995,7 +14010,7 @@ const RUNWAY_DAYS = 90;
   }, scenarioFlows = null }) {
     const isMobile = useIsMobile();
     const [showAddEntry, setShowAddEntry] = useState(false);
-    const [pgSize, setPgSize] = useState(20);
+    const [pgSize, setPgSize] = useLS("cf_forecastPageSize", 20);
     // How many pages' worth have been revealed so far. Not a page *number*:
     // the forecast loads cumulatively at every width (see pgInfo).
     const [loaded, setLoaded] = useState(1);
@@ -22347,9 +22362,7 @@ Fill every field of the response schema. Rules:
       return ev.date >= today && ev.date <= n && ev.balance < alertThresh;
     }).length > 0 && /* @__PURE__ */ React.createElement("span", { className: "tab-alert-dot", style: { background: "var(--red)" } }, "!"), t.id === "flow" && globalSearch && /* @__PURE__ */ React.createElement("span", { "aria-label": "Search active", className: "tab-search-dot", style: { color: "var(--amber)" } }, /* @__PURE__ */ React.createElement(Icon, { name: "search", size: 11 })))))), (pullProgress > 0 || pullActive) && /* @__PURE__ */ React.createElement("div", { className: "ptr-indicator", style: {
       opacity: Math.max(pullProgress, pullActive ? 1 : 0)
-    } }, /* @__PURE__ */ React.createElement("span", { className: "ptr-spinner", style: {
-      animation: pullActive ? "spin 0.8s linear infinite" : "none"
-    } }, "\u21BB"), pullActive ? "Syncing\u2026" : "Pull down to sync"), /* @__PURE__ */ React.createElement(BottomNav, { tab, setTab, lowAlert: navLowAlert, onCompose: () => window.dispatchEvent(new CustomEvent("cf:quickadd")) }), /* @__PURE__ */ React.createElement(FeedbackToast, null), /* @__PURE__ */ React.createElement("main", { id: "main-content", tabIndex: -1, className: "cf-page content-area" }, /* @__PURE__ */ React.createElement("h1", { className: "cf-visually-hidden" }, viewName(tab, flowSub, planSub)), /* @__PURE__ */ React.createElement(NoticeStack, { notices: appNotices }), /* @__PURE__ */ React.createElement(ErrorBoundary, null, tab === "today" &&/* @__PURE__ */ React.createElement(
+    } }, /* @__PURE__ */ React.createElement("span", { className: "ptr-spinner" + (pullActive ? " ptr-spinner--on" : "") }, "\u21BB"), pullActive ? "Syncing\u2026" : "Pull down to sync"), /* @__PURE__ */ React.createElement(BottomNav, { tab, setTab, lowAlert: navLowAlert, onCompose: () => window.dispatchEvent(new CustomEvent("cf:quickadd")) }), /* @__PURE__ */ React.createElement(FeedbackToast, null), /* @__PURE__ */ React.createElement("main", { id: "main-content", tabIndex: -1, className: "cf-page content-area" }, /* @__PURE__ */ React.createElement("h1", { className: "cf-visually-hidden" }, viewName(tab, flowSub, planSub)), /* @__PURE__ */ React.createElement(NoticeStack, { notices: appNotices }), /* @__PURE__ */ React.createElement(ErrorBoundary, null, tab === "today" &&/* @__PURE__ */ React.createElement(
       DashboardView,
       {
         flow: activeFlow,

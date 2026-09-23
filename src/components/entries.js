@@ -14,7 +14,14 @@
     const [sortCol, setSortCol] = useState("startDate");
     const [sortDir, setSortDir] = useState("asc");
     const [pgPage, setPgPage] = useState(0);
-    const [pgSize, setPgSize] = useState(20);
+    // Remembered, like every other preference in this app. A reader who sets
+    // a table to 100 rows has said something about how they read it, and it
+    // was being thrown away on every navigation — three pagination controls
+    // did this, in an app where the account filter, the budget month, the
+    // debt strategy and every sub-tab are all kept. Distinct keys, because
+    // "how many ledger entries fit" and "how many forecast days fit" are
+    // different questions about different tables.
+    const [pgSize, setPgSize] = useLS("cf_entriesPageSize", 20);
     const [mobileLoaded, setMobileLoaded] = useState(1);
     const changePageSize = (v) => {
       setPgSize(v);
