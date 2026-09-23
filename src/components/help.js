@@ -70,8 +70,9 @@
 
         { sub: "5. Set a budget target and watch it" },
         { steps: [
-          ["Open Envelopes", "Every category you use is listed with what is scheduled against it this month."],
-          ["Set a target from the row menu", "The bar fills as spending approaches it, and turns red once it goes past."],
+          ["Open Envelopes", "Every category you use is listed with what has already gone out of it this month, and \u201c+ $X scheduled\u201d for what is still to come. The bar shows the two: solid for spent, hatched for scheduled."],
+          ["Or take this year\u2019s plan as your targets", "A month with spending and no targets offers \u201cUse the plan as targets\u201d. It fills every month of the year that has none from what that month schedules, leaves months you have set alone, and can be undone. Adding an entry never changes a target by itself."],
+          ["Set a target from the row menu", "The bar fills as spending approaches it, and turns red once the month\u2019s plan goes past it \u2014 \u201cover plan\u201d while some of it is still to come, so you can change course before it happens. \u201cUnplanned\u201d is room in the target nothing is scheduled against yet."],
           ["Turn on rollover for categories that vary", "Anything you didn't spend earlier in the year is added to this month's target \u2014 envelope-style, so a quiet month funds a heavy one instead of being lost."]
         ] },
         { shot: ["bva", "Envelopes. The Total row at the bottom carries the same over-or-under note as each category."] },

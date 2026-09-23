@@ -867,21 +867,12 @@
     const addEntry = (data) => {
       const entry = __spreadProps(__spreadValues({}, data), { id: genId(), userId: (sessionUser == null ? void 0 : sessionUser.id) || 1 });
       setEntries((prev) => [...prev, entry]);
-      if (entry.type === "expense") {
-        setBudgetTargets((prev) => {
-          const next = __spreadValues({}, prev);
-          (yearConfigs.length ? yearConfigs : [{ year: activeYear }]).forEach((yc) => {
-            const occ = expandEntries([entry], yc.year, {});
-            occ.filter((ev) => ev.type === "expense").forEach((ev) => {
-              const key = `${yc.year}:${ev.month}`;
-              const month = __spreadValues({}, next[key] || {});
-              month[ev.category] = roundMoney(((month[ev.category] || 0) + ev.amount));
-              next[key] = month;
-            });
-          });
-          return next;
-        });
-      }
+      // Adding an expense used to raise its category's budget target, in
+      // every month of every configured year, by what the entry schedules —
+      // without a word. The envelope then compared the plan with a target
+      // copied from the plan, so nearly every one read "Fully spent" and
+      // could never say anything. Targets change when someone sets them:
+      // Envelopes offers "Use the plan as targets" for exactly this.
       logActivity("entry", `Added ${logDesc(entry.desc)} \u2014 ${fmt(signedAmount(entry), true)}`);
       return entry;
     };

@@ -264,6 +264,11 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
   // asserts the arithmetic rather than the presence of the words: a note that
   // says "left" while showing the overage would read perfectly well and be
   // wrong by twice the number.
+  // Since the row split what has gone from what is still booked, the bold
+  // figure is *spent* and "+ $X scheduled" is the rest of the month's plan.
+  // What can go over is the whole plan, so every note is checked against
+  // spent + scheduled; "left" and "Fully spent" are only for a month with
+  // nothing still scheduled, "unplanned" and "All planned" for one with some.
   await test('envelopes: every row says what is left in it, and the figures add up', async () => {
     await page.goto(BASE + '#/envelopes', { waitUntil: 'load' });
     await page.waitForTimeout(800);
@@ -275,63 +280,51 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
       };
       const bad = [];
       let left = 0, over = 0, withTarget = 0;
+      const checkNote = (who, spent, scheduled, target, o, l) => {
+        const plan = spent + scheduled;
+        if (!o === !l) { bad.push(`${who}: ${o ? 'both' : 'neither'} an over note and a left note`); return null; }
+        if (l) {
+          const t = l.textContent.trim();
+          if (/Fully spent|All planned/.test(t)) {
+            if (plan !== target) bad.push(`${who}: says "${t}" at ${plan} of ${target}`);
+            if (/Fully spent/.test(t) && scheduled) bad.push(`${who}: "Fully spent" with ${scheduled} still scheduled`);
+            return 'left';
+          }
+          if (plan === target) bad.push(`${who}: "${t}" on an exactly-planned envelope`);
+          if (scheduled && !/unplanned/.test(t)) bad.push(`${who}: "${t}" — room in a month with bills still to come is unplanned, not left`);
+          if (!scheduled && !/left/.test(t)) bad.push(`${who}: "${t}" — a month with nothing scheduled has money left`);
+          const said = cents(t);
+          if (Math.abs(said - (target - plan)) > 1) bad.push(`${who}: says ${said}, target ${target} - planned ${plan} = ${target - plan}`);
+          if (/-/.test(t)) bad.push(`${who}: "${t}" — a negative amount left`);
+          return 'left';
+        }
+        const said = cents(o.textContent);
+        if (Math.abs(said - (plan - target)) > 1) bad.push(`${who}: says ${said} over, planned ${plan} - target ${target} = ${plan - target}`);
+        return 'over';
+      };
       for (const row of document.querySelectorAll('.bva-row')) {
         const chip = (row.querySelector('.cat-chip') || {}).textContent || '?';
-        const actual = cents((row.querySelector('.bva-actual-amt') || {}).textContent);
+        const spent = cents((row.querySelector('.bva-actual-amt') || {}).textContent);
+        const sch = row.querySelector('.bva-scheduled-note');
+        const scheduled = sch ? cents(sch.textContent) : 0;
         const targetEl = row.querySelector('.bva-target');
         if (!targetEl) continue;                    // no target set: "Set a target"
         withTarget++;
-        const target = cents(targetEl.textContent);
-        const o = row.querySelector('.over-note');
-        const l = row.querySelector('.left-note');
-        if (!o === !l) { bad.push(`${chip}: ${o ? 'both' : 'neither'} an over note and a left note`); continue; }
-        if (l) {
-          left++;
-          // Exactly spent is the third state this slot reports, and it says so
-          // in words. It has to be exactly spent to be allowed to.
-          if (/Fully spent/.test(l.textContent)) {
-            if (actual !== target) bad.push(`${chip}: says fully spent at ${actual} of ${target}`);
-            continue;
-          }
-          if (actual === target) bad.push(`${chip}: "${l.textContent.trim()}" on an exactly-spent envelope`);
-          const said = cents(l.textContent);
-          if (Math.abs(said - (target - actual)) > 1) {
-            bad.push(`${chip}: says ${said} left, target ${target} - actual ${actual} = ${target - actual}`);
-          }
-          // fmt() marks a negative with a leading minus. What is left in an
-          // envelope is never negative — if it reads "-$260.00 left" the row
-          // is showing actual-minus-target, which has the right magnitude and
-          // the wrong sign, and the arithmetic check above cannot see it
-          // because it reads the digits.
-          if (/-/.test(l.textContent)) bad.push(`${chip}: "${l.textContent.trim()}" — a negative amount left`);
-        } else {
-          over++;
-          const said = cents(o.textContent);
-          if (Math.abs(said - (actual - target)) > 1) {
-            bad.push(`${chip}: says ${said} over, actual ${actual} - target ${target} = ${actual - target}`);
-          }
-        }
+        const r = checkNote(chip, spent, scheduled, cents(targetEl.textContent), row.querySelector('.over-note'), row.querySelector('.left-note'));
+        if (r === 'left') left++;
+        if (r === 'over') over++;
       }
-      // The total carries the same pair and had the same gap.
       const totals = document.querySelector('.bva-totals-row');
       let totalNote = null;
       if (totals) {
         const amts = [...totals.querySelectorAll('.cf-text-mono-13')].map((e) => cents(e.textContent));
+        const sch = totals.querySelector('.bva-scheduled-note');
         const note = totals.querySelector('.total-over-note');
         if (!note) bad.push('the totals row says neither what is over nor what is left');
         else if (amts.length >= 2) {
-          const [tActual, tTarget] = amts;
           totalNote = note.textContent.trim();
-          if (/Fully spent/.test(totalNote)) {
-            if (tActual !== tTarget) bad.push(`total: says fully spent at ${tActual} of ${tTarget}`);
-            return { bad, left, over, withTarget, totalNote };
-          }
-          const said = cents(note.textContent);
-          const isLeft = /left/.test(note.textContent);
-          const want = isLeft ? tTarget - tActual : tActual - tTarget;
-          if (Math.abs(said - want) > 1) {
-            bad.push(`total: says ${note.textContent.trim()}, actual ${tActual} target ${tTarget}`);
-          }
+          const isOver = /over/.test(totalNote);
+          checkNote('total', amts[0], sch ? cents(sch.textContent) : 0, amts[1], isOver ? note : null, isOver ? null : note);
         }
       }
       return { bad, left, over, withTarget, totalNote };
@@ -3404,6 +3397,82 @@ await test('preferences: a change made offline wins over the older copy on the n
   const saves = await page.evaluate(() => (window.__rpc || []).filter((c) => c.name === 'save_my_preferences').map((c) => c.args.p.darkMode));
   if (!saves.includes(true)) throw new Error('the offline change was never pushed: ' + JSON.stringify(saves));
   if (await page.evaluate(() => localStorage.getItem('cf_prefs_unsaved'))) throw new Error('the unsaved marker survived a successful save');
+  await ctx.close();
+});
+
+// An envelope used to call every expense dated in the month "spent", so on the
+// 3rd a groceries envelope read as nearly empty with the month's shopping
+// still ahead. Pinned to 3 September: rent (1st) and one fuel fill (1st) have
+// gone; the month's groceries have not.
+await test('envelopes: what has gone out is spent, what is still to come is scheduled', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.clock.setFixedTime(new Date(`${FIXTURE_YEAR}-09-03T12:00:00`));
+  await page.goto(BASE + '#/envelopes', { waitUntil: 'load' });
+  await page.locator('.bva-row').first().waitFor(V);
+  const rows = await page.evaluate(() => Object.fromEntries([...document.querySelectorAll('.bva-row')].map((r) => [
+    (r.querySelector('.cat-chip') || {}).textContent.trim(),
+    { spent: (r.querySelector('.bva-actual-amt') || {}).textContent.trim(),
+      scheduled: ((r.querySelector('.bva-scheduled-note') || {}).textContent || '').trim(),
+      note: ((r.querySelector('.left-note,.over-note') || {}).textContent || '').trim() }])));
+  const food = rows.Food, housing = rows.Housing;
+  if (!food || food.spent !== '$0.00' || !/\$520\.00 scheduled/.test(food.scheduled)) {
+    throw new Error('groceries still to come are not shown as scheduled: ' + JSON.stringify(food));
+  }
+  if (!housing || housing.spent !== '$1,650.00' || housing.scheduled || housing.note !== 'Fully spent') {
+    throw new Error('rent paid on the 1st is not shown as spent: ' + JSON.stringify(housing));
+  }
+  // The bar draws the two parts differently.
+  if (await page.locator('.bva-progress-fill--scheduled').count() === 0) throw new Error('no scheduled segment on any bar');
+  await ctx.close();
+});
+
+// Adding an expense used to raise its category's target in every month of
+// every year, silently — so the envelope compared the plan with a copy of the
+// plan. Targets now move only when someone moves them.
+await test('envelopes: adding an expense leaves the budget targets alone', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.goto(BASE + '#/flow/entries', { waitUntil: 'load' });
+  await page.waitForTimeout(800);
+  const targets = () => page.evaluate(() => localStorage.getItem('cf_budgtargets'));
+  const before = await targets();
+  await page.getByRole('button', { name: '+ Add Entry' }).first().click();
+  await page.getByPlaceholder('e.g. Mortgage payment').fill('Target check');
+  await page.getByPlaceholder('0.00').first().fill('77.00');
+  await page.locator('#ef-category').selectOption({ label: 'Housing' });
+  const nudge = page.getByRole('button', { name: 'Remind me later' });
+  if (await nudge.count() > 0) await nudge.click().catch(() => {});
+  await page.getByRole('button', { name: 'Save Entry' }).click();
+  await page.waitForTimeout(600);
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('cf_entries') || '[]').some((e) => e.desc === 'Target check'));
+  if (!saved) throw new Error('setup: the entry was not added');
+  if ((await targets()) !== before) throw new Error('adding an expense changed the budget targets');
+  await ctx.close();
+});
+
+// The one-tap replacement: a month with spending and no targets offers to take
+// its plan as targets — for every empty month of the year, leaving the months
+// someone has set alone — and it can be undone.
+await test('envelopes: "Use the plan as targets" fills the empty months only, and undoes', async () => {
+  // Targets for January to August only; September onward has none.
+  const { ctx, page } = await ctxPage({ stub: (t) => t.replace('for (let m = 0; m <= 11; m++) budgetTargets', 'for (let m = 0; m <= 7; m++) budgetTargets') });
+  await page.goto(BASE + '#/envelopes', { waitUntil: 'load' });
+  await page.getByRole('button', { name: /^Sep$/ }).first().click().catch(() => {});
+  const btn = page.getByRole('button', { name: 'Use the plan as targets' });
+  await btn.waitFor(V).catch(() => { throw new Error('a month with spending and no targets offers no way to set them'); });
+  const read = () => page.evaluate((y) => {
+    const t = JSON.parse(localStorage.getItem('cf_budgtargets') || '{}');
+    return { jan: t[y + ':0'], sep: t[y + ':8'], dec: t[y + ':11'] };
+  }, FIXTURE_YEAR);
+  const before = await read();
+  await btn.click();
+  await page.waitForTimeout(500);
+  const after = await read();
+  if (!after.sep || !after.sep.Housing || !after.dec) throw new Error('the empty months were not filled: ' + JSON.stringify(after).slice(0, 160));
+  if (JSON.stringify(after.jan) !== JSON.stringify(before.jan)) throw new Error('a month that already had targets was changed');
+  if (after.sep.Housing !== 165000) throw new Error('September\'s housing target is not its plan: ' + after.sep.Housing);
+  await page.getByRole('button', { name: /Undo/i }).first().click();
+  await page.waitForTimeout(400);
+  if ((await read()).sep) throw new Error('undo did not take the new targets back');
   await ctx.close();
 });
 
