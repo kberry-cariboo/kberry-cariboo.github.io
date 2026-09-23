@@ -312,7 +312,9 @@
     ), open && /* @__PURE__ */ React.createElement("div", { className: "cf-popover" }, templates.map((t, i) => /* @__PURE__ */ React.createElement(
       "button",
       {
-        key: i,
+        // Templates are unique by description (saving one replaces its
+        // namesake), so that is the stable key.
+        key: t.desc || i,
         onClick: () => {
           onSelect(t);
           setOpen(false);

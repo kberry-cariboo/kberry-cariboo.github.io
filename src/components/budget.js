@@ -1058,6 +1058,20 @@
         const targets = budgetTargets[bKey] || {};
         const rollover = budgetTargets._rollover || {};
         const catExpenses = monthCatExpense[monthIdx];
+        // What has actually gone out of each envelope, as distinct from what is
+        // merely scheduled to. The row used to show one number — every expense
+        // dated in the month — and call it "spent", so on the 3rd of the month
+        // a groceries envelope read as nearly empty with three weeks of
+        // shopping still ahead. An occurrence counts as spent once its date has
+        // passed or it has been marked paid, which is the same line the ledger
+        // draws; the rest is scheduled.
+        const todayD = startOfToday();
+        const catSpent = {};
+        flow.forEach((ev) => {
+          if (ev.type !== "expense" || ev.month !== monthIdx) return;
+          const dated = new Date(yr, ev.month, ev.day);
+          if (dated < todayD || completed[ev.id]) catSpent[ev.category] = (catSpent[ev.category] || 0) + ev.amount;
+        });
         // Envelope carry: for opted-in categories, unspent target from earlier
         // months this year rolls forward (floored at zero, YNAB-style).
         const carryFor = (cat) => {
@@ -1084,7 +1098,35 @@
             className: "cf-btn cf-btn--primary cf-btn--md cf-btn--nowrap"
           },
           "+ Add"
-        ))), /* @__PURE__ */ React.createElement("div", { className: "bva-body" }, cats.length === 0 && /* @__PURE__ */ React.createElement("div", { className: "bva-empty-wrap" }, /* @__PURE__ */ React.createElement(EmptyState, {
+        ))), cats.length > 0 && Object.keys(targets).length === 0 && Object.keys(catExpenses).length > 0 && /* @__PURE__ */ React.createElement("div", { className: "bva-plan-offer" },
+          // A month with spending and no targets. Targets are never raised
+          // behind anyone's back any more, so this is the one-tap way to start
+          // from what is already scheduled: each month of the year that has no
+          // targets gets its own plan, and months someone has set are left alone.
+          /* @__PURE__ */ React.createElement("span", { className: "c-textMid" }, "No targets for ", MONTHS[monthIdx], " yet."),
+          /* @__PURE__ */ React.createElement("button", {
+            type: "button",
+            className: "cf-btn cf-btn--secondary cf-btn--md",
+            onClick: () => {
+              const before = budgetTargets;
+              setBudgetTargets((prev) => {
+                const next = __spreadValues({}, prev);
+                for (let mi = 0; mi < 12; mi++) {
+                  const key = `${yr}:${mi}`;
+                  if (next[key] && Object.keys(next[key]).length) continue;
+                  const plan = monthCatExpense[mi];
+                  if (!Object.keys(plan).length) continue;
+                  next[key] = Object.keys(plan).reduce((o, c) => {
+                    o[c] = roundMoney(plan[c]);
+                    return o;
+                  }, {});
+                }
+                return next;
+              });
+              pushUndo(`Targets set from the ${yr} plan`, () => setBudgetTargets(before));
+            }
+          }, "Use the plan as targets")
+        ), /* @__PURE__ */ React.createElement("div", { className: "bva-body" }, cats.length === 0 && /* @__PURE__ */ React.createElement("div", { className: "bva-empty-wrap" }, /* @__PURE__ */ React.createElement(EmptyState, {
           icon: /* @__PURE__ */ React.createElement(Icon, { name: "target", size: 26, className: "c-textLt" }),
           message: "No budget lines yet. Track a category against a monthly target.",
           actionLabel: "+ Add Budget Line",
@@ -1093,7 +1135,11 @@
             setShowBvaModal(true);
           }
         })), cats.map((cat) => {
+          // `actual` stays the month's whole plan — spent and still scheduled —
+          // because that is what can go over; `spent` is the part already gone.
           const actual = roundMoney((catExpenses[cat] || 0));
+          const spent = roundMoney(Math.min(catSpent[cat] || 0, actual));
+          const scheduled = roundMoney(actual - spent);
           const baseTarget = roundMoney((targets[cat] || 0));
           const carry = carryFor(cat);
           const target = roundMoney((baseTarget + carry));
@@ -1101,6 +1147,7 @@
           const over = target > 0 && diff > 0;
           const color = !over ? "color-mix(in srgb, var(--primary) 45%, transparent)" : diff <= 5000 ? "var(--amberInk)" : "var(--red)";
           const pct = target > 0 ? Math.min(actual / target * 100, 100) : 0;
+          const spentPct = target > 0 ? Math.min(spent / target * 100, pct) : 0;
           return /* @__PURE__ */ React.createElement(
             "div",
             {
@@ -1115,18 +1162,18 @@
               type: "button",
               className: "bva-row-open",
               onClick: () => openBvaDetail(cat),
-              "aria-label": `${cat}, ${fmt(actual)}${target > 0 ? " of " + fmt(target) : ""} \u2014 show the expenses behind it`
+              "aria-label": `${cat}, ${fmt(spent)} spent${scheduled > 0 ? ", " + fmt(scheduled) + " scheduled" : ""}${target > 0 ? ", of " + fmt(target) : ""} \u2014 show the expenses behind it`
             }),
             /* @__PURE__ */ React.createElement("div", { className: "bva-row" }, /* @__PURE__ */ React.createElement(CatChip, { category: cat, categories, categoryColors, style: { fontSize: 9, flexShrink: 1, minWidth: 0 } }), /* @__PURE__ */ React.createElement("div", { className: "bva-amounts" }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 bva-actual-amt", style: {
               color: over ? color : "var(--text)"
-            } }, fmt(actual)), target > 0 ? /* @__PURE__ */ React.createElement("span", { className: "bva-target cf-text-mono-13" }, "/ ", fmt(target)) : /* @__PURE__ */ React.createElement("button", {
+            } }, fmt(spent)), target > 0 ? /* @__PURE__ */ React.createElement("span", { className: "bva-target cf-text-mono-13" }, "/ ", fmt(target)) : /* @__PURE__ */ React.createElement("button", {
               className: "bva-set-target",
               onClick: (e) => {
                 e.stopPropagation();
                 setBvaModalData({ cat, target: "", editCat: cat, rollover: !!(budgetTargets._rollover || {})[cat] });
                 setShowBvaModal(true);
               }
-            }, "Set a target"), carry > 0 && /* @__PURE__ */ React.createElement("span", { className: "carry-note" }, "incl. ", fmt(carry), " carried"), target > 0 && (over ? /* @__PURE__ */ React.createElement("span", { className: "over-note", style: { color } }, fmt(diff) + " over") : /* @__PURE__ */ React.createElement("span", { className: "left-note" }, diff === 0 ? "Fully spent" : fmt(roundMoney(target - actual)) + " left"))),
+            }, "Set a target"), carry > 0 && /* @__PURE__ */ React.createElement("span", { className: "carry-note" }, "incl. ", fmt(carry), " carried"), scheduled > 0 && /* @__PURE__ */ React.createElement("span", { className: "bva-scheduled-note" }, "+ ", fmt(scheduled), " scheduled"), target > 0 && (over ? /* @__PURE__ */ React.createElement("span", { className: "over-note", style: { color } }, fmt(diff) + (scheduled > 0 ? " over plan" : " over")) : /* @__PURE__ */ React.createElement("span", { className: "left-note" }, diff === 0 ? (scheduled > 0 ? "All planned" : "Fully spent") : fmt(roundMoney(target - actual)) + (scheduled > 0 ? " unplanned" : " left")))),
             // The kebab is a sibling of .bva-amounts, not a child of it: the
             // amounts group wraps to a second line on a phone once the actual,
             // the target and an overage all have to fit, and a row action that
@@ -1143,20 +1190,28 @@
               },
               "\u22EE"
             )),
+            // Two segments on one track: solid for what has gone, hatched for
+            // what is booked but has not happened yet.
             target > 0 && /* @__PURE__ */ React.createElement("div", { className: "bva-progress-track" }, /* @__PURE__ */ React.createElement("div", { className: "bva-progress-fill", style: {
-              width: `${pct}%`,
+              width: `${spentPct}%`,
               background: color
+            } }), pct > spentPct && /* @__PURE__ */ React.createElement("div", { className: "bva-progress-fill bva-progress-fill--scheduled", style: {
+              left: `${spentPct}%`,
+              width: `${pct - spentPct}%`,
+              "--bva-fill": color
             } }))
           );
         }), cats.length > 0 && (() => {
           const totalActual = roundMoney(cats.reduce((s2, c) => s2 + (catExpenses[c] || 0), 0));
+          const totalSpent = roundMoney(cats.reduce((s2, c) => s2 + Math.min(catSpent[c] || 0, catExpenses[c] || 0), 0));
+          const totalScheduled = roundMoney(totalActual - totalSpent);
           const totalTarget = roundMoney(cats.reduce((s2, c) => s2 + (targets[c] || 0) + carryFor(c), 0));
           const tDiff = roundMoney((totalActual - totalTarget));
           const tOver = totalTarget > 0 && tDiff > 0;
           const tColor = !tOver ? "var(--greenDk)" : tDiff <= 5000 ? "var(--amberInk)" : "var(--red)";
           return /* @__PURE__ */ React.createElement("div", { className: "bva-totals-row" }, /* @__PURE__ */ React.createElement("span", { className: "bva-total-label" }, "Total"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-8" }, /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 fw-700", style: {
             color: tOver ? tColor : "var(--text)"
-          } }, fmt(totalActual)), totalTarget > 0 && /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 c-textMid" }, "/ ", fmt(totalTarget)), totalTarget > 0 && (tOver ? /* @__PURE__ */ React.createElement("span", { className: "total-over-note", style: { color: tColor } }, fmt(tDiff) + " over") : /* @__PURE__ */ React.createElement("span", { className: "total-over-note left-note" }, tDiff === 0 ? "Fully spent" : fmt(roundMoney(totalTarget - totalActual)) + " left"))));
+          } }, fmt(totalSpent)), totalTarget > 0 && /* @__PURE__ */ React.createElement("span", { className: "cf-text-mono-13 c-textMid" }, "/ ", fmt(totalTarget)), totalScheduled > 0 && /* @__PURE__ */ React.createElement("span", { className: "bva-scheduled-note" }, "+ ", fmt(totalScheduled), " scheduled"), totalTarget > 0 && (tOver ? /* @__PURE__ */ React.createElement("span", { className: "total-over-note", style: { color: tColor } }, fmt(tDiff) + (totalScheduled > 0 ? " over plan" : " over")) : /* @__PURE__ */ React.createElement("span", { className: "total-over-note left-note" }, tDiff === 0 ? (totalScheduled > 0 ? "All planned" : "Fully spent") : fmt(roundMoney(totalTarget - totalActual)) + (totalScheduled > 0 ? " unplanned" : " left")))));
         })()));
       })()
     );

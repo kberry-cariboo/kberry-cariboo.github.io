@@ -63,6 +63,7 @@ psql(`insert into households (id, name) values ('${HID}','sync-sql') on conflict
 psql(`insert into household_members (household_id, user_id, full_name, role) values ('${HID}','${UID}','Sync Test','owner') on conflict (household_id, user_id) do nothing;`);
 psql(`delete from holidays where household_id = '${HID}'; delete from holiday_years where household_id = '${HID}'; delete from household_settings where household_id = '${HID}';`);
 
+const rpcLog = [];
 const server = createServer((req, res) => {
   if (req.method === 'POST' && req.url.startsWith('/rpc/')) {
     const name = req.url.slice(5);
@@ -75,7 +76,17 @@ const server = createServer((req, res) => {
       };
       try {
         const args = JSON.parse(body || '{}');
-        if (name === 'load_household') return reply({ data: JSON.parse(psql('select load_household()::text;', UID)), error: null });
+        rpcLog.push(name);
+        // The client asks for the manifest form (p_receipt_bodies: false); pass
+        // the argument through so this drives the SQL the app really calls.
+        if (name === 'load_household') {
+          const call = 'p_receipt_bodies' in args ? `select load_household(${args.p_receipt_bodies ? 'true' : 'false'})::text;` : 'select load_household()::text;';
+          return reply({ data: JSON.parse(psql(call, UID)), error: null });
+        }
+        const lit = (v) => '$cfv$' + String(v == null ? '' : v) + '$cfv$';
+        if (name === 'get_receipt') return reply({ data: JSON.parse(psql(`select coalesce(get_receipt(${lit(args.p_owner_key)})::text, 'null');`, UID)), error: null });
+        if (name === 'put_receipt') { psql(`select put_receipt(${lit(args.p_owner_key)}, ${lit(args.p_mime)}, ${lit(args.p_b64)});`, UID); return reply({ data: null, error: null }); }
+        if (name === 'delete_receipt') { psql(`select delete_receipt(${lit(args.p_owner_key)});`, UID); return reply({ data: null, error: null }); }
         if (name === 'save_household') {
           const expected = args.p_expected_saved_at ? `'${args.p_expected_saved_at}'::timestamptz` : 'null';
           const data = psql(`select save_household($cfp$${JSON.stringify(args.p_data || {})}$cfp$::jsonb, ${expected})::text;`, UID);
@@ -248,6 +259,48 @@ const shown = await page.locator('#sec-holidays').innerText();
 if (!/Sync SQL Shutdown/.test(shown)) fail('the holiday did not come back from the database after local storage was cleared');
 else pass('reloaded from the database with local storage cleared');
 if ((shown.match(/Boxing Day/g) || []).length > 1) fail('Boxing Day is listed more than once in the UI');
+
+// ── Receipts: a manifest on load, each image fetched once, none in localStorage
+// Every load used to carry every receipt image inline, and the client kept
+// them all in localStorage. Now load_household(false) lists key and SHA-256,
+// the app fetches what it lacks with get_receipt, and keeps images in
+// IndexedDB. This goes through the real SQL for all of it.
+{
+  const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+  const entryId = psql(`select id from entries where household_id = '${HID}' and description = 'SQL Recurring Entry';`);
+  const occ = psql(`select to_char(start_date, 'FMMM') from entries where household_id = '${HID}' and id = '${entryId}';`);
+  const day = psql(`select extract(day from start_date)::int from entries where household_id = '${HID}' and id = '${entryId}';`);
+  const occId = `${entryId}-${year}-${Number(occ) - 1}-${day}`;
+  psql(`insert into entry_overrides (household_id, year, occurrence_id, notes) values ('${HID}', ${year}, '${occId}', 'has a receipt')
+        on conflict (household_id, year, occurrence_id) do update set notes = excluded.notes;`);
+  psql(`select put_receipt('override:${year}:${occId}', 'image/png', '${PNG}');`, UID);
+  rpcLog.length = 0;
+  // A real reload — a goto that only changes the hash would not load again.
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForTimeout(3500);
+  const heldImage = () => page.evaluate((k) => new Promise((res) => {
+    const r = indexedDB.open('cf-receipts');
+    r.onsuccess = () => { const g = r.result.transaction('receipts').objectStore('receipts').get(k); g.onsuccess = () => res(!!(g.result && g.result.dataUrl)); g.onerror = () => res(false); };
+    r.onerror = () => res(false);
+  }), `override:${year}:${occId}`);
+  const fetched = rpcLog.filter((n) => n === 'get_receipt').length;
+  if (fetched !== 1) fail(`expected the receipt to be fetched once, it was fetched ${fetched} time(s)`);
+  else pass('the receipt listed in the manifest was fetched once');
+  if (!(await heldImage())) fail('the fetched receipt is not in the device store');
+  else pass('it is kept on the device');
+  const ls = await page.evaluate(() => localStorage.getItem('cf_overrides') || '');
+  if (/data:image/.test(ls)) fail('a receipt image is in localStorage');
+  else pass('localStorage holds no image');
+  rpcLog.length = 0;
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForTimeout(3500);
+  if (rpcLog.includes('get_receipt')) fail('a receipt already on the device was fetched again');
+  else pass('a reload fetches nothing it already holds');
+  // And a save does not delete it from the server for not having been touched.
+  const still = psql(`select count(*) from receipts where household_id = '${HID}';`);
+  if (still !== '1') fail('the receipt is no longer on the server: ' + still);
+  else pass('the server still has it');
+}
 
 if (pageErrors.length) fail('page errors: ' + pageErrors[0]);
 

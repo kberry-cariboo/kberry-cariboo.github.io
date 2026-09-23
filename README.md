@@ -412,7 +412,16 @@ digits-only id back as a JSON number so ids stored elsewhere as numbers keep
 matching. Receipt photos are stored as **binary blobs (`bytea`) in the
 `receipts` table**, keyed to the specific dated occurrence they belong to — each
 instance of a repeating entry has its own independent receipt — so they no
-longer ride along inside every sync payload. (Legacy entry-level receipts are
+longer ride along inside every sync payload. Nor inside every load:
+`load_household(false)` returns each receipt's key and the SHA-256 of its bytes
+(`receipts.sig`, kept by a trigger), and the app fetches only the images it
+doesn't already hold with `get_receipt(key)`. On the device, images live in
+IndexedDB (`src/lib/receipt-store.js`), not in `localStorage`, whose ~5 MB is
+shared by every field. The stored `cf_overrides` is written without them, and
+images left there by an older build are moved across on first run.
+`load_household()` with no argument still returns images inline, for tabs opened
+before the change. `tests/receipts.sql` covers the server side, and
+`tests/sync-sql.mjs` checks the whole round trip against real SQL. (Legacy entry-level receipts are
 re-keyed onto the entry's start-date occurrence by the migration.) All reads/writes go through the
 `load_household`/`save_household` RPCs, which keep each save atomic.
 

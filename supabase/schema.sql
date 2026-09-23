@@ -567,6 +567,25 @@ create table if not exists receipts (
   updated_at timestamptz not null default now(),
   unique (household_id, owner_key)
 );
+-- A fingerprint of each image: hex SHA-256 of the bytes, set by put_receipt.
+-- load_household hands out the fingerprints rather than the images, and a
+-- device fetches (get_receipt) only the ones it does not already hold with that
+-- fingerprint. Every load used to carry every receipt the household had ever
+-- attached, base64, whether or not anything was going to look at it.
+alter table receipts add column if not exists sig text;
+update receipts set sig = encode(sha256(data), 'hex') where sig is null;
+-- Set by trigger rather than by each writer: put_receipt is not the only way
+-- an image arrives (a restored backup or a legacy blob carries them inline),
+-- and a receipt with no fingerprint would be fetched again on every load.
+create or replace function cf_receipt_sig()
+returns trigger language plpgsql as $$
+begin
+  new.sig := encode(sha256(new.data), 'hex');
+  return new;
+end $$;
+drop trigger if exists trg_receipt_sig on receipts;
+create trigger trg_receipt_sig before insert or update of data on receipts
+  for each row execute function cf_receipt_sig();
 
 -- Push notifications -----------------------------------------------------------
 --
@@ -1849,7 +1868,11 @@ end $$;
 -- Returns { "data": <payload>, "receipts": [{ownerKey, mime, b64}, ...] }.
 -- For a household that has never saved (no household_settings row) data is {},
 -- so any not-yet-synced local data on the device is preserved and adopted.
-create or replace function load_household()
+-- p_receipt_bodies: false returns each receipt's key, type and fingerprint
+-- without its image; the client fetches the images it lacks with
+-- get_receipt(). The zero-argument load_household() below is the old
+-- behaviour (every image, inline) and stays for tabs opened before this.
+create or replace function load_household(p_receipt_bodies boolean)
 returns jsonb
 language plpgsql
 security definer
@@ -2075,16 +2098,44 @@ begin
     from household_settings s where s.household_id = hid), '{}'::jsonb)
   into payload;
 
-  select coalesce(jsonb_agg(jsonb_build_object(
+  select coalesce(jsonb_agg(jsonb_strip_nulls(jsonb_build_object(
            'ownerKey', r.owner_key,
            'mime', r.mime,
-           'b64', replace(encode(r.data, 'base64'), e'\n', '')
-         )), '[]'::jsonb)
+           'sig', r.sig,
+           'b64', case when p_receipt_bodies then replace(encode(r.data, 'base64'), e'\n', '') end
+         ))), '[]'::jsonb)
   into rcpts
   from receipts r where r.household_id = hid;
 
   return jsonb_build_object('data', payload, 'receipts', rcpts);
 end $$;
+
+create or replace function load_household()
+returns jsonb
+language sql
+security definer
+set search_path = public
+stable
+as $$ select load_household(true); $$;
+
+-- One receipt image, for a device that holds the manifest but not the picture.
+-- Reading, so any member — a viewer included — may; only within the caller's
+-- own household. Null when there is no such receipt (deleted since the load).
+create or replace function get_receipt(p_owner_key text)
+returns jsonb
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select jsonb_build_object(
+           'ownerKey', r.owner_key,
+           'mime', r.mime,
+           'sig', r.sig,
+           'b64', replace(encode(r.data, 'base64'), e'\n', ''))
+  from receipts r
+  where r.household_id = cf_my_household() and r.owner_key = p_owner_key;
+$$;
 
 -- Store (insert or replace) one receipt image for the caller's household.
 -- p_b64 is the raw base64 image data (no data: URL prefix). Only
@@ -2106,10 +2157,11 @@ begin
   if p_owner_key is null or p_owner_key !~ '^override:' then
     raise exception 'Invalid receipt owner key: receipts are per-occurrence (override:<year>:<occurrenceId>).';
   end if;
-  insert into receipts (household_id, owner_key, mime, data)
-  values (hid, p_owner_key, coalesce(nullif(p_mime, ''), 'image/jpeg'), decode(p_b64, 'base64'))
+  insert into receipts (household_id, owner_key, mime, data, sig)
+  values (hid, p_owner_key, coalesce(nullif(p_mime, ''), 'image/jpeg'), decode(p_b64, 'base64'),
+          encode(sha256(decode(p_b64, 'base64')), 'hex'))
   on conflict (household_id, owner_key)
-    do update set mime = excluded.mime, data = excluded.data, updated_at = now();
+    do update set mime = excluded.mime, data = excluded.data, sig = excluded.sig, updated_at = now();
 end $$;
 
 create or replace function delete_receipt(p_owner_key text)

@@ -9,6 +9,7 @@ import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { execSync } from 'child_process';
+import { createHash } from 'crypto';
 
 async function loadPlaywright() {
   const candidates = [process.env.PLAYWRIGHT_LIB, 'playwright'];
@@ -264,6 +265,11 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
   // asserts the arithmetic rather than the presence of the words: a note that
   // says "left" while showing the overage would read perfectly well and be
   // wrong by twice the number.
+  // Since the row split what has gone from what is still booked, the bold
+  // figure is *spent* and "+ $X scheduled" is the rest of the month's plan.
+  // What can go over is the whole plan, so every note is checked against
+  // spent + scheduled; "left" and "Fully spent" are only for a month with
+  // nothing still scheduled, "unplanned" and "All planned" for one with some.
   await test('envelopes: every row says what is left in it, and the figures add up', async () => {
     await page.goto(BASE + '#/envelopes', { waitUntil: 'load' });
     await page.waitForTimeout(800);
@@ -275,63 +281,51 @@ await test('self-test: the app\'s own in-page check suite passes', async () => {
       };
       const bad = [];
       let left = 0, over = 0, withTarget = 0;
+      const checkNote = (who, spent, scheduled, target, o, l) => {
+        const plan = spent + scheduled;
+        if (!o === !l) { bad.push(`${who}: ${o ? 'both' : 'neither'} an over note and a left note`); return null; }
+        if (l) {
+          const t = l.textContent.trim();
+          if (/Fully spent|All planned/.test(t)) {
+            if (plan !== target) bad.push(`${who}: says "${t}" at ${plan} of ${target}`);
+            if (/Fully spent/.test(t) && scheduled) bad.push(`${who}: "Fully spent" with ${scheduled} still scheduled`);
+            return 'left';
+          }
+          if (plan === target) bad.push(`${who}: "${t}" on an exactly-planned envelope`);
+          if (scheduled && !/unplanned/.test(t)) bad.push(`${who}: "${t}" — room in a month with bills still to come is unplanned, not left`);
+          if (!scheduled && !/left/.test(t)) bad.push(`${who}: "${t}" — a month with nothing scheduled has money left`);
+          const said = cents(t);
+          if (Math.abs(said - (target - plan)) > 1) bad.push(`${who}: says ${said}, target ${target} - planned ${plan} = ${target - plan}`);
+          if (/-/.test(t)) bad.push(`${who}: "${t}" — a negative amount left`);
+          return 'left';
+        }
+        const said = cents(o.textContent);
+        if (Math.abs(said - (plan - target)) > 1) bad.push(`${who}: says ${said} over, planned ${plan} - target ${target} = ${plan - target}`);
+        return 'over';
+      };
       for (const row of document.querySelectorAll('.bva-row')) {
         const chip = (row.querySelector('.cat-chip') || {}).textContent || '?';
-        const actual = cents((row.querySelector('.bva-actual-amt') || {}).textContent);
+        const spent = cents((row.querySelector('.bva-actual-amt') || {}).textContent);
+        const sch = row.querySelector('.bva-scheduled-note');
+        const scheduled = sch ? cents(sch.textContent) : 0;
         const targetEl = row.querySelector('.bva-target');
         if (!targetEl) continue;                    // no target set: "Set a target"
         withTarget++;
-        const target = cents(targetEl.textContent);
-        const o = row.querySelector('.over-note');
-        const l = row.querySelector('.left-note');
-        if (!o === !l) { bad.push(`${chip}: ${o ? 'both' : 'neither'} an over note and a left note`); continue; }
-        if (l) {
-          left++;
-          // Exactly spent is the third state this slot reports, and it says so
-          // in words. It has to be exactly spent to be allowed to.
-          if (/Fully spent/.test(l.textContent)) {
-            if (actual !== target) bad.push(`${chip}: says fully spent at ${actual} of ${target}`);
-            continue;
-          }
-          if (actual === target) bad.push(`${chip}: "${l.textContent.trim()}" on an exactly-spent envelope`);
-          const said = cents(l.textContent);
-          if (Math.abs(said - (target - actual)) > 1) {
-            bad.push(`${chip}: says ${said} left, target ${target} - actual ${actual} = ${target - actual}`);
-          }
-          // fmt() marks a negative with a leading minus. What is left in an
-          // envelope is never negative — if it reads "-$260.00 left" the row
-          // is showing actual-minus-target, which has the right magnitude and
-          // the wrong sign, and the arithmetic check above cannot see it
-          // because it reads the digits.
-          if (/-/.test(l.textContent)) bad.push(`${chip}: "${l.textContent.trim()}" — a negative amount left`);
-        } else {
-          over++;
-          const said = cents(o.textContent);
-          if (Math.abs(said - (actual - target)) > 1) {
-            bad.push(`${chip}: says ${said} over, actual ${actual} - target ${target} = ${actual - target}`);
-          }
-        }
+        const r = checkNote(chip, spent, scheduled, cents(targetEl.textContent), row.querySelector('.over-note'), row.querySelector('.left-note'));
+        if (r === 'left') left++;
+        if (r === 'over') over++;
       }
-      // The total carries the same pair and had the same gap.
       const totals = document.querySelector('.bva-totals-row');
       let totalNote = null;
       if (totals) {
         const amts = [...totals.querySelectorAll('.cf-text-mono-13')].map((e) => cents(e.textContent));
+        const sch = totals.querySelector('.bva-scheduled-note');
         const note = totals.querySelector('.total-over-note');
         if (!note) bad.push('the totals row says neither what is over nor what is left');
         else if (amts.length >= 2) {
-          const [tActual, tTarget] = amts;
           totalNote = note.textContent.trim();
-          if (/Fully spent/.test(totalNote)) {
-            if (tActual !== tTarget) bad.push(`total: says fully spent at ${tActual} of ${tTarget}`);
-            return { bad, left, over, withTarget, totalNote };
-          }
-          const said = cents(note.textContent);
-          const isLeft = /left/.test(note.textContent);
-          const want = isLeft ? tTarget - tActual : tActual - tTarget;
-          if (Math.abs(said - want) > 1) {
-            bad.push(`total: says ${note.textContent.trim()}, actual ${tActual} target ${tTarget}`);
-          }
+          const isOver = /over/.test(totalNote);
+          checkNote('total', amts[0], sch ? cents(sch.textContent) : 0, amts[1], isOver ? note : null, isOver ? null : note);
         }
       }
       return { bad, left, over, withTarget, totalNote };
@@ -3404,6 +3398,192 @@ await test('preferences: a change made offline wins over the older copy on the n
   const saves = await page.evaluate(() => (window.__rpc || []).filter((c) => c.name === 'save_my_preferences').map((c) => c.args.p.darkMode));
   if (!saves.includes(true)) throw new Error('the offline change was never pushed: ' + JSON.stringify(saves));
   if (await page.evaluate(() => localStorage.getItem('cf_prefs_unsaved'))) throw new Error('the unsaved marker survived a successful save');
+  await ctx.close();
+});
+
+// An envelope used to call every expense dated in the month "spent", so on the
+// 3rd a groceries envelope read as nearly empty with the month's shopping
+// still ahead. Pinned to 3 September: rent (1st) and one fuel fill (1st) have
+// gone; the month's groceries have not.
+await test('envelopes: what has gone out is spent, what is still to come is scheduled', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.clock.setFixedTime(new Date(`${FIXTURE_YEAR}-09-03T12:00:00`));
+  await page.goto(BASE + '#/envelopes', { waitUntil: 'load' });
+  await page.locator('.bva-row').first().waitFor(V);
+  const rows = await page.evaluate(() => Object.fromEntries([...document.querySelectorAll('.bva-row')].map((r) => [
+    (r.querySelector('.cat-chip') || {}).textContent.trim(),
+    { spent: (r.querySelector('.bva-actual-amt') || {}).textContent.trim(),
+      scheduled: ((r.querySelector('.bva-scheduled-note') || {}).textContent || '').trim(),
+      note: ((r.querySelector('.left-note,.over-note') || {}).textContent || '').trim() }])));
+  const food = rows.Food, housing = rows.Housing;
+  if (!food || food.spent !== '$0.00' || !/\$520\.00 scheduled/.test(food.scheduled)) {
+    throw new Error('groceries still to come are not shown as scheduled: ' + JSON.stringify(food));
+  }
+  if (!housing || housing.spent !== '$1,650.00' || housing.scheduled || housing.note !== 'Fully spent') {
+    throw new Error('rent paid on the 1st is not shown as spent: ' + JSON.stringify(housing));
+  }
+  // The bar draws the two parts differently.
+  if (await page.locator('.bva-progress-fill--scheduled').count() === 0) throw new Error('no scheduled segment on any bar');
+  await ctx.close();
+});
+
+// Adding an expense used to raise its category's target in every month of
+// every year, silently — so the envelope compared the plan with a copy of the
+// plan. Targets now move only when someone moves them.
+await test('envelopes: adding an expense leaves the budget targets alone', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.goto(BASE + '#/flow/entries', { waitUntil: 'load' });
+  await page.waitForTimeout(800);
+  const targets = () => page.evaluate(() => localStorage.getItem('cf_budgtargets'));
+  const before = await targets();
+  await page.getByRole('button', { name: '+ Add Entry' }).first().click();
+  await page.getByPlaceholder('e.g. Mortgage payment').fill('Target check');
+  await page.getByPlaceholder('0.00').first().fill('77.00');
+  await page.locator('#ef-category').selectOption({ label: 'Housing' });
+  const nudge = page.getByRole('button', { name: 'Remind me later' });
+  if (await nudge.count() > 0) await nudge.click().catch(() => {});
+  await page.getByRole('button', { name: 'Save Entry' }).click();
+  await page.waitForTimeout(600);
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('cf_entries') || '[]').some((e) => e.desc === 'Target check'));
+  if (!saved) throw new Error('setup: the entry was not added');
+  if ((await targets()) !== before) throw new Error('adding an expense changed the budget targets');
+  await ctx.close();
+});
+
+// The one-tap replacement: a month with spending and no targets offers to take
+// its plan as targets — for every empty month of the year, leaving the months
+// someone has set alone — and it can be undone.
+await test('envelopes: "Use the plan as targets" fills the empty months only, and undoes', async () => {
+  // Targets for January to August only; September onward has none.
+  const { ctx, page } = await ctxPage({ stub: (t) => t.replace('for (let m = 0; m <= 11; m++) budgetTargets', 'for (let m = 0; m <= 7; m++) budgetTargets') });
+  await page.goto(BASE + '#/envelopes', { waitUntil: 'load' });
+  await page.getByRole('button', { name: /^Sep$/ }).first().click().catch(() => {});
+  const btn = page.getByRole('button', { name: 'Use the plan as targets' });
+  await btn.waitFor(V).catch(() => { throw new Error('a month with spending and no targets offers no way to set them'); });
+  const read = () => page.evaluate((y) => {
+    const t = JSON.parse(localStorage.getItem('cf_budgtargets') || '{}');
+    return { jan: t[y + ':0'], sep: t[y + ':8'], dec: t[y + ':11'] };
+  }, FIXTURE_YEAR);
+  const before = await read();
+  await btn.click();
+  await page.waitForTimeout(500);
+  const after = await read();
+  if (!after.sep || !after.sep.Housing || !after.dec) throw new Error('the empty months were not filled: ' + JSON.stringify(after).slice(0, 160));
+  if (JSON.stringify(after.jan) !== JSON.stringify(before.jan)) throw new Error('a month that already had targets was changed');
+  if (after.sep.Housing !== 165000) throw new Error('September\'s housing target is not its plan: ' + after.sep.Housing);
+  await page.getByRole('button', { name: /Undo/i }).first().click();
+  await page.waitForTimeout(400);
+  if ((await read()).sep) throw new Error('undo did not take the new targets back');
+  await ctx.close();
+});
+
+// Receipt images used to ride inside cf_overrides in localStorage — every
+// photo, in the one ~5 MB budget every field shares — and every load carried
+// every one of them. Now the load carries a manifest (key + SHA-256), images
+// are fetched once with get_receipt and kept in IndexedDB, and localStorage
+// holds none.
+{
+  const RPNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+  const RSIG = createHash('sha256').update(Buffer.from(RPNG, 'base64')).digest('hex');
+  const OCC = `4-${FIXTURE_YEAR}-8-1`;
+  const KEY = `override:${FIXTURE_YEAR}:${OCC}`;
+  // The household has a September rent override; the server holds its receipt.
+  const withManifest = (overrideJson) => (t) => t
+    .replace('overridesByYr: {},', `overridesByYr: { ${FIXTURE_YEAR}: { '${OCC}': ${overrideJson} } },`)
+    .replace("rpc: (name) => name === 'load_household' ? resolved({ data: payload, receipts: [] }) : resolved(null),",
+      `rpc: (name, args) => { (window.__rpc = window.__rpc || []).push({ name, args: JSON.parse(JSON.stringify(args || null)) });
+         if (name === 'load_household') return resolved({ data: payload, receipts: [{ ownerKey: '${KEY}', mime: 'image/png', sig: '${RSIG}' }] });
+         if (name === 'get_receipt') return resolved({ ownerKey: '${KEY}', mime: 'image/png', sig: '${RSIG}', b64: '${RPNG}' });
+         return resolved(null); },`);
+  const calls = (page, name) => page.evaluate((n) => (window.__rpc || []).filter((c) => c.name === n).length, name);
+
+  await test('receipts: fetched once, kept on the device, never in localStorage', async () => {
+    const { ctx, page } = await ctxPage({ stub: withManifest('{ amount: 165000 }') });
+    await page.clock.setFixedTime(new Date(`${FIXTURE_YEAR}-09-03T12:00:00`));
+    await page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
+    await page.locator('.attach-indicator').first().waitFor(V)
+      .catch(() => { throw new Error('a receipt listed in the manifest never reached the ledger'); });
+    if (await calls(page, 'get_receipt') !== 1) throw new Error('expected one get_receipt, got ' + await calls(page, 'get_receipt'));
+    const load = await page.evaluate(() => (window.__rpc || []).find((c) => c.name === 'load_household'));
+    if (!load || !load.args || load.args.p_receipt_bodies !== false) throw new Error('the load still asks for every image inline: ' + JSON.stringify(load && load.args));
+    await page.waitForTimeout(600);
+    const stored = await page.evaluate(() => localStorage.getItem('cf_overrides') || '');
+    if (/data:image/.test(stored)) throw new Error('a receipt image is in localStorage');
+    // Same device, next launch: the image is already here with the same
+    // fingerprint, so nothing is fetched.
+    await page.reload({ waitUntil: 'load' });
+    await page.locator('.attach-indicator').first().waitFor(V)
+      .catch(() => { throw new Error('the receipt did not survive a reload'); });
+    await page.waitForTimeout(800);
+    if (await calls(page, 'get_receipt') !== 0) throw new Error('a receipt already on the device was fetched again');
+    await ctx.close();
+  });
+
+  await test('receipts: images left in localStorage by the old build move to the device store', async () => {
+    const { ctx, page } = await ctxPage({ stub: withManifest('{ amount: 165000 }') });
+    await page.clock.setFixedTime(new Date(`${FIXTURE_YEAR}-09-03T12:00:00`));
+    // What the previous build left behind: the image inside the stored overrides.
+    await page.addInitScript(`try{ if (!sessionStorage.getItem('seeded')) { sessionStorage.setItem('seeded','1');
+      localStorage.setItem('cf_overrides', JSON.stringify({ ${FIXTURE_YEAR}: { '${OCC}': { amount: 165000, attachment: 'data:image/png;base64,${RPNG}' } } })); } }catch(e){}`);
+    await page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
+    await page.locator('.attach-indicator').first().waitFor(V);
+    await page.waitForTimeout(1200);
+    const stored = await page.evaluate(() => localStorage.getItem('cf_overrides') || '');
+    if (/data:image/.test(stored)) throw new Error('the old build\'s images are still in localStorage');
+    const inIdb = await page.evaluate((k) => new Promise((res) => {
+      const r = indexedDB.open('cf-receipts');
+      r.onsuccess = () => { const g = r.result.transaction('receipts').objectStore('receipts').get(k); g.onsuccess = () => res(!!(g.result && g.result.dataUrl)); g.onerror = () => res(false); };
+      r.onerror = () => res(false);
+    }), KEY);
+    if (!inIdb) throw new Error('the image did not arrive in the device store');
+    // It was already on the device, so the manifest entry is not fetched.
+    if (await calls(page, 'get_receipt') !== 0) throw new Error('a migrated receipt was fetched from the server anyway');
+    await ctx.close();
+  });
+
+  // Removing a receipt has to reach the server as delete_receipt, not only
+  // vanish from this device's state and store. The occurrence already carries
+  // every field the editor writes, so the receipt is the only thing changed.
+  await test('receipts: removing one reaches the server', async () => {
+    const { ctx, page } = await ctxPage({ stub: withManifest("{ desc: 'Rent', amount: 165000, month: 8, day: 1, notes: '' }") });
+    await page.clock.setFixedTime(new Date(`${FIXTURE_YEAR}-09-03T12:00:00`));
+    await page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
+    await page.locator('.attach-indicator').first().waitFor(V);
+    await page.locator('tr.budget-event-tr').filter({ hasText: 'Rent' }).first().click();
+    await page.locator('.modal-card').waitFor(V);
+    await page.locator('.modal-card').getByRole('button', { name: 'Remove', exact: true }).click();
+    await page.locator('.modal-card').getByRole('button', { name: 'Save', exact: true }).click();
+    await page.waitForTimeout(3500);
+    const del = await page.evaluate(() => (window.__rpc || []).filter((c) => c.name === 'delete_receipt').map((c) => c.args.p_owner_key));
+    await ctx.close();
+    if (!del.includes(KEY)) throw new Error('removing the receipt never called delete_receipt for it: ' + JSON.stringify(del));
+  });
+}
+
+// The dashboard's "My entries / All users" toggle filtered occurrences by
+// ev.userId, which expandEntries never set — so "My entries" showed everyone's
+// and the toggle did nothing. Two members; the summer vacation is the other
+// member's. "All users" stays the default, which is what everyone saw.
+await test('dashboard: "My entries" leaves out another member\'s entries, and "All users" is the default', async () => {
+  const twoMembers = (t) => t
+    .replace("const members = [{ user_id: 'u-demo', full_name: 'Demo User', disabled: false, role: 'owner', joined_at: '${Y}-01-01T00:00:00Z' }];".replace('${Y}', FIXTURE_YEAR),
+      `const members = [{ user_id: 'u-demo', full_name: 'Demo User', disabled: false, role: 'owner', joined_at: '${FIXTURE_YEAR}-01-01T00:00:00Z' }, { user_id: 'u-other', full_name: 'Other Member', disabled: false, role: 'member', joined_at: '${FIXTURE_YEAR}-01-02T00:00:00Z' }];`)
+    .replace('const monthTargets', "entries.forEach((e) => { if (e.desc === 'Summer vacation') e.userId = 'u-other'; }); const monthTargets");
+  const { ctx, page } = await ctxPage({ stub: twoMembers });
+  await page.goto(BASE + '#/today', { waitUntil: 'load' });
+  const all = page.getByRole('button', { name: 'All users' }).or(page.getByRole('radio', { name: 'All users' })).first();
+  await all.waitFor(V).catch(() => { throw new Error('a two-member household is not offered the toggle'); });
+  const pressed = async (el) => (await el.getAttribute('aria-pressed')) === 'true' || (await el.getAttribute('aria-checked')) === 'true';
+  if (!(await pressed(all))) throw new Error('"All users" is not the default');
+  const text = () => page.locator('main').innerText();
+  const before = await text();
+  await page.getByRole('button', { name: 'My entries' }).or(page.getByRole('radio', { name: 'My entries' })).first().click();
+  await page.waitForTimeout(500);
+  const mine = await text();
+  if (mine === before) throw new Error('"My entries" changed nothing — another member\'s $1,800 entry is still counted');
+  await all.click();
+  await page.waitForTimeout(500);
+  if ((await text()) !== before) throw new Error('"All users" did not bring back the same picture');
   await ctx.close();
 });
 

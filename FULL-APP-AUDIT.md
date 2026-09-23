@@ -29,9 +29,9 @@ Severity scale:
 | 4 | Any account at all can use `ai-proxy` to spend your Anthropic credit, because sign-up is open and household membership is never checked | S1 | `supabase/functions/ai-proxy/index.ts:94` |
 | 5 | The backup-nudge "Export backup" writes an **incomplete backup**, missing accounts, holidays, currency and six more fields | S2 | `src/App.js:554` |
 | 6 | The "Car loan ends — frees $288.75/mo" figure for a $385/mo loan is wrong | S2 | `src/components/dashboard.js:700` |
-| 7 | Receipt images are stored inside `cf_overrides` in `localStorage`, where the ~5 MB quota runs out quickly | S2 | `src/lib/household-sync.js:74` |
+| 7 | ~~Receipt images in `localStorage`~~ **Fixed in v194:** IndexedDB plus a manifest load | S2 | `src/lib/household-sync.js:74` |
 | 8 | ~~Device preferences are synced to the whole household~~ **Fixed in v193:** they're per-member now | S2 | `src/lib/household-sync.js:82-130` |
-| 9 | Envelopes call scheduled money "spent", and adding an entry quietly raises the target to match. The feature ends up grading itself. | S2 | `src/App.js:863`, `src/components/budget.js:1129` |
+| 9 | ~~Envelopes grade themselves~~ **Fixed in v194:** spent vs scheduled, and no silent targets | S2 | `src/App.js:863`, `src/components/budget.js:1129` |
 | 10 | There's no build step, types or modules: 20k lines of hand-maintained esbuild output in one shared scope | Arch | whole `src/` |
 
 ---
@@ -381,6 +381,23 @@ These ten fields are now each member's own row in `member_preferences`, not hous
   - Two browser tests: load/save/never-household, and "offline wins".
 
 **Deploy note:** re-run `supabase/schema.sql` before this client reaches users. Until you do, the client stays on each device's own values and doesn't try to save.
+
+### Batch 4 (build v194): §1.7, §1.9 and the remaining S3 items
+
+- **§1.7 Receipts:**
+  - Images moved from `localStorage` to IndexedDB (`src/lib/receipt-store.js`); `cf_overrides` is written without them, and old builds' images are migrated on first run.
+  - Loads carry a manifest (key and SHA-256 via `receipts.sig`, kept by a trigger), and a device fetches only what it lacks through `get_receipt`. The old `load_household()` still returns images inline for older tabs.
+  - Receipts not yet fetched are never deleted for being absent. Sign-out clears the store.
+  - Tests: `tests/receipts.sql` (8 checks, CI), a receipts section in `sync-sql` against real SQL, and three browser tests.
+  - Correction: while working on this I said attaching a receipt alone might never trigger a save. It can't happen today, because every occurrence save also stamps `_savedAt` and edit history. The direct receipt check stays as a safeguard, described accurately.
+- **§1.9 Envelopes:**
+  - Each row shows what has gone out (dated before today, or marked paid), plus "+ $X scheduled". The bar is solid for spent and hatched for scheduled.
+  - A projected overspend says "over plan"; room nothing is scheduled against yet is "unplanned".
+  - Adding an entry no longer changes targets. "Use the plan as targets" fills empty months only, and can be undone.
+  - Help text and screenshots updated. The envelope arithmetic test was rewritten for the new meaning, and three tests were added.
+- **S3, `userId: 1`:** entries added while signed out get no owner, and older entries carrying the placeholder `1` count as unowned.
+  - This turned up a bigger bug: occurrences never carried `userId`, so the dashboard's "My entries" filter never filtered anything. It does now (unit test and browser test), and "All users" stays the default, which is what everyone has been seeing.
+- **S3, index keys:** both template lists are now keyed by their unique description. The other 20-odd index keys are on static lists (Help blocks, chart slices, menu items, CSV headers) that never reorder and hold no per-row state, so they're left as they are.
 
 ## 6. Suggested order
 

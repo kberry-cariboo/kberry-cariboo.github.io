@@ -4,15 +4,15 @@
   const HELP_SHOTS = {
     "settings-years": {
       "w": 917,
-      "h": 109
+      "h": 115
     },
     "entry-form": {
       "w": 680,
-      "h": 472
+      "h": 502
     },
     "budget-toolbar": {
       "w": 521,
-      "h": 31
+      "h": 34
     },
     "budget-grid": {
       "w": 915,
@@ -20,7 +20,7 @@
     },
     "row-menu": {
       "w": 180,
-      "h": 235
+      "h": 276
     },
     "bva": {
       "w": 917,
@@ -28,18 +28,18 @@
     },
     "dashboard-kpis": {
       "w": 917,
-      "h": 84
+      "h": 126
     },
     "dashboard-upcoming": {
       "w": 917,
-      "h": 318
+      "h": 320
     },
     "plan-goals": {
       "w": 917,
-      "h": 191
+      "h": 202
     },
     "settings-backup": {
       "w": 917,
-      "h": 55
+      "h": 61
     }
   };
