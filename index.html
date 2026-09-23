@@ -7046,6 +7046,100 @@ document.addEventListener('DOMContentLoaded',function(){
     if (!assertion) throw new Error("Verification failed.");
     return true;
   }
+  // Receipt images on this device, in IndexedDB.
+  //
+  // They used to live inside cf_overrides in localStorage — as data URLs in the
+  // same JSON string as every occurrence override the household has. The origin
+  // gets about 5 MB of localStorage, shared by every key, so a few dozen photos
+  // filled it, and once it was full *every* field's write failed, not just the
+  // receipts'. IndexedDB is sized for exactly this.
+  //
+  // Keyed by the same owner key the server uses ('override:<year>:<occId>'),
+  // each record holding the data URL and the SHA-256 of its bytes. The digest is
+  // what load_household's manifest carries, so a device fetches only the images
+  // it does not already hold.
+  //
+  // Everything here is best-effort and never throws: a browser without
+  // IndexedDB (or a private window that refuses it) keeps working, with images
+  // held in memory for the session and fetched from the server again next time.
+  const RECEIPT_DB = "cf-receipts";
+  const RECEIPT_STORE = "receipts";
+  let _receiptDb = null;
+  function receiptDb() {
+    if (_receiptDb) return _receiptDb;
+    _receiptDb = new Promise((resolve, reject) => {
+      try {
+        const req = indexedDB.open(RECEIPT_DB, 1);
+        req.onupgradeneeded = () => req.result.createObjectStore(RECEIPT_STORE);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+        req.onblocked = () => reject(new Error("receipt store blocked"));
+      } catch (e) {
+        reject(e);
+      }
+    }).catch(() => {
+      _receiptDb = null;
+      return null;
+    });
+    return _receiptDb;
+  }
+  // One transaction, as a promise of `fn`'s request result (or null on any
+  // failure along the way).
+  async function receiptTx(mode, fn) {
+    const db = await receiptDb();
+    if (!db) return null;
+    return new Promise((resolve) => {
+      try {
+        const tx = db.transaction(RECEIPT_STORE, mode);
+        const req = fn(tx.objectStore(RECEIPT_STORE));
+        tx.oncomplete = () => resolve(req ? req.result : true);
+        tx.onerror = tx.onabort = () => resolve(null);
+      } catch (e) {
+        resolve(null);
+      }
+    });
+  }
+  // { ownerKey: { dataUrl, sig } } for everything held here.
+  async function receiptStoreAll() {
+    const db = await receiptDb();
+    if (!db) return {};
+    return new Promise((resolve) => {
+      const out = {};
+      try {
+        const tx = db.transaction(RECEIPT_STORE, "readonly");
+        const req = tx.objectStore(RECEIPT_STORE).openCursor();
+        req.onsuccess = () => {
+          const c = req.result;
+          if (!c) return;
+          if (c.value && c.value.dataUrl) out[c.key] = c.value;
+          c.continue();
+        };
+        tx.oncomplete = () => resolve(out);
+        tx.onerror = tx.onabort = () => resolve(out);
+      } catch (e) {
+        resolve(out);
+      }
+    });
+  }
+  const receiptStorePut = (key, rec) => receiptTx("readwrite", (s) => s.put(rec, key));
+  const receiptStoreDelete = (key) => receiptTx("readwrite", (s) => s.delete(key));
+  const receiptStoreClear = () => receiptTx("readwrite", (s) => s.clear());
+  // Hex SHA-256 of a data URL's bytes — the same digest the server stores
+  // (encode(sha256(data), 'hex')). Null where SubtleCrypto is unavailable
+  // (a plain-http origin), which only costs a re-fetch.
+  async function receiptSig(dataUrl) {
+    try {
+      const m = /^data:[^;,]+;base64,(.+)$/.exec(dataUrl || "");
+      if (!m || !(crypto && crypto.subtle)) return null;
+      const bin = atob(m[1]);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const buf = await crypto.subtle.digest("SHA-256", bytes);
+      return Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, "0")).join("");
+    } catch (e) {
+      return null;
+    }
+  }
   // ── Centralized Supabase auth calls ────────────────────────────────
   // Every supabase.auth touchpoint lives in this file (these helpers plus
   // useHousehold below); components never call supabaseClient directly.
@@ -7117,9 +7211,30 @@ document.addEventListener('DOMContentLoaded',function(){
   // successful load took the plain adoptLoaded path and replaced it, with no
   // prompt and no push. Every field in this table is a field the server is
   // supposed to have, so editing any of them is unsaved work.
+  // Overrides without their receipt images: what goes to the server (receipts
+  // travel separately, via put_receipt) and what goes into localStorage
+  // (receipts live in IndexedDB — see receipt-store.js).
+  function stripOverrideAttachments(byYr) {
+    const out = {};
+    Object.keys(byYr || {}).forEach((year) => {
+      const yOvs = byYr[year] || {};
+      out[year] = {};
+      Object.keys(yOvs).forEach((k) => {
+        const o = yOvs[k];
+        if (o && o.attachment !== void 0) {
+          const copy = Object.assign({}, o);
+          delete copy.attachment;
+          out[year][k] = copy;
+        } else {
+          out[year][k] = o;
+        }
+      });
+    });
+    return out;
+  }
   const HOUSEHOLD_FIELDS = [
     { key: "entries", storage: "cf_entries", initial: () => [], kind: "array", backup: true },
-    { key: "overridesByYr", storage: "cf_overrides", initial: () => ({}), kind: "object", backup: true },
+    { key: "overridesByYr", storage: "cf_overrides", initial: () => ({}), kind: "object", backup: true, toStorage: stripOverrideAttachments },
     { key: "yearConfigs", storage: "cf_years", initial: () => [{ year: (/* @__PURE__ */ new Date()).getFullYear(), openingBalance: 0 }], kind: "array", backup: true },
     { key: "categories", storage: "cf_categories", initial: () => DEFAULT_CATEGORIES, kind: "array", backup: true },
     { key: "categoryColors", storage: "cf_category_colors", initial: () => DEFAULT_CATEGORY_COLORS, kind: "object", backup: true },
@@ -7255,7 +7370,7 @@ document.addEventListener('DOMContentLoaded',function(){
     const values = {};
     const setters = [];
     for (const f of HOUSEHOLD_FIELDS) {
-      const [value, set] = useLS(f.storage, f.initial);
+      const [value, set] = useLS(f.storage, f.initial, f.toStorage);
       values[f.key] = value;
       setters.push(set);
     }
@@ -7332,6 +7447,9 @@ document.addEventListener('DOMContentLoaded',function(){
       // server, and come back when they sign in again. Left behind, the next
       // person to sign in on this device would start from them.
       MEMBER_PREF_FIELDS.forEach((f) => localStorage.removeItem(f.storage));
+      // Receipt photos are the household's too, and the most personal thing
+      // it stores; a shared device must not keep them for the next person.
+      receiptStoreClear();
       localStorage.removeItem(PREFS_UNSAVED_KEY);
       Object.keys(localStorage).filter((k) => k.startsWith("cf_ai_report_")).forEach((k) => localStorage.removeItem(k));
     } catch (e) {
@@ -7517,6 +7635,37 @@ document.addEventListener('DOMContentLoaded',function(){
     }
   };
 
+  // Puts receipt images into the overrides they belong to, for any override
+  // that exists and has no image of its own. Never replaces one: an image
+  // already in state is this device's, and at least as new as anything
+  // arriving from storage or the server. Returns `byYr` itself when nothing
+  // changed, so a no-op costs no render.
+  // { 'override:<year>:<occId>': dataUrl } for every override carrying an image.
+  function collectAttachmentsOf(byYr) {
+    const map = {};
+    Object.keys(byYr || {}).forEach((year) => {
+      const yOvs = byYr[year] || {};
+      Object.keys(yOvs).forEach((k) => {
+        if (yOvs[k] && yOvs[k].attachment) map["override:" + year + ":" + k] = yOvs[k].attachment;
+      });
+    });
+    return map;
+  }
+  function attachReceiptImages(byYr, images) {
+    let out = byYr;
+    Object.keys(images || {}).forEach((key) => {
+      const m = /^override:(\d+):(.+)$/.exec(key);
+      const img = images[key] && (typeof images[key] === "string" ? images[key] : images[key].dataUrl);
+      if (!m || !img) return;
+      const yOvs = (out || {})[m[1]];
+      const ov = yOvs && yOvs[m[2]];
+      if (!ov || ov.attachment) return;
+      if (out === byYr) out = Object.assign({}, byYr);
+      if (out[m[1]] === byYr[m[1]]) out[m[1]] = Object.assign({}, yOvs);
+      out[m[1]][m[2]] = Object.assign({}, ov, { attachment: img });
+    });
+    return out;
+  }
   function useHouseholdData({ household, values, setters }) {
     const [status, setStatus] = useState("idle");
     const [msg, setMsg] = useState("");
@@ -7544,6 +7693,19 @@ document.addEventListener('DOMContentLoaded',function(){
     // added/changed/removed images travel over the network. Receipts are
     // strictly per-occurrence; entry-level attachments no longer exist.
     const receiptCache = useRef({});
+    // Receipts in the server's manifest that this device has not fetched yet.
+    // Absent from state because they have not arrived, not because anyone
+    // removed them — so a save must never delete them for being absent.
+    const pendingReceipts = useRef(new Set());
+    // This device's IndexedDB copy, { ownerKey: { dataUrl, sig } }, read once
+    // on mount. A load waits for the read, so a manifest entry already held
+    // here with the same fingerprint is not fetched again.
+    const idbReceipts = useRef({});
+    const idbRead = useRef(null);
+    const idbLoaded = useRef(false);
+    // The synced fingerprint when a load last failed. Edits made afterwards are
+    // unsaved work; putting receipt images back into state is not an edit.
+    const failedLoadSig = useRef(null);
     // The `savedAt` this device last loaded from the server — sent back on
     // every save so the server can detect a concurrent save from another
     // device/member and reject instead of silently overwriting it (AR2).
@@ -7576,34 +7738,72 @@ document.addEventListener('DOMContentLoaded',function(){
       delete copy.attachment;
       return copy;
     });
-    const stripOverrideAttachments = (byYr) => {
-      const out = {};
-      Object.keys(byYr || {}).forEach((year) => {
-        const yOvs = byYr[year] || {};
-        out[year] = {};
-        Object.keys(yOvs).forEach((k) => {
-          const o = yOvs[k];
-          if (o && o.attachment !== void 0) {
-            const copy = Object.assign({}, o);
-            delete copy.attachment;
-            out[year][k] = copy;
-          } else {
-            out[year][k] = o;
-          }
+    const collectAttachments = useCallback(() => collectAttachmentsOf(values.overridesByYr), [values.overridesByYr]);
+    // On mount: read what this device holds and put it back into the
+    // overrides, which come out of localStorage without their images.
+    useEffect(() => {
+      idbRead.current = receiptStoreAll().then(async (all) => {
+        idbReceipts.current = all;
+        // Upgrading from the build that kept images in localStorage: the
+        // stored overrides still carry them, and nothing rewrites that copy
+        // until an override changes. Move them into IndexedDB first, then
+        // rewrite localStorage without them — in that order, so a tab closed
+        // in between loses nothing.
+        let legacy = false;
+        try {
+          legacy = /"attachment":"data:/.test(localStorage.getItem("cf_overrides") || "");
+        } catch (e) {
+          // Storage unreadable: nothing to migrate from it.
+        }
+        if (legacy) {
+          const inState = collectAttachmentsOf(valuesRef.current.overridesByYr);
+          await Promise.all(Object.keys(inState).filter((k) => !all[k]).map(async (k) => {
+            const rec = { dataUrl: inState[k], sig: await receiptSig(inState[k]) };
+            all[k] = rec;
+            await receiptStorePut(k, rec);
+          }));
+          setters.overridesByYr((prev) => Object.assign({}, prev));
+        }
+        if (Object.keys(all).length) setters.overridesByYr((prev) => attachReceiptImages(prev, all));
+        idbLoaded.current = true;
+      });
+    }, []);
+    // Keep IndexedDB in step with the images in state: store new or changed
+    // ones, drop ones no override carries any more. Only once the mount read is
+    // done — before it, state has none of them, and every one would look
+    // removed.
+    useEffect(() => {
+      if (!idbLoaded.current) return;
+      const current = collectAttachments();
+      const known = idbReceipts.current;
+      Object.keys(current).forEach((key) => {
+        if (known[key] && known[key].dataUrl === current[key]) return;
+        const rec = { dataUrl: current[key], sig: null };
+        known[key] = rec;
+        receiptSig(rec.dataUrl).then((sig) => {
+          rec.sig = sig;
+          receiptStorePut(key, rec);
         });
       });
-      return out;
+      Object.keys(known).forEach((key) => {
+        if (current[key] || pendingReceipts.current.has(key)) return;
+        delete known[key];
+        receiptStoreDelete(key);
+      });
+    }, [collectAttachments]);
+    // Whether the images in state differ from what the server is known to
+    // hold. The payload fingerprint below strips images (they travel through
+    // put_receipt, not the payload), so on its own it cannot see a change to a
+    // receipt. Today that never matters — every occurrence save also stamps
+    // _savedAt and its edit history, which the fingerprint does see — but it
+    // is the receipt that has to reach the server, and this says so directly
+    // rather than leaning on a side effect.
+    const receiptsDirty = () => {
+      const current = collectAttachments();
+      const cached = receiptCache.current;
+      return Object.keys(current).some((k) => cached[k] !== current[k])
+        || Object.keys(cached).some((k) => !current[k] && !pendingReceipts.current.has(k));
     };
-    const collectAttachments = useCallback(() => {
-      const map = {};
-      Object.keys(values.overridesByYr || {}).forEach((year) => {
-        const yOvs = values.overridesByYr[year] || {};
-        Object.keys(yOvs).forEach((k) => {
-          if (yOvs[k] && yOvs[k].attachment) map["override:" + year + ":" + k] = yOvs[k].attachment;
-        });
-      });
-      return map;
-    }, [values.overridesByYr]);
     // The synced shape of a set of field values. Shared by the payload that
     // gets sent and by the baseline the autosave compares against, so the two
     // can never be normalised differently and disagree about what "unchanged"
@@ -7644,6 +7844,31 @@ document.addEventListener('DOMContentLoaded',function(){
     const adoptLoaded = (applied) => {
       syncedSig.current = sigOf(normaliseFields(Object.assign({}, valuesRef.current, applied)));
     };
+    // Fetches, one at a time, the receipts the manifest listed and this device
+    // lacked, and puts each into its override as it arrives. An error (offline)
+    // leaves the key pending for the next load; a null answer means the receipt
+    // was deleted since, and it stops being pending.
+    const fetchPendingReceipts = useCallback(async () => {
+      if (!supabaseClient) return;
+      const batch = pendingReceipts.current;
+      for (const key of Array.from(batch)) {
+        let got;
+        try {
+          const { data, error } = await supabaseClient.rpc("get_receipt", { p_owner_key: key });
+          if (error) continue;
+          got = data;
+        } catch (e) {
+          continue;
+        }
+        // A newer load replaced the set while this one was fetching.
+        if (pendingReceipts.current !== batch) return;
+        batch.delete(key);
+        if (!got || !got.b64) continue;
+        const url = "data:" + (got.mime || "image/jpeg") + ";base64," + got.b64;
+        receiptCache.current[key] = url;
+        setters.overridesByYr((prev) => attachReceiptImages(prev, { [key]: url }));
+      }
+    }, [setters]);
     const loadData = useCallback(async () => {
       if (!supabaseClient || !household) return false;
       // Flush any pending debounced save first — otherwise a pull-to-refresh
@@ -7663,15 +7888,32 @@ document.addEventListener('DOMContentLoaded',function(){
       setStatus("syncing");
       setMsg("Loading…");
       try {
-        const { data, error } = await supabaseClient.rpc("load_household");
+        if (idbRead.current) await idbRead.current;
+        // The manifest form: every receipt's key and fingerprint, no images.
+        // A database from before it has only the zero-argument function, which
+        // returns the images inline; that answer is handled below as well.
+        let res = await supabaseClient.rpc("load_household", { p_receipt_bodies: false });
+        if (res.error && /p_receipt_bodies|Could not find the function|function .*load_household.* does not exist/i.test(res.error.message || "")) {
+          res = await supabaseClient.rpc("load_household");
+        }
+        const { data, error } = res;
         if (error) throw error;
         const payload = (data && data.data) || {};
         lastSavedAtRef.current = payload.savedAt || null;
         const receipts = (data && data.receipts) || [];
         const rmap = {};
+        const pending = new Set();
         receipts.forEach((r) => {
-          if (r && r.ownerKey && r.b64) rmap[r.ownerKey] = "data:" + (r.mime || "image/jpeg") + ";base64," + r.b64;
+          if (!r || !r.ownerKey) return;
+          if (r.b64) {
+            rmap[r.ownerKey] = "data:" + (r.mime || "image/jpeg") + ";base64," + r.b64;
+            return;
+          }
+          const held = idbReceipts.current[r.ownerKey];
+          if (held && held.dataUrl && r.sig && held.sig === r.sig) rmap[r.ownerKey] = held.dataUrl;
+          else pending.add(r.ownerKey);
         });
+        pendingReceipts.current = pending;
         receiptCache.current = Object.assign({}, rmap);
         // Re-attach receipt images to the occurrences they belong to so the
         // rest of the app keeps seeing plain `attachment` data URLs.
@@ -7697,6 +7939,7 @@ document.addEventListener('DOMContentLoaded',function(){
             const pushed = await saveDataRef.current(true);
             if (pushed) {
               toast("Synced the changes you made while offline.");
+              fetchPendingReceipts();
               return true;
             }
             // Still can't reach the server: keep local state as-is rather
@@ -7717,16 +7960,22 @@ document.addEventListener('DOMContentLoaded',function(){
         writeMarker(SYNCED_AT_KEY, payload.savedAt || null);
         initialized.current = true;
         loadAttempted.current = true;
+        // After the payload is in state, never before: an image attached to
+        // an override the load then replaced would be gone from state while
+        // receiptCache still listed it, and the next save would delete it
+        // from the server.
+        fetchPendingReceipts();
         setStatus("ok");
         setMsg("Synced " + (/* @__PURE__ */ new Date()).toLocaleTimeString());
         return true;
       } catch (e) {
         loadAttempted.current = true;
+        failedLoadSig.current = sigOf(normaliseFields(valuesRef.current));
         setStatus("error");
         setMsg("❌ " + e.message + (/load_household/.test(e.message || "") ? " — run supabase/schema.sql in your Supabase SQL editor to update the database." : ""));
         return false;
       }
-    }, [household, applyPayload]);
+    }, [household, applyPayload, fetchPendingReceipts]);
     const syncReceipts = useCallback(async () => {
       const current = collectAttachments();
       const cached = receiptCache.current;
@@ -7855,7 +8104,7 @@ document.addEventListener('DOMContentLoaded',function(){
         // inviting a conflict none of them caused. Comparing content rather
         // than trusting the render that carried it also covers any other
         // route to a no-op save.
-        if (sigOf(buildPayload()) === syncedSig.current) return;
+        if (sigOf(buildPayload()) === syncedSig.current && !receiptsDirty()) return;
         saveData(true);
       }, 2e3);
       return () => clearTimeout(saveTimer.current);
@@ -7895,12 +8144,13 @@ document.addEventListener('DOMContentLoaded',function(){
       lastSavedAtRef.current = payload.savedAt || null;
       writeMarker(SYNCED_AT_KEY, payload.savedAt || null);
       clearUnsaved();
+      fetchPendingReceipts();
       initialized.current = true;
       setDivergence(null);
       setStatus("ok");
       setMsg("Synced " + (/* @__PURE__ */ new Date()).toLocaleTimeString());
       toast("Using the cloud version. This device's unsaved changes were discarded.", "error");
-    }, [divergence, applyPayload, clearUnsaved]);
+    }, [divergence, applyPayload, clearUnsaved, fetchPendingReceipts]);
 
     // Retry whenever the device plausibly has connectivity again. Without
     // this, a save that failed offline was never attempted again until the
@@ -7973,6 +8223,9 @@ document.addEventListener('DOMContentLoaded',function(){
     // connectivity returns, so record that they exist.
     useEffect(() => {
       if (!household || !loadAttempted.current || initialized.current) return;
+      // Receipt images being put back from IndexedDB change state without
+      // changing anything the household owns; that is not unsaved work.
+      if (failedLoadSig.current !== null && sigOf(normaliseFields(values)) === failedLoadSig.current && !receiptsDirty()) return;
       markUnsaved();
     // Every field, derived from the table — for the same reason the autosave
     // effect above derives its dependencies rather than listing them. A field
@@ -8406,7 +8659,10 @@ document.addEventListener('DOMContentLoaded',function(){
       "error"
     );
   }
-  function useLS(key, init) {
+  // `toStorage`, when given, shapes what is written to localStorage without
+  // changing the value held in state — how receipt images stay in memory (and
+  // IndexedDB) but out of the ~5 MB localStorage budget every field shares.
+  function useLS(key, init, toStorage) {
     const [val, setVal] = useState(() => {
       try {
         const s = localStorage.getItem(key);
@@ -8419,7 +8675,7 @@ document.addEventListener('DOMContentLoaded',function(){
       setVal((prev) => {
         const next = typeof v === "function" ? v(prev) : v;
         try {
-          localStorage.setItem(key, JSON.stringify(next));
+          localStorage.setItem(key, JSON.stringify(toStorage ? toStorage(next) : next));
         } catch (err) {
           notifyStorageWriteFailure(err);
         }
@@ -17943,8 +18199,9 @@ Fill every field of the response schema. Rules:
 
         { sub: "5. Set a budget target and watch it" },
         { steps: [
-          ["Open Envelopes", "Every category you use is listed with what is scheduled against it this month."],
-          ["Set a target from the row menu", "The bar fills as spending approaches it, and turns red once it goes past."],
+          ["Open Envelopes", "Every category you use is listed with what has already gone out of it this month, and \u201c+ $X scheduled\u201d for what is still to come. The bar shows the two: solid for spent, hatched for scheduled."],
+          ["Or take this year\u2019s plan as your targets", "A month with spending and no targets offers \u201cUse the plan as targets\u201d. It fills every month of the year that has none from what that month schedules, leaves months you have set alone, and can be undone. Adding an entry never changes a target by itself."],
+          ["Set a target from the row menu", "The bar fills as spending approaches it, and turns red once the month\u2019s plan goes past it \u2014 \u201cover plan\u201d while some of it is still to come, so you can change course before it happens. \u201cUnplanned\u201d is room in the target nothing is scheduled against yet."],
           ["Turn on rollover for categories that vary", "Anything you didn't spend earlier in the year is added to this month's target \u2014 envelope-style, so a quiet month funds a heavy one instead of being lost."]
         ] },
         { shot: ["bva", "Envelopes. The Total row at the bottom carries the same over-or-under note as each category."] },

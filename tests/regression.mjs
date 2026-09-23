@@ -9,6 +9,7 @@ import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { execSync } from 'child_process';
+import { createHash } from 'crypto';
 
 async function loadPlaywright() {
   const candidates = [process.env.PLAYWRIGHT_LIB, 'playwright'];
@@ -3475,6 +3476,89 @@ await test('envelopes: "Use the plan as targets" fills the empty months only, an
   if ((await read()).sep) throw new Error('undo did not take the new targets back');
   await ctx.close();
 });
+
+// Receipt images used to ride inside cf_overrides in localStorage — every
+// photo, in the one ~5 MB budget every field shares — and every load carried
+// every one of them. Now the load carries a manifest (key + SHA-256), images
+// are fetched once with get_receipt and kept in IndexedDB, and localStorage
+// holds none.
+{
+  const RPNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+  const RSIG = createHash('sha256').update(Buffer.from(RPNG, 'base64')).digest('hex');
+  const OCC = `4-${FIXTURE_YEAR}-8-1`;
+  const KEY = `override:${FIXTURE_YEAR}:${OCC}`;
+  // The household has a September rent override; the server holds its receipt.
+  const withManifest = (overrideJson) => (t) => t
+    .replace('overridesByYr: {},', `overridesByYr: { ${FIXTURE_YEAR}: { '${OCC}': ${overrideJson} } },`)
+    .replace("rpc: (name) => name === 'load_household' ? resolved({ data: payload, receipts: [] }) : resolved(null),",
+      `rpc: (name, args) => { (window.__rpc = window.__rpc || []).push({ name, args: JSON.parse(JSON.stringify(args || null)) });
+         if (name === 'load_household') return resolved({ data: payload, receipts: [{ ownerKey: '${KEY}', mime: 'image/png', sig: '${RSIG}' }] });
+         if (name === 'get_receipt') return resolved({ ownerKey: '${KEY}', mime: 'image/png', sig: '${RSIG}', b64: '${RPNG}' });
+         return resolved(null); },`);
+  const calls = (page, name) => page.evaluate((n) => (window.__rpc || []).filter((c) => c.name === n).length, name);
+
+  await test('receipts: fetched once, kept on the device, never in localStorage', async () => {
+    const { ctx, page } = await ctxPage({ stub: withManifest('{ amount: 165000 }') });
+    await page.clock.setFixedTime(new Date(`${FIXTURE_YEAR}-09-03T12:00:00`));
+    await page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
+    await page.locator('.attach-indicator').first().waitFor(V)
+      .catch(() => { throw new Error('a receipt listed in the manifest never reached the ledger'); });
+    if (await calls(page, 'get_receipt') !== 1) throw new Error('expected one get_receipt, got ' + await calls(page, 'get_receipt'));
+    const load = await page.evaluate(() => (window.__rpc || []).find((c) => c.name === 'load_household'));
+    if (!load || !load.args || load.args.p_receipt_bodies !== false) throw new Error('the load still asks for every image inline: ' + JSON.stringify(load && load.args));
+    await page.waitForTimeout(600);
+    const stored = await page.evaluate(() => localStorage.getItem('cf_overrides') || '');
+    if (/data:image/.test(stored)) throw new Error('a receipt image is in localStorage');
+    // Same device, next launch: the image is already here with the same
+    // fingerprint, so nothing is fetched.
+    await page.reload({ waitUntil: 'load' });
+    await page.locator('.attach-indicator').first().waitFor(V)
+      .catch(() => { throw new Error('the receipt did not survive a reload'); });
+    await page.waitForTimeout(800);
+    if (await calls(page, 'get_receipt') !== 0) throw new Error('a receipt already on the device was fetched again');
+    await ctx.close();
+  });
+
+  await test('receipts: images left in localStorage by the old build move to the device store', async () => {
+    const { ctx, page } = await ctxPage({ stub: withManifest('{ amount: 165000 }') });
+    await page.clock.setFixedTime(new Date(`${FIXTURE_YEAR}-09-03T12:00:00`));
+    // What the previous build left behind: the image inside the stored overrides.
+    await page.addInitScript(`try{ if (!sessionStorage.getItem('seeded')) { sessionStorage.setItem('seeded','1');
+      localStorage.setItem('cf_overrides', JSON.stringify({ ${FIXTURE_YEAR}: { '${OCC}': { amount: 165000, attachment: 'data:image/png;base64,${RPNG}' } } })); } }catch(e){}`);
+    await page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
+    await page.locator('.attach-indicator').first().waitFor(V);
+    await page.waitForTimeout(1200);
+    const stored = await page.evaluate(() => localStorage.getItem('cf_overrides') || '');
+    if (/data:image/.test(stored)) throw new Error('the old build\'s images are still in localStorage');
+    const inIdb = await page.evaluate((k) => new Promise((res) => {
+      const r = indexedDB.open('cf-receipts');
+      r.onsuccess = () => { const g = r.result.transaction('receipts').objectStore('receipts').get(k); g.onsuccess = () => res(!!(g.result && g.result.dataUrl)); g.onerror = () => res(false); };
+      r.onerror = () => res(false);
+    }), KEY);
+    if (!inIdb) throw new Error('the image did not arrive in the device store');
+    // It was already on the device, so the manifest entry is not fetched.
+    if (await calls(page, 'get_receipt') !== 0) throw new Error('a migrated receipt was fetched from the server anyway');
+    await ctx.close();
+  });
+
+  // Removing a receipt has to reach the server as delete_receipt, not only
+  // vanish from this device's state and store. The occurrence already carries
+  // every field the editor writes, so the receipt is the only thing changed.
+  await test('receipts: removing one reaches the server', async () => {
+    const { ctx, page } = await ctxPage({ stub: withManifest("{ desc: 'Rent', amount: 165000, month: 8, day: 1, notes: '' }") });
+    await page.clock.setFixedTime(new Date(`${FIXTURE_YEAR}-09-03T12:00:00`));
+    await page.goto(BASE + '#/flow/list', { waitUntil: 'load' });
+    await page.locator('.attach-indicator').first().waitFor(V);
+    await page.locator('tr.budget-event-tr').filter({ hasText: 'Rent' }).first().click();
+    await page.locator('.modal-card').waitFor(V);
+    await page.locator('.modal-card').getByRole('button', { name: 'Remove', exact: true }).click();
+    await page.locator('.modal-card').getByRole('button', { name: 'Save', exact: true }).click();
+    await page.waitForTimeout(3500);
+    const del = await page.evaluate(() => (window.__rpc || []).filter((c) => c.name === 'delete_receipt').map((c) => c.args.p_owner_key));
+    await ctx.close();
+    if (!del.includes(KEY)) throw new Error('removing the receipt never called delete_receipt for it: ' + JSON.stringify(del));
+  });
+}
 
 // ── Money schema migration (schema v8: dollars -> cents) ────────────────
 // Every other test's fixture payload declares schemaVersion: 999, so it's

@@ -26,6 +26,7 @@ const APP_MODULES = [
   "src/lib/format.js",
   "src/lib/anomaly.js",
   "src/lib/biometric.js",
+  "src/lib/receipt-store.js",
   "src/lib/household-sync.js",
   "src/lib/push.js",
   "src/lib/app-data.js",

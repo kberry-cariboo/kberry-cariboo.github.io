@@ -274,6 +274,12 @@ jobs:
       - name: Check each member's preferences stay their own
         run: psql -v ON_ERROR_STOP=1 -f tests/member-prefs.sql
 
+      # Loads carry a manifest of receipts (key + SHA-256), not every image;
+      # get_receipt fetches one, within the caller's own household only, and
+      # the old zero-argument load still returns images inline for old tabs.
+      - name: Check receipts are listed, fetched one at a time, and kept in their household
+        run: psql -v ON_ERROR_STOP=1 -f tests/receipts.sql
+
       - name: Check every payload field survives a save and a load
         run: CF_TEST_PG=1 node tests/payload-roundtrip.mjs
 

@@ -23,7 +23,7 @@
 const browserGlobals = {
   window: "readonly", document: "readonly", navigator: "readonly",
   location: "readonly", history: "readonly", localStorage: "readonly",
-  sessionStorage: "readonly", fetch: "readonly", URL: "readonly",
+  sessionStorage: "readonly", indexedDB: "readonly", fetch: "readonly", URL: "readonly",
   URLSearchParams: "readonly", Blob: "readonly", File: "readonly",
   FileReader: "readonly", Image: "readonly", CustomEvent: "readonly",
   Event: "readonly", TextEncoder: "readonly", TextDecoder: "readonly",

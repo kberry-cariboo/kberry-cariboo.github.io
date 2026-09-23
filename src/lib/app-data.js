@@ -30,7 +30,10 @@
       "error"
     );
   }
-  function useLS(key, init) {
+  // `toStorage`, when given, shapes what is written to localStorage without
+  // changing the value held in state — how receipt images stay in memory (and
+  // IndexedDB) but out of the ~5 MB localStorage budget every field shares.
+  function useLS(key, init, toStorage) {
     const [val, setVal] = useState(() => {
       try {
         const s = localStorage.getItem(key);
@@ -43,7 +46,7 @@
       setVal((prev) => {
         const next = typeof v === "function" ? v(prev) : v;
         try {
-          localStorage.setItem(key, JSON.stringify(next));
+          localStorage.setItem(key, JSON.stringify(toStorage ? toStorage(next) : next));
         } catch (err) {
           notifyStorageWriteFailure(err);
         }
