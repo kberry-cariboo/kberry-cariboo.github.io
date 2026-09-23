@@ -1,0 +1,1130 @@
+import { useContext, useEffect, useLayoutEffect, useRef, useState } from "../lib/runtime.js";
+import { depositShiftNote, isInflowEvent, signedAmount } from "../lib/dates.js";
+import { fmt, fmtDate } from "../lib/format.js";
+import { CAT_PALETTE, CategoriesContext, DEFAULT_ALERT_THRESHOLD, MONTHS, chipDot, haptic, prefersReducedMotion, railTone, useIsCoarsePointer, useRovingTabs, varianceTitle } from "../lib/app-data.js";
+import { ContextMenu } from "./forms.js";
+import { Icon } from "./misc-ui.js";
+  export function getCatColor(category, categories, categoryColors = {}) {
+    if (categoryColors && categoryColors[category]) return categoryColors[category];
+    const sorted = [...categories].sort((a, b) => a.localeCompare(b));
+    const idx = sorted.indexOf(category);
+    return CAT_PALETTE[(idx < 0 ? 0 : idx) % CAT_PALETTE.length];
+  }
+  export interface CatChipProps {
+    category: any;
+    categories?: string[];
+    categoryColors?: any;
+    style?: Record<string, any>;
+    className?: string;
+  }
+  export const CatChip = ({ category, categories, categoryColors, style = {}, className = "" }: CatChipProps) => {
+    const ctxCats = useContext(CategoriesContext);
+    const cats = categories || ctxCats.categories;
+    const catColors = categoryColors || ctxCats.categoryColors;
+    const color = getCatColor(category, cats, catColors);
+    // A dot, not a filled pill. Category is an attribute of a row, not a
+    // verdict on it, and a list of twenty filled chips reads as confetti —
+    // which is exactly what drowns out the two or three amounts that do
+    // carry a warning. The hue still identifies the category; it just stops
+    // competing with the state colours for attention.
+    return <span className={("cat-chip " + className).trim()} style={{ ...style }}>
+      <i className="cat-dot" style={{ background: chipDot(color, ctxCats.chipSurface) }} aria-hidden="true" />
+      {category}
+    </span>;
+  };
+  export interface LedgerRowProps {
+    ev: any;
+    alertThreshold?: number;
+    paid?: boolean;
+    selected?: boolean;
+    past?: boolean;
+    dateLabel?: any;
+    onTogglePaid: (...args: any[]) => any;
+    onToggleSelect?: any;
+    onOpen?: any;
+    onMenu?: any;
+    onSwipeLeft?: any;
+    showBalance?: boolean;
+    categories: string[];
+    categoryColors: any;
+  }
+  // ── One ledger row ──────────────────────────────────────────────────────
+  // A dated occurrence looks and behaves the same wherever you meet it: the
+  // month ledger, a calendar day, the forecast, and this week on Today. Those
+  // four grew their own near-identical copies, and the copies drifted — the
+  // forecast's still painted its left stripe green for "paid" long after that
+  // stripe became the balance rail everywhere else, so the same row said two
+  // different things depending on which screen you were on.
+  //
+  // The tick does double duty where the caller asks it to: on the budget grid
+  // an unpaid row selects for bulk actions and a paid one un-pays, which is
+  // what onToggleSelect expresses. Without it the tick just marks paid.
+  export const LedgerRow = ({
+    ev, alertThreshold = DEFAULT_ALERT_THRESHOLD, paid = false, selected = false, past = false,
+    dateLabel = null, onTogglePaid, onToggleSelect = null, onOpen = null, onMenu = null, onSwipeLeft = null,
+    showBalance = true, categories, categoryColors
+  }: LedgerRowProps) => {
+    const signed = signedAmount(ev);
+    const dim = paid ? "var(--textLt)" : null;
+    // The same reason the desktop ledger row names itself by date: a recurring
+    // entry is several rows in one month and nine of them across a 90-day
+    // forecast, so "Fuel" identifies none of them. dateLabel is what the row
+    // already prints to tell them apart on screen.
+    const rowName = dateLabel ? `${ev.desc}, ${dateLabel}` : ev.desc;
+    const coarse = useIsCoarsePointer();
+    const rowRef = useRef(null);
+    const drag = useRef(null);
+    // A finished swipe still produces a click. Without this the gesture that
+    // marks a row paid also opens its edit sheet on top of the toast.
+    const swallowClick = useRef(false);
+    // Marking a bill paid and skipping a date are the two things people
+    // actually do to a ledger row, and both were buried behind a kebab. On
+    // touch they are the gesture: right pays, left skips. The month-change
+    // swipe on the surrounding grid excludes .ledger-row-wrap, so a gesture
+    // that starts on a row is the row's and never the grid's.
+    const swipeable = coarse && !!onTogglePaid;
+    const setX = (px) => { if (rowRef.current) rowRef.current.style.transform = px ? "translateX(" + px + "px)" : ""; };
+    const onDown = (e) => {
+      if (!swipeable || e.pointerType === "mouse") return;
+      if (e.target.closest("button,a,input,select,textarea")) return;
+      drag.current = { x0: e.clientX, y0: e.clientY, dx: 0, active: false, id: e.pointerId };
+    };
+    const onMove = (e) => {
+      const d = drag.current;
+      if (!d) return;
+      const dx = e.clientX - d.x0, dy = e.clientY - d.y0;
+      if (!d.active) {
+        if (Math.abs(dx) < 10 || Math.abs(dx) <= Math.abs(dy)) return;
+        d.active = true;
+        if (rowRef.current) {
+          rowRef.current.classList.add("is-dragging");
+          // Capture, or a drag that runs off the row's own box stops sending
+          // move and up and the row is left mid-swipe.
+          // Not every browser allows capture on a synthetic pointer; the
+          // gesture still works without it, it is just less forgiving.
+          try { rowRef.current.setPointerCapture(d.id); } catch (_) { d.uncaptured = true; }
+        }
+      }
+      // Left only where there is something to skip to.
+      d.dx = Math.max(onSwipeLeft ? -120 : 0, Math.min(120, dx));
+      setX(d.dx);
+    };
+    const onUp = () => {
+      const d = drag.current;
+      drag.current = null;
+      if (!d || !d.active) return;
+      swallowClick.current = true;
+      const el = rowRef.current;
+      if (el) {
+        if (!d.uncaptured) { try { el.releasePointerCapture(d.id); } catch (_) { d.uncaptured = true; } }
+        el.classList.remove("is-dragging");
+        el.classList.add("is-settling");
+        setTimeout(() => el && el.classList.remove("is-settling"), 240);
+      }
+      setX(0);
+      if (d.dx > 64) { haptic(); onTogglePaid(ev.id); }
+      else if (d.dx < -64 && onSwipeLeft) { haptic(); onSwipeLeft(ev); }
+    };
+    const row = <div
+      className="budget-card-row"
+      ref={rowRef}
+      onClick={onOpen ? () => {
+        if (swallowClick.current) { swallowClick.current = false; return; }
+        if (!drag.current) onOpen(ev);
+      } : void 0}
+      onContextMenu={onMenu ? (e) => { e.preventDefault(); onMenu(e, ev); } : void 0}
+      onPointerDown={swipeable ? onDown : void 0}
+      onPointerMove={swipeable ? onMove : void 0}
+      onPointerUp={swipeable ? onUp : void 0}
+      onPointerCancel={swipeable ? onUp : void 0}
+      style={{
+        background: selected ? "var(--stripe)" : paid ? "var(--doneBg)" : past ? "var(--pastBg)" : "var(--bgCard)",
+        boxShadow: "inset 3px 0 0 0 " + railTone(ev.balance, alertThreshold),
+        cursor: onOpen ? "pointer" : "default",
+        touchAction: swipeable ? "pan-y" : void 0
+      }}
+    >
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          haptic();
+          if (onToggleSelect && !paid) onToggleSelect(ev.id);
+          else onTogglePaid(ev.id);
+        }}
+        role="checkbox"
+        aria-checked={paid || selected}
+        aria-label={(paid ? "Mark unpaid: " : selected ? "Deselect: " : "Mark paid: ") + rowName}
+        title={paid ? "Paid — tap to mark unpaid" : onToggleSelect ? "Select to mark paid" : "Mark paid"}
+        className="cf-checkbtn budget-card-checkbtn"
+        style={{
+          border: paid || selected ? "none" : "1.5px solid var(--border)",
+          background: paid ? "var(--greenDk)" : selected ? "var(--primary)" : "transparent"
+        }}
+      >
+        {paid || selected ? "\u2713" : ""}
+      </button>
+      <div className="flex-1 min-w-0">
+        <div className="card-top-row">
+          <span
+            className="tx card-desc-span"
+            title={ev.desc}
+            style={{ color: dim || "var(--text)", textDecoration: paid ? "line-through" : "none" }}
+          >
+            {ev.desc}
+            {ev.attachment && <span className="attach-indicator" title="Has receipt">
+              <Icon name="paperclip" size={11} />
+            </span>}
+          </span>
+          {ev.category && <CatChip
+            category={ev.category}
+            categories={categories}
+            categoryColors={categoryColors}
+            style={{ flexShrink: 0 }}
+          />}
+        </div>
+        <div className="card-bottom-row" style={{ justifyContent: dateLabel ? "space-between" : "flex-end" }}>
+          {dateLabel && <span className="txl">
+            {dateLabel}
+            {// Direct deposit does not arrive on a weekend or a statutory
+            // holiday. The marker travelled with the budget grid's own row and
+            // so was missing from the forecast and from this week on Today —
+            // the same payday, marked on one screen and not the next.
+            ev.depositShifted && <HelpTip
+              icon="↤"
+              variant="mark"
+              label="Deposit date"
+              text={depositShiftNote(ev)}
+            />
+}
+          </span>}
+          <span className="amounts-row-baseline">
+            <span
+              className="mno card-signed-amt"
+              title={varianceTitle(ev)}
+              style={{
+                textDecoration: paid ? "line-through" : "none",
+                color: dim || (ev.type === "transfer" ? "var(--accent)" : signed >= 0 ? "var(--greenDk)" : "var(--text)")
+              }}
+            >
+              {fmt(signed, true)}
+            </span>
+            {showBalance && <span
+              className="mno card-balance-amt"
+              style={{
+                textDecoration: paid ? "line-through" : "none",
+                color: dim || (ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amberInk)" : "var(--text)")
+              }}
+            >
+              {fmt(ev.balance)}
+            </span>}
+          </span>
+        </div>
+      </div>
+      {onMenu && <button
+        onClick={(e) => { e.stopPropagation(); onMenu(e, ev); }}
+        aria-label={rowName + " actions"}
+        title={ev.desc + " actions"}
+        className="cf-checkbtn row-menu-btn budget-card-menu-btn"
+      >
+        ⋮
+      </button>}
+    </div>;
+    if (!swipeable) return row;
+    // The panes sit behind the row and are revealed by it moving, so they are
+    // decoration for a gesture rather than controls of their own — the tick
+    // and the row menu remain the accessible path to both actions.
+    return <div className="ledger-row-wrap">
+      <div className="ledger-row-actions" aria-hidden="true">
+        <span className="ledger-row-action ledger-row-action--pay">{paid ? "Unpay" : "Paid"}</span>
+        {onSwipeLeft && <span className="ledger-row-action ledger-row-action--skip">Skip</span>}
+      </div>
+      {row}
+    </div>;
+  };
+  export interface SparklineProps {
+    data: any;
+    color?: string;
+    height?: number;
+    width?: number;
+    responsive?: boolean;
+    area?: boolean;
+  }
+  // Sparklines are context, not verdicts: neutral ink by default. First-vs-last
+  // trend coloring was misleading (a red line beside a green income KPI, green
+  // for rising expenses), so it's gone — pass `color` explicitly if needed.
+  // `responsive` draws the same line into whatever width its container gives
+  // it, for the places where a sparkline is a full-width strip rather than a
+  // thumbnail beside a figure. The end dot is dropped there — a circle in a
+  // box scaled on one axis is an ellipse — and the stroke is pinned so the
+  // line keeps its weight however far it stretches.
+  export const Sparkline = ({ data, color = "var(--textMid)", height = 32, width = 80, responsive = false, area = false }: SparklineProps) => {
+    if (!data || data.length < 2) return null;
+    const min = Math.min(...data);
+    const max = Math.max(...data);
+    const range = max - min || 1;
+    // 3px horizontal inset keeps the end dot (r=2.5) inside the svg box —
+    // it used to bleed past the card edge on narrow phone tiles.
+    const pts = data.map((v, i) => [
+      3 + i / (data.length - 1) * (width - 6),
+      height - (v - min) / range * (height - 4) - 2
+    ]);
+    const path = pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + "," + p[1].toFixed(1)).join(" ");
+    const lastPt = pts[pts.length - 1];
+    const svgProps = responsive
+      ? { viewBox: `0 0 ${width} ${height}`, preserveAspectRatio: "none", height,
+          className: "sparkline-svg sparkline-svg--wide" }
+      : { width, height, className: "sparkline-svg" };
+    const areaPath = area ? path + ` L${pts[pts.length - 1][0].toFixed(1)},${height} L${pts[0][0].toFixed(1)},${height} Z` : null;
+    return <svg {...svgProps} role="presentation" aria-hidden="true" focusable="false">
+      {areaPath && <path d={areaPath} fill={color} opacity={0.14} stroke="none" />}
+      <path
+        d={path}
+        fill="none"
+        stroke={color}
+        strokeWidth={1.5}
+        vectorEffect={responsive ? "non-scaling-stroke" : void 0}
+      />
+      {!responsive && <circle cx={lastPt[0]} cy={lastPt[1]} r={2.5} fill={color} />}
+    </svg>;
+  };
+  // Shared row-pagination for grids that used to be internally-scrolling
+  // (Monthly, Forecast, Entries). `paginateRows` just slices; callers own
+  // deriving any grouped/sectioned subsets (e.g. period headers) from the
+  // returned `rows`. `page` is clamped into range here so callers never need
+  // a separate "reset page on filter change" effect — a page that no longer
+  // exists just clamps back into range on the next render.
+  export const PAGE_SIZE_OPTIONS = [10, 20, 50, "all"];
+  export function paginateRows(rows, page, pageSize) {
+    const total = rows.length;
+    const totalPages = pageSize === "all" ? 1 : Math.max(1, Math.ceil(total / pageSize));
+    const safePage = Math.min(Math.max(0, page), totalPages - 1);
+    const start = pageSize === "all" ? 0 : safePage * pageSize;
+    const end = pageSize === "all" ? total : Math.min(total, start + pageSize);
+    return { rows: rows.slice(start, end), total, totalPages, safePage, start, end, hasMore: end < total };
+  }
+  // Mobile counterpart of paginateRows: instead of a single windowed page,
+  // shows everything loaded so far (page 1..loadedPages worth), so scrolling
+  // to the bottom can just load the next batch on top of what's visible
+  // rather than replacing it.
+  export function cumulativeRows(rows, loadedPages, pageSize) {
+    const total = rows.length;
+    const totalPages = pageSize === "all" ? 1 : Math.max(1, Math.ceil(total / pageSize));
+    const safeLoaded = Math.min(Math.max(1, loadedPages), totalPages);
+    const end = pageSize === "all" ? total : Math.min(total, safeLoaded * pageSize);
+    return { rows: rows.slice(0, end), total, totalPages, safePage: safeLoaded - 1, start: 0, end, hasMore: end < total };
+  }
+  // Fires onLoadMore (repeatedly, harmlessly — callers clamp) whenever
+  // scrolling comes within reach of the bottom of the whole page. Touch
+  // devices scroll `.app-scroll` internally rather than the window/body (see
+  // its CSS: mobile keeps body fixed so the browser chrome/URL bar never
+  // animates the bottom nav), so this checks both — whichever one is
+  // actually the scrolling context reports real overflow, the other reports
+  // none and is a harmless no-op.
+  export function useInfiniteScroll(active, onLoadMore) {
+    const cbRef = useRef(onLoadMore);
+    cbRef.current = onLoadMore;
+    useEffect(() => {
+      if (!active) return;
+      const shell = document.querySelector(".app-scroll");
+      const check = () => {
+        const winRemaining = document.documentElement.scrollHeight - window.innerHeight - window.scrollY;
+        const shellRemaining = shell ? shell.scrollHeight - shell.clientHeight - shell.scrollTop : Infinity;
+        if (Math.min(winRemaining, shellRemaining) < 400) cbRef.current();
+      };
+      window.addEventListener("scroll", check, { passive: true });
+      if (shell) shell.addEventListener("scroll", check, { passive: true });
+      check();
+      return () => {
+        window.removeEventListener("scroll", check);
+        if (shell) shell.removeEventListener("scroll", check);
+      };
+    }, [active]);
+  }
+  export interface GridPaginationProps {
+    pageInfo: any;
+    setPage?: (...args: any[]) => any;
+    pageSize: any;
+    setPageSize: (...args: any[]) => any;
+    label?: string;
+    isMobile?: boolean;
+  }
+  export const GridPagination = ({ pageInfo, setPage, pageSize, setPageSize, label = "rows", isMobile = false }: GridPaginationProps) => {
+    const { total, totalPages, safePage, start, end } = pageInfo;
+    if (total === 0) return null;
+    return <div
+      className={"grid-pagination" + (isMobile ? " grid-pagination--mobile" : "")}
+      data-noprint={true}
+    >
+      <div className="grid-pagination-info">{`${start + 1}–${end} of ${total} ${label}`}</div>
+      <div className="grid-pagination-controls">
+        <label className="grid-pagination-size">
+          Show
+          <select
+            value={pageSize}
+            aria-label="Rows per page"
+            onChange={(e) => {
+          const v = e.target.value === "all" ? "all" : parseInt(e.target.value, 10);
+          setPageSize(v);
+        }}
+          >
+            {PAGE_SIZE_OPTIONS.map((v) => <option key={v} value={v}>{v === "all" ? "All" : v}</option>)}
+          </select>
+        </label>
+        {!isMobile && totalPages > 1 && <>
+          <button
+            className="grid-pagination-nav"
+            onClick={() => setPage((p) => Math.max(0, p - 1))}
+            disabled={safePage === 0}
+            aria-label="Previous page"
+          >
+            ‹
+          </button>
+          <span className="grid-pagination-page">{`Page ${safePage + 1} of ${totalPages}`}</span>
+          <button
+            className="grid-pagination-nav"
+            onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+            disabled={safePage >= totalPages - 1}
+            aria-label="Next page"
+          >
+            ›
+          </button>
+        </>}
+      </div>
+    </div>;
+  };
+  export interface TemplatePickerProps {
+    templates?: any[];
+    onSelect: (...args: any[]) => any;
+  }
+  export function TemplatePicker({ templates = [], onSelect }: TemplatePickerProps) {
+    const [open, setOpen] = useState(false);
+    if (!templates.length) return null;
+    return <div className="relative inline-block">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-haspopup="menu"
+        className="cf-btn cf-btn--secondary template-picker-btn"
+      >
+        <Icon name="clipboard" size={13} />
+        {"Templates "}
+        {open ? "\u25B2" : "\u25BC"}
+      </button>
+      {open && <div className="cf-popover">
+        {templates.map((t, i) => <button
+          // Templates are unique by description (saving one replaces its
+          // namesake), so that is the stable key.
+          key={t.desc || i}
+          onClick={() => {
+          onSelect(t);
+          setOpen(false);
+        }}
+          className="cf-menu-item cf-menu-item--compact template-item"
+        >
+          <span className="fw-600">{t.desc}</span>
+          <span className="template-item-amount">{isInflowEvent(t) ? "+" : "-"}{fmt(t.amount)}</span>
+        </button>)}
+      </div>}
+    </div>;
+  }
+  export interface SheetHandleProps {
+    onDismiss: (...args: any[]) => any;
+  }
+  // Drag handle for the mobile bottom sheets, and the swipe-down-to-dismiss
+  // gesture that makes it honest. The touch context menu has drawn a handle
+  // for a while, but it was an inert <div> — an affordance promising a gesture
+  // the app didn't implement, on sheets that also don't close on a backdrop
+  // tap (deliberately: a slightly-off tap shouldn't discard a half-filled
+  // form). Swiping the handle is the mis-tap-proof way to give that gesture
+  // back, so every sheet now has the same one.
+  //
+  // Pointer events, not touch events: they cover pen and mouse for free, and
+  // setPointerCapture keeps the drag alive if the finger leaves the handle.
+  // The card follows the finger so the gesture reads as direct manipulation,
+  // and snaps back below the dismiss threshold.
+  export const SheetHandle = ({ onDismiss }: SheetHandleProps) => {
+    const ref = useRef(null);
+    const drag = useRef(null);
+    // Every sheet trapped focus correctly but none of them took it, so a sheet
+    // opened with the reader still standing outside it — a screen reader was
+    // never told the dialog appeared. The card itself takes focus rather than
+    // its first field: focusing an input opens the phone keyboard over the
+    // sheet you have just been shown, which is its own kind of rude.
+    useEffect(() => {
+      const card = ref.current && ref.current.closest && ref.current.closest(".modal-card");
+      if (!card) return;
+      const prev = document.activeElement;
+      if (card.contains(prev)) return;
+      if (!card.hasAttribute("tabindex")) card.setAttribute("tabindex", "-1");
+      try {
+        card.focus({ preventScroll: true });
+      } catch (e) {
+        card.focus();
+      }
+    }, []);
+    if (!onDismiss) return null;
+    const cardOf = (el) => el && el.closest && el.closest(".modal-card");
+    const move = (card, dy) => {
+      if (!card) return;
+      card.style.transition = "none";
+      card.style.transform = dy > 0 ? `translateY(${dy}px)` : "";
+    };
+    const release = (card, dismiss?) => {
+      if (!card) return;
+      card.style.transition = "transform 0.18s ease-out";
+      card.style.transform = "";
+    };
+    return <div
+      ref={ref}
+      className="sheet-handle"
+      aria-hidden="true"
+      onPointerDown={(e) => {
+          drag.current = { y: e.clientY, card: cardOf(e.currentTarget) };
+          try {
+            e.currentTarget.setPointerCapture(e.pointerId);
+          } catch (err) {
+            // Capture is an enhancement; the drag still tracks without it.
+          }
+        }}
+      onPointerMove={(e) => {
+          if (!drag.current) return;
+          move(drag.current.card, e.clientY - drag.current.y);
+        }}
+      onPointerUp={(e) => {
+          if (!drag.current) return;
+          const dy = e.clientY - drag.current.y;
+          const card = drag.current.card;
+          drag.current = null;
+          release(card);
+          // ~90px, or a quarter of the sheet, whichever is smaller — a short
+          // sheet shouldn't need a longer swipe than a tall one.
+          const threshold = card ? Math.min(90, card.offsetHeight * 0.25) : 90;
+          if (dy > threshold) {
+            haptic();
+            onDismiss();
+          }
+        }}
+      onPointerCancel={() => {
+          if (!drag.current) return;
+          release(drag.current.card);
+          drag.current = null;
+        }}
+    >
+      <div className="sheet-handle-bar" />
+    </div>;
+  };
+  export interface CardProps {
+    children: React.ReactNode;
+    style?: Record<string, any>;
+    className?: string;
+    id?: any;
+  }
+  export const Card = ({ children, style = {}, className = "", id }: CardProps) => <div
+    id={id}
+    className={`cf-card ${className}`.trim()}
+    style={style}
+  >
+    {children}
+  </div>;
+  export interface SectionTitleProps {
+    children: React.ReactNode;
+    action?: any;
+    className?: any;
+    help?: any;
+  }
+  // className replaces the default bottom margin (e.g. "mb-0" for flush headers).
+  // `help` puts a HelpTip beside the heading — the section's explanatory
+  // paragraph without the paragraph. (Defined below this line but hoisted, as
+  // everything in this bundle's shared scope is.)
+  export const SectionTitle = ({ children, action, className, help }: SectionTitleProps) => <div
+    className={"cf-row-between " + (className || "mb-12")}
+  >
+    <div className="section-title-wrap">
+      <h2 className="cf-section-title-text">{children}</h2>
+      {help && <HelpTip label={typeof children === "string" ? children : ""} text={help} />}
+    </div>
+    {action}
+  </div>;
+  export interface EmptyStateProps {
+    icon: any;
+    message: any;
+    actionLabel: any;
+    onAction: (...args: any[]) => any;
+  }
+  export const EmptyState = ({ icon, message, actionLabel, onAction }: EmptyStateProps) => <>
+    <div className="empty-state-icon">{icon}</div>
+    <div className="mb-14">{message}</div>
+    {actionLabel && <button onClick={onAction} className="cf-btn cf-btn--primary cf-btn--action">
+      {actionLabel}
+    </button>}
+  </>;
+  export interface KpiCardProps {
+    label: any;
+    value: any;
+    color?: any;
+    sub?: any;
+  }
+  export const KpiCard = ({ label, value, color, sub }: KpiCardProps) => <div className="kpi-card">
+    <div className="kpi-label">{label}</div>
+    <div className="kpi-value" style={color ? { color } : void 0}>{value}</div>
+    {sub && <div className="kpi-sub">{sub}</div>}
+  </div>;
+  export interface MobileYearBadgeProps {
+    year: any;
+    years?: any[];
+    inHeader?: boolean;
+    onSelect?: (...args: any[]) => any;
+  }
+  // Mobile-only "which year am I on" indicator — desktop already shows the
+  // year pills in the header, which are hidden on mobile to save space.
+  // Tapping it opens the same year switcher the header pills provide.
+  // `inHeader` puts it in the navy header bar beside the logo, which is where
+  // it lives on mobile: below 768px the year pills and the search are both
+  // hidden, so the header had ~195px of empty navy while this cost a whole
+  // row of content underneath it.
+  export const MobileYearBadge = ({ year, years = [], inHeader = false, onSelect = () => {
+  } }: MobileYearBadgeProps) => {
+    const [ctx, setCtx] = useState(null);
+    const cls = "mobile-year-badge" + (inHeader ? " mobile-year-badge--header" : "");
+    if (years.length < 2) {
+      return <div className={cls}><Icon name="calendar" size={12} />{year}</div>;
+    }
+    return <>
+      <button
+        className={cls + " mobile-year-badge--btn"}
+        aria-label="Switch year"
+        aria-haspopup="menu"
+        onClick={(e) => {
+          const r = e.currentTarget.getBoundingClientRect();
+          setCtx({ x: r.left, y: r.bottom + 4 });
+        }}
+      >
+        <Icon name="calendar" size={12} />
+        {year}
+        <span className="mobile-year-badge-caret">▾</span>
+      </button>
+      {ctx && <ContextMenu
+        x={ctx.x}
+        y={ctx.y}
+        onClose={() => setCtx(null)}
+        items={years.map((y) => ({ icon: y === year ? "✓" : "", label: String(y), action: () => onSelect(y) }))}
+      />}
+    </>;
+  };
+  export interface MonthPickerProps {
+    value: any;
+    onChange: (...args: any[]) => any;
+    noMargin?: boolean;
+    matchingMonths?: any;
+    onAddNextYear?: any;
+    nextYear?: any;
+    monthCloses?: any;
+    alertThreshold?: number;
+  }
+  export const MonthPicker = ({ value, onChange, noMargin = false, matchingMonths = null, onAddNextYear = null, nextYear = null, monthCloses = null, alertThreshold = DEFAULT_ALERT_THRESHOLD }: MonthPickerProps) => {
+    const stripRef = useRef(null);
+    const roving = useRovingTabs(".month-pill");
+    // Edge-scroll fade: on mobile the strip scrolls horizontally with no
+    // visible scrollbar, so nothing hints that more months sit off-screen.
+    // Recomputed on scroll and on resize/value change (month pills reflow at
+    // some widths).
+    const [fade, setFade] = useState({ left: false, right: false });
+    const updateFade = () => {
+      const el = stripRef.current;
+      if (!el) return;
+      setFade({
+        left: el.scrollLeft > 4,
+        right: el.scrollLeft + el.clientWidth < el.scrollWidth - 4
+      });
+    };
+    useEffect(() => {
+      const el = stripRef.current;
+      if (!el || el.scrollWidth <= el.clientWidth) return;
+      const btn = el.querySelector('[data-active="true"]');
+      if (btn && btn.scrollIntoView) btn.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", inline: "center", block: "nearest" });
+    }, [value]);
+    useEffect(() => {
+      const el = stripRef.current;
+      if (!el) return;
+      updateFade();
+      el.addEventListener("scroll", updateFade, { passive: true });
+      window.addEventListener("resize", updateFade);
+      return () => {
+        el.removeEventListener("scroll", updateFade);
+        window.removeEventListener("resize", updateFade);
+      };
+    }, [value, matchingMonths]);
+    const closeOf = (i) => monthCloses && monthCloses.length === 12 ? monthCloses[i] : null;
+    const needsEye = (i) => { const c = closeOf(i); return c != null && c < alertThreshold; };
+    return <div className={"relative" + (noMargin ? "" : " mb-20")}>
+      {fade.left && <div className="month-picker-fade month-picker-fade--left" aria-hidden="true" />}
+      {fade.right && <div className="month-picker-fade month-picker-fade--right" aria-hidden="true" />}
+      <div
+        ref={stripRef}
+        className="month-picker"
+        role="group"
+        aria-label="Month"
+        onKeyDown={roving.onKeyDown}
+      >
+        <button
+          className="month-nav-arrow"
+          onClick={() => onChange(Math.max(0, value - 1))}
+          disabled={value === 0}
+          title="Previous month (← key)"
+          aria-label="Previous month"
+        >
+          ‹
+        </button>
+        <button
+          className="month-nav-arrow"
+          onClick={() => onChange(Math.min(11, value + 1))}
+          disabled={value === 11}
+          title="Next month (→ key)"
+          aria-label="Next month"
+        >
+          ›
+        </button>
+        {(() => {
+      const cur = (new Date()).getMonth();
+      return value !== cur && <button
+        className="month-today-pill cf-pill--dashed"
+        onClick={() => onChange(cur)}
+        title="Jump to current month"
+        aria-label="Jump to current month"
+      >
+        {"\u25CF "}
+        {MONTHS[cur]}
+      </button>;
+    })()}
+        {MONTHS.map((m, i) => {
+      const isActive = value === i;
+      const hasMatch = matchingMonths && matchingMonths.size > 0 && matchingMonths.has(i);
+      return <button
+        key={m}
+        onClick={() => onChange(i)}
+        className="cf-pill month-pill"
+        aria-pressed={isActive}
+        tabIndex={isActive ? 0 : -1}
+        data-active={isActive ? "true" : "false"}
+        data-match={hasMatch ? "true" : "false"}
+        title={closeOf(i) == null ? void 0 : "Closing balance " + fmt(closeOf(i))}
+        style={needsEye(i) && !isActive ? { boxShadow: "inset 0 -3px 0 0 " + railTone(closeOf(i), alertThreshold) } : void 0}
+      >
+        {m}
+        {hasMatch && !isActive && <span className="month-pill-dot" />}
+      </button>;
+    })}
+        {onAddNextYear && nextYear != null && value >= 10 && <button
+          className="month-nextyear-pill cf-pill--dashed"
+          onClick={onAddNextYear}
+          title={`Add budget year ${nextYear} — recurring entries carry forward automatically`}
+        >
+          {"+ Add "}
+          {nextYear}
+        </button>}
+      </div>
+    </div>;
+  };
+  export interface ChartToggleProps {
+    options: any;
+    value: any;
+    onChange: (...args: any[]) => any;
+    label: any;
+  }
+  // `label` names the group, not the buttons. A dashboard puts five of these
+  // on one page and every one of them offers "Line" and "Bar", so on their own
+  // the buttons are five identical controls with nothing to tell them apart —
+  // a screen reader hears "Line, button" over and over with no idea which
+  // chart it would change. Naming the group is what a role="group" is for: it
+  // is announced on entry, and it leaves the button names alone.
+  export const ChartToggle = ({ options, value, onChange, label }: ChartToggleProps) => <div
+    role="group"
+    aria-label={label ? label + " view" : void 0}
+    className="chart-toggle-group"
+  >
+    {options.map((o) => <button
+      key={o.id}
+      onClick={() => onChange(o.id)}
+      className="chart-toggle-btn"
+      title={o.label}
+      aria-label={o.label}
+      aria-pressed={value === o.id}
+    >
+      {o.icon || o.label}
+    </button>)}
+  </div>;
+  export interface PillToggleProps {
+    options: any;
+    value: any;
+    onChange: (...args: any[]) => any;
+    size?: any;
+  }
+  // Base look lives in .cf-pill; explicitly-passed size props remain inline
+  // overrides for the compact dashboard variants.
+  // size="sm" applies the .cf-pill--sm modifier — used where the toggle docks
+  // into a tight card header (YoY metric, shared-view) instead of one-off
+  // fontSize/padding/borderRadius overrides per call site.
+  export const PillToggle = ({ options, value, onChange, size }: PillToggleProps) => {
+    return <div role="group" className="cf-row cf-gap-6 cf-wrap">
+      {options.map((o) => <button
+        key={o.id}
+        onClick={() => onChange(o.id)}
+        className={"cf-pill" + (size === "sm" ? " cf-pill--sm" : "")}
+        aria-pressed={value === o.id}
+      >
+        {o.label}
+      </button>)}
+    </div>;
+  };
+  export interface ChartTipProps {
+    active?: any;
+    payload?: any;
+    label?: any;
+  }
+  export const ChartTip = ({ active, payload, label }: ChartTipProps) => {
+    if (!active || !payload?.length) return null;
+    const total = payload.reduce((s, p) => s + Math.abs(p.value || 0), 0);
+    return <div className="chart-tip">
+      {label && <div className="chart-tip-label">{label}</div>}
+      {payload.map((p) => {
+      const isSurplus = p.name === "Surplus" || p.dataKey === "surplus";
+      const lbl = isSurplus && p.value < 0 ? "Shortfall" : isSurplus ? "Surplus" : p.name;
+      const pct = total > 0 && payload.length > 1 ? (100 * Math.abs(p.value) / total).toFixed(1) : null;
+      const val = typeof p.value === "number" ? p.value : 0;
+      return <div key={p.dataKey || p.name} className="chart-tip-row">
+        <span className="chart-tip-name">{lbl}</span>
+        <span
+          className="cf-text-mono-13 chart-tip-value"
+          style={{
+        color: p.color || "#fff"
+      }}
+        >
+          {fmt(val)}
+          {pct && <span className="chart-tip-pct">{" "}{pct}%</span>}
+        </span>
+      </div>;
+    })}
+    </div>;
+  };
+  export interface FieldErrorProps {
+    msg: any;
+  }
+  export const FieldError = ({ msg }: FieldErrorProps) => msg ? <div className="field-error-text">{msg}</div> : null;
+  export interface ConfirmDialogProps {
+    title: any;
+    message: any;
+    onConfirm: (...args: any[]) => any;
+    onCancel: (...args: any[]) => any;
+    confirmLabel?: string;
+    confirmVariant?: string;
+  }
+  export function ConfirmDialog({ title, message, onConfirm, onCancel, confirmLabel = "Delete", confirmVariant = "danger" }: ConfirmDialogProps) {
+    useEffect(() => {
+      const h = (e) => {
+        if (e.key === "Escape") onCancel();
+      };
+      window.addEventListener("keydown", h);
+      return () => window.removeEventListener("keydown", h);
+    }, [onCancel]);
+    // Backdrop clicks no longer dismiss — only Cancel/the primary action do
+    // (matching every other overlay) — so a slightly-off click doesn't lose
+    // the user's place. Initial focus lands on Cancel — Enter must not
+    // trigger the primary action by default. confirmVariant "danger" (the
+    // default) is for destructive actions (delete/reset); "primary" is for
+    // a plain yes/no confirmation of a safe, additive action, where a red
+    // button would misrepresent risk.
+    return <div
+      className="modal-overlay"
+      role={confirmVariant === "danger" ? "alertdialog" : "dialog"}
+      aria-modal="true"
+      aria-label={title}
+    >
+      <div className="modal-card confirm-dialog-card" onClick={(e) => e.stopPropagation()}>
+        <SheetHandle onDismiss={onCancel} />
+        <div className="confirm-dialog-title">{title}</div>
+        <div className="confirm-dialog-message">{message}</div>
+        <div className="cf-row cf-gap-10 justify-end">
+          <button onClick={onCancel} className="cf-btn cf-btn--secondary" autoFocus={true}>Cancel</button>
+          <button
+            onClick={() => {
+      haptic();
+      onConfirm();
+    }}
+            className={"cf-btn " + (confirmVariant === "danger" ? "cf-btn--danger-solid" : "cf-btn--primary")}
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>;
+  }
+  // Field-level help: a small "?" beside a label that shows its explanation on
+  // hover, on keyboard focus, and on tap. It replaces the sentences that used
+  // to sit permanently under the fields they described — every one of those
+  // was read once and then became furniture, pushing the actual controls apart
+  // and making a six-field form read like a page of prose. The words are the
+  // same, they're just one gesture away instead of always on screen.
+  //
+  // Not a `title` attribute: those never open on keyboard focus, are
+  // unreachable on touch, and can't be styled. This is a real tooltip —
+  // role="tooltip", wired to the button through aria-describedby, so it is
+  // announced with the control it belongs to.
+  //
+  // The bubble is always in the DOM and hidden with CSS rather than
+  // conditionally rendered: aria-describedby has to resolve to a live element
+  // for screen readers to read it, and they read a referenced element whether
+  // or not it is visually shown.
+  //
+  // `icon` swaps the "?" for another glyph, which is how the weekend-deposit
+  // marker (↤) works: it is the same object — an icon that explains itself on
+  // hover, focus or tap — and a row indicator with no way to ask what it means
+  // is just a mystery character.
+  export let HELPTIP_SEQ = 0;
+  export interface HelpTipProps {
+    text: any;
+    label?: string;
+    align?: string;
+    icon?: string;
+    variant?: string;
+  }
+  export function HelpTip({ text, label = "", align = "start", icon = "?", variant = "" }: HelpTipProps) {
+    const [open, setOpen] = useState(false);
+    const [tipId] = useState(() => `helptip-${++HELPTIP_SEQ}`);
+    const wrapRef = useRef(null);
+    // The bubble is absolutely positioned inside a 15px wrapper and hangs off
+    // one edge of it, so a tip on a field near the right of the screen ran
+    // straight past the viewport and lost its last words — and on a phone
+    // neither edge works: the bubble is up to 272px wide and there is no
+    // 272px window either side of a control in the middle of a 320px screen.
+    // So rather than picking an edge, measure and slide it: keep the
+    // caller's preferred alignment where it fits, and otherwise clamp the
+    // offset until both ends of the bubble are inside the viewport.
+    // (Closed tips overflowed too — styles.css zero-sizes them so they can't
+    // drag the page sideways.)
+    const [offset, setOffset] = useState(null);
+    useLayoutEffect(() => {
+      if (!open) {
+        setOffset(null);
+        return;
+      }
+      const place = () => {
+        const wrap = wrapRef.current;
+        const bubble = wrap && wrap.querySelector(".helptip-bubble");
+        if (!bubble) return;
+        const r = wrap.getBoundingClientRect();
+        const w = bubble.getBoundingClientRect().width;
+        const vw = document.documentElement.clientWidth;
+        // All offsets are wrapper-relative, matching the CSS they replace:
+        // start alignment is left:-6px, end alignment is right:-6px.
+        const preferred = align === "end" ? r.width + 6 - w : -6;
+        const min = 8 - r.left;
+        const max = vw - 8 - w - r.left;
+        // max < min only if the bubble is wider than the viewport, which its
+        // max-width rules out; Math.max last keeps the left edge on screen.
+        setOffset(Math.max(min, Math.min(preferred, max)));
+      };
+      place();
+      window.addEventListener("resize", place);
+      return () => window.removeEventListener("resize", place);
+    }, [open, align]);
+    // A tap opens the bubble; the next tap anywhere else closes it. Without
+    // this an opened tip on a touch device has no dismiss gesture at all,
+    // since there's no pointer to move away.
+    useEffect(() => {
+      if (!open) return;
+      const away = (e) => {
+        if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+      };
+      const esc = (e) => {
+        // Stop here rather than letting Escape reach the dialog behind it —
+        // closing the whole form because the user dismissed a tooltip would
+        // lose everything they had typed.
+        if (e.key === "Escape") {
+          e.stopPropagation();
+          setOpen(false);
+        }
+      };
+      document.addEventListener("pointerdown", away);
+      document.addEventListener("keydown", esc, true);
+      return () => {
+        document.removeEventListener("pointerdown", away);
+        document.removeEventListener("keydown", esc, true);
+      };
+    }, [open]);
+    if (!text) return null;
+    return <span className="helptip-wrap" ref={wrapRef}>
+      <button
+        type="button"
+        className={"helptip-btn" + (variant ? " helptip-btn--" + variant : "")}
+        aria-label={label ? `Help: ${label}` : "Help"}
+        aria-expanded={open}
+        aria-describedby={tipId}
+        onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setOpen((o) => !o);
+          }}
+        // Rows underneath can own the pointer (the budget grid starts a
+        // drag-to-reschedule on pointerdown) — asking what an icon means
+        // must never begin dragging the thing it sits on.
+        onPointerDown={(e) => e.stopPropagation()}
+        // Mouse only: a touch tap also fires pointerenter, and letting it
+        // through would leave the bubble open with no way to dismiss it
+        // except the click handler that had just closed it.
+        onPointerEnter={(e) => {
+            if (e.pointerType === "mouse") setOpen(true);
+          }}
+        onPointerLeave={(e) => {
+            if (e.pointerType === "mouse") setOpen(false);
+          }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+      >
+        {icon}
+      </button>
+      <span
+        id={tipId}
+        role="tooltip"
+        className={"helptip-bubble" + (align === "end" ? " helptip-bubble--end" : "") + (open ? " is-open" : "")}
+        // Inline so it beats both alignment rules; `right` has to be cleared
+        // too or an end-aligned bubble ends up constrained from both sides
+        // and stretches to fill the gap.
+        style={offset === null ? void 0 : { left: offset + "px", right: "auto" }}
+      >
+        {text}
+      </span>
+    </span>;
+  }
+  export interface FieldLabelProps {
+    htmlFor?: any;
+    children: React.ReactNode;
+    help?: any;
+    helpLabel?: string;
+    helpAlign?: any;
+    className?: string;
+  }
+  // A field label with its help beside it. The tip is a *sibling* of the
+  // <label>, never a child: a control inside a label is folded into the field's
+  // accessible name, so a help button in there makes the input announce itself
+  // as "Actual Amount Paid Help: Actual Amount Paid" — noise a screen-reader
+  // user can't skip. The row keeps the two on one line anyway.
+  export const FieldLabel = ({ htmlFor, children, help, helpLabel = "", helpAlign, className = "field-label" }: FieldLabelProps) => <div
+    className="field-label-row"
+  >
+    <label className={className} htmlFor={htmlFor}>{children}</label>
+    {help && <HelpTip label={helpLabel} text={help} align={helpAlign} />}
+  </div>;
+  export interface ToggleProps {
+    value: any;
+    onChange: (...args: any[]) => any;
+    label: any;
+  }
+  export const Toggle = ({ value, onChange, label }: ToggleProps) => <div className="toggle-row">
+    <button
+      type="button"
+      role="switch"
+      aria-checked={value}
+      aria-label={label || void 0}
+      onClick={() => onChange(!value)}
+      className="cf-switch"
+    >
+      <div className="cf-switch-knob" />
+    </button>
+    {label && <span onClick={() => onChange(!value)} className="toggle-label">{label}</span>}
+  </div>;
+
+  export interface CategoryDetailSheetProps {
+    detail: any;
+    openRows: any;
+    onToggleRow: (...args: any[]) => any;
+    onClose: (...args: any[]) => any;
+    scope: any;
+    year: any;
+  }
+  // What a category's total is made of, as a sheet.
+  //
+  // Today's "Top expense categories" widget grew this first: a bar said
+  // Housing was $19,800 and the only way to find out which payments that was
+  // meant going to Flow and filtering by hand. Envelopes has exactly the same
+  // gap one scope down — a row says Housing is $4,183.32 of $4,183.32 for
+  // October and does not say what October was — so the sheet lives here and
+  // both pages open the same one. A breakdown that looked different depending
+  // on which page you asked from would be two answers to one question.
+  //
+  // `scope` is the only thing that differs: the dashboard asks about a year,
+  // an envelope about a month. It is a phrase rather than a flag because it
+  // appears in two sentences and neither reads well assembled from parts.
+  // The caller also owns which rows are expanded, so opening a category on
+  // one page does not leave a drawer open on the other.
+  export const CategoryDetailSheet = ({ detail, openRows, onToggleRow, onClose, scope, year }: CategoryDetailSheetProps) => {
+    if (!detail) return null;
+    return <div
+      className="modal-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`The expenses behind ${detail.category}`}
+    >
+      <div className="modal-card catd-card">
+        <SheetHandle onDismiss={onClose} />
+        <div className="modal-title-lg mb-6">{detail.category}</div>
+        {// The total again, at the top, because it is the number the reader
+        // pressed and the one every row below has to add up to. Shown even
+        // when the category is empty — "$0.00 across 0 payments" is a clearer
+        // answer than a missing figure.
+        <div className="catd-summary">
+          <span className="cf-text-mono-13 catd-summary-amt">{fmt(detail.total)}</span>
+          <span className="catd-summary-sub">
+            {`across ${detail.count} ${detail.count === 1 ? "payment" : "payments"} in ${scope}`}
+          </span>
+        </div>
+}
+        {detail.rows.length === 0
+          ? <div className="catd-none">
+            {`Nothing in ${scope} is filed under ${detail.category}. If you were expecting something here, it is filed under another category — Flow will show you which.`}
+          </div>
+          : <div className="catd-rows">
+            {detail.rows.map((r) => {
+              const open = !!openRows[r.key];
+              return <div key={r.key} className="catd-row">
+                <button
+                  type="button"
+                  className="catd-row-head"
+                  aria-expanded={open ? "true" : "false"}
+                  // A recurring line is one row saying "26 payments"; the
+                  // dates are a level down, for when that is the question.
+                  // A line that happened once has nothing to expand to, so it
+                  // says its own date instead of offering an empty drawer.
+                  aria-label={r.count > 1
+                    ? `${r.desc}, ${fmt(r.total)} over ${r.count} payments — ${open ? "hide" : "show"} the dates`
+                    : `${r.desc}, ${fmt(r.total)}`}
+                  onClick={() => onToggleRow(r.key)}
+                >
+                  <span className="catd-caret" aria-hidden="true">
+                    {r.count > 1 ? (open ? "▾" : "▸") : ""}
+                  </span>
+                  <span className="catd-desc" title={r.desc}>{r.desc}</span>
+                  <span className="catd-count">
+                    {r.count > 1 ? `${r.count} payments` : fmtDate(r.occurrences[0] && r.occurrences[0].date, year)}
+                  </span>
+                  <span className="cf-text-mono-13 catd-amt">{fmt(r.total)}</span>
+                </button>
+                {open && r.count > 1 && <div className="catd-occs">
+                  {r.occurrences.map((o, oi) => <div key={o.id || oi} className="catd-occ">
+                    <span className="catd-occ-date">{fmtDate(o.date, year)}</span>
+                    {// Why this one is not simply the entry's amount. Without it
+                  // a column of identical figures with one odd number in it
+                  // reads as a mistake rather than as an edit somebody made.
+                  o.edited ? <span className="catd-occ-tag">Edited</span> : null
+}
+                    <span className="cf-text-mono-13 catd-occ-amt">{fmt(o.amount)}</span>
+                  </div>)}
+                </div>}
+              </div>;
+            })}
+          </div>}
+        <div className="catd-done-row">
+          <button onClick={onClose} className="cf-btn cf-btn--primary fw-700 btn-pad-24">Done</button>
+        </div>
+      </div>
+    </div>;
+  };

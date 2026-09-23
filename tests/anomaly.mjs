@@ -9,19 +9,16 @@
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { loadSrc } from './load-src.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (p) => readFileSync(join(ROOT, p), 'utf8');
 
 // categoryAnomalyFindings formats money, so format.js comes along.
 const noHook = () => { throw new Error('anomaly detection must not need React'); };
-const load = new Function('React', 'localStorage', 'window', `
-  ${read('src/lib/runtime.js')}
-  ${read('src/lib/migrate.js')}
-  ${read('src/lib/format.js')}
-  ${read('src/lib/anomaly.js')}
-  return { categoryAnomalies, categoryAnomalyFindings, anomalyMonthTotals };
-`);
+// The source is ES modules; loadSrc bundles these (and what they import) and
+// runs them against the stand-ins passed here.
+const load = (React, localStorage, window) => loadSrc(['src/lib/anomaly.ts'], { React, localStorage, window });
 const { categoryAnomalies, categoryAnomalyFindings, anomalyMonthTotals } =
   load(new Proxy({}, { get: () => noHook }),
     { getItem: () => null, setItem: () => {}, removeItem: () => {} },

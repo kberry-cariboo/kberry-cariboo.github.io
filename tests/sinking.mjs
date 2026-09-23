@@ -9,24 +9,15 @@
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { loadSrc } from './load-src.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (p) => readFileSync(join(ROOT, p), 'utf8');
 
 const noHook = () => { throw new Error('the roll must not need React'); };
-const load = new Function('React', 'localStorage', 'window', `
-  ${read('src/lib/runtime.js')}
-  ${read('src/lib/migrate.js')}
-  ${read('src/lib/holidays.js')}
-  const MONTH_DAYS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-  const WEEKDAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-  const MONTHS = ["January","February","March","April","May","June","July",
-                  "August","September","October","November","December"];
-  ${read('src/lib/format.js')}
-  ${read('src/lib/dates.js')}
-  ${read('src/lib/sinking.js')}
-  return { addMonthsClamped, planGoalRollover, planGoalRollovers, applyGoalRollovers };
-`);
+// The source is ES modules; loadSrc bundles these (and what they import) and
+// runs them against the stand-ins passed here.
+const load = (React, localStorage, window) => loadSrc(['src/lib/dates.ts', 'src/lib/sinking.ts'], { React, localStorage, window });
 const { addMonthsClamped, planGoalRollover, planGoalRollovers, applyGoalRollovers } =
   load(new Proxy({}, { get: () => noHook }),
     { getItem: () => null, setItem: () => {}, removeItem: () => {} },

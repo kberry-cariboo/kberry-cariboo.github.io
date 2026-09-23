@@ -10,6 +10,11 @@ Personal cash flow and budget tracker, deployed as a single static `index.html` 
 index.template.html       HTML shell (head, manifest links, boot spinner) with
                            __REACT_BUNDLE__ / __MINI_RECHARTS__ / __APP_CODE__
                            placeholders
+src/main.ts                The entry point: imports every module, in order
+src/types.ts               The data model: entries, occurrences, overrides,
+                            goals, the household payload and member prefs
+src/globals.d.ts           Types for the page globals (React, ReactDOM,
+                            Recharts, CF_VERSION, window.supabase)
 src/vendor/                Minified React + ReactDOM bundle, a small hand-rolled
                             chart library (not the real Recharts package), and
                             the official @supabase/supabase-js UMD bundle
@@ -18,14 +23,18 @@ src/bootstrap-tail.js      Closes the bootstrap wrapper
 src/sw.js                   Service worker source — caching + Web Push handlers
 src/lib/                    Shared constants, formatting/date helpers, hooks,
                             Supabase config, notification/push helpers, the
-                            household auth/sync hooks, and `ai.js` — the single
+                            household auth/sync hooks, and `ai.ts` — the single
                             call path every AI feature goes through
 src/components/            UI components, grouped by area (forms, register,
                             budget, plan/dashboard, settings, auth, etc.).
-                            `help.js` is the user documentation — the app's
+                            `help.tsx` is the user documentation — the app's
                             explanatory copy lives there, as data, rather
                             than inline beside the controls it describes
-src/App.js                  The root App component + ReactDOM.render call
+src/app/                    App's hooks, one concern each: routing, the idle
+                            lock, flows, budget actions, notices, notifications,
+                            keyboard shortcuts, undo, search, and so on
+src/App.tsx                  The root App component, which composes those hooks
+                            and renders, + the createRoot call
 ```
 
 `build.js` produces **two** files at the repo root: `index.html` and `sw.js`.
@@ -81,7 +90,11 @@ project in `supabase-config.js`, Anthropic and the holiday feed. A new
 external host has to be added there, and the regression suite's `csp:` test
 fails on any violation on the main screens.
 
-`build.js` concatenates all of the above (in the fixed order it defines) into `index.html`. Everything still runs as one big shared-scope script — there's no bundler, no JSX, no import/export; components are plain `React.createElement` calls in the same style the whole app already uses. Splitting into files exists purely so changes are reviewable and diffable instead of hand-editing a single ~760KB file.
+The app is **TypeScript** under `src/`: ES modules, components in `.tsx`, entered at `src/main.ts`. `build.js` bundles them with esbuild (pinned in `package.json` and `package-lock.json`) into a single inline script in `index.html`, between `src/bootstrap-head.js` and `src/bootstrap-tail.js`. The page is still one self-contained file with no runtime dependencies. esbuild only strips the types; `npm run typecheck` (tsc, also in CI) is what checks them. Imports keep `.js` specifiers, which both resolve to the `.ts` file.
+
+Each file imports what it uses from the others. They used to be fragments of one shared scope, joined in a fixed order, and a cross-file reference was invisible until the concatenated whole ran. React, ReactDOM and Recharts stay as the vendored globals from `src/vendor/` (typed in `src/globals.d.ts`), and JSX compiles to `React.createElement` against that React global; there is no automatic JSX runtime to import.
+
+`src/types.ts` is the data model: money is `Cents` (integer), an `Entry` is a scheduled item, a `FlowEvent` one occurrence of it and a `FlowRow` that occurrence with its running balance. `HouseholdData` is every synced field. `HOUSEHOLD_FIELDS` is checked against it at compile time, so a field declared in one and not the other fails the typecheck rather than quietly never syncing. Every component has a `Props` interface. The compiler runs with `strict` off for now; full strict mode is the next increment (see `FULL-APP-AUDIT.md` §2.1).
 
 ## Making a change
 
@@ -89,27 +102,27 @@ The short version, from `package.json`:
 
 ```bash
 npm run build          # index.html + sw.js from src/
-npm run lint           # both lint passes, as CI runs them
+npm run typecheck      # tsc over src/, as CI runs it
+npm run lint           # ESLint (typescript-eslint), as CI runs it
 npm test               # every browser-free suite (seconds)
 npm run test:browser   # the Playwright suites (~30 min)
 npm run test:sql       # the SQL suites — CF_TEST_PG=1 and a scratch Postgres, below
-npm run check          # build + lint + fast tests: the minimum before a push
+npm run check          # build + typecheck + lint + fast tests: the minimum before a push
 ```
 
 `scripts/test.mjs` runs each group suite by suite, prints the output of anything
 that fails and exits non-zero if any did. The groups mirror CI. Running
-`npm install` gives you the pinned Playwright and ESLint locally, and the
-suites find the local Playwright before a global one. The build itself still
-needs nothing installed.
+`npm ci` installs the locked esbuild, TypeScript, ESLint and Playwright. The build needs
+esbuild, so run it once after cloning. The suites find the local Playwright
+before a global one.
 
 Or suite by suite:
 
 ```bash
 # edit files under src/, then:
 node build.js                 # rebuilds index.html + sw.js
-node scripts/lint-bundle.js   # restitches .eslint-bundle.js from src/
-npx --yes eslint@10 "src/lib/**/*.js" "src/components/**/*.js" src/App.js \
-  build.js .eslint-bundle.js  # what CI runs
+npm run typecheck             # what CI runs
+npm run lint                  # what CI runs
 node tests/dates.mjs          # the schedule engine, browser-free
 node tests/help-ia.mjs        # Help prose vs the real navigation, browser-free
 node tests/drift.mjs          # drifted-bill detection, browser-free
@@ -179,7 +192,7 @@ drives it the way a person would — through the controls, not through the state
 behind them.
 
 The list of what to cover is not a matter of taste: the Help page in
-`src/components/help.js` *is* the app's statement of what it does, and a feature
+`src/components/help.tsx` *is* the app's statement of what it does, and a feature
 described there with no test behind it is a gap. That is how ten of them were
 found at once — templates, duplicating an entry, the schedule picker, "Ends on",
 rollover, resetting an occurrence, the PDF button, "Reset Targets to Actuals",
@@ -325,11 +338,9 @@ PLAYWRIGHT_LIB=/tmp/pw/node_modules/playwright/index.mjs \
 itself; every browser suite honours it, and without it a pinned Playwright
 looks for a chromium revision that isn't there.
 
-Both lint arguments matter. `no-unused-vars` and `no-undef` are off for the
-per-file pass — every `src/` file references things defined in its siblings,
-which only resolve once `build.js` concatenates them — so those two rules run
-against the stitched `.eslint-bundle.js` instead. A plain `npx eslint .` passes
-without checking them, and will happily miss a dead declaration that fails CI.
+`no-undef` and `no-unused-vars` run on every module directly, since each file
+imports what it uses. They used to need a stitched copy of the whole app
+(`scripts/lint-bundle.js`, now gone), because the files shared one scope.
 
 Serve the repo root with any static file server to check your change before
 committing. (Opening `index.html` from the filesystem still works for most of
@@ -339,7 +350,7 @@ notifications — needs a real `http://` or `https://` origin.)
 ### Help screenshots
 
 The Help page's screenshots live in `images/help/` and are committed, not built
-— `node build.js` stays dependency-free, and a shot only changes when the UI in
+— the build doesn't drive a browser, and a shot only changes when the UI in
 it changes. They are captured from the shipped bundle driving the same fictional
 household the regression suite uses, so nothing there is mocked-up artwork and
 nothing carries real data.
@@ -349,11 +360,11 @@ node build.js && node scripts/gen-help-shots.mjs
 ```
 
 That rewrites every PNG, sweeps any left behind by a rename, and regenerates
-`src/lib/help-shots.js` (the sizes the page reserves space with). Run it after
+`src/lib/help-shots.ts` (the sizes the page reserves space with). Run it after
 changing any screen a shot covers; `node tests/help-shots.mjs` fails if the Help
 page names a file that isn't there, if a file is unused, or if the manifest has
 drifted. Add or remove a shot by editing the `SHOTS` list at the top of the
-script and the matching `{ shot: [...] }` block in `src/components/help.js`.
+script and the matching `{ shot: [...] }` block in `src/components/help.tsx`.
 
 The images are ordinary same-origin files, fetched lazily when the Help page is
 opened and then runtime-cached by the service worker like everything else — so
@@ -389,7 +400,7 @@ replaces `window.supabase` with a stub, so nothing else would notice).
 # src/vendor/react-bundle.js — React + ReactDOM, minified into window.React /
 # window.ReactDOM. The entry pulls react-dom/client (not react-dom): that's why
 # ReactDOM.createRoot exists but ReactDOM.flushSync is absent, which the
-# self-test harness in src/components/auth-misc.js feature-detects around.
+# self-test harness in src/components/auth-misc.tsx feature-detects around.
 npm install react@<version> react-dom@<version> esbuild
 printf 'import React from "react";\nimport ReactDOM from "react-dom/client";\nwindow.React = React;\nwindow.ReactDOM = ReactDOM;\n' > entry.js
 npx esbuild entry.js --bundle --minify --format=iife --legal-comments=eof \
@@ -422,11 +433,11 @@ your own instance:
    push-notification tables
    (`push_subscriptions`, `notification_schedule`, `notification_sends`), Row
    Level Security policies, and the RPC functions the app talks to
-   (`load_household`/`save_household`/`put_receipt`/`delete_receipt`,
+   (`load_household`/`save_household_fields`/`put_receipt`/`delete_receipt`,
    `save_push_subscription`/`delete_push_subscription`/
    `save_notification_schedule`, plus the household lifecycle RPCs).
 3. In your project's API settings, copy the **Project URL** and **anon public key**.
-4. Paste them into `src/lib/supabase-config.js` (`SUPABASE_URL` / `SUPABASE_ANON_KEY`)
+4. Paste them into `src/lib/supabase-config.ts` (`SUPABASE_URL` / `SUPABASE_ANON_KEY`)
    and run `node build.js`. The anon key is safe to ship in client-side code — Row
    Level Security in `supabase/schema.sql` is the actual access boundary, not the key.
 5. Sign up in the app with your email and password, then either **create a
@@ -448,7 +459,7 @@ longer ride along inside every sync payload. Nor inside every load:
 `load_household(false)` returns each receipt's key and the SHA-256 of its bytes
 (`receipts.sig`, kept by a trigger), and the app fetches only the images it
 doesn't already hold with `get_receipt(key)`. On the device, images live in
-IndexedDB (`src/lib/receipt-store.js`), not in `localStorage`, whose ~5 MB is
+IndexedDB (`src/lib/receipt-store.ts`), not in `localStorage`, whose ~5 MB is
 shared by every field. The stored `cf_overrides` is written without them, and
 images left there by an older build are moved across on first run.
 `load_household()` with no argument still returns images inline, for tabs opened
@@ -538,7 +549,7 @@ tests cover the database itself; both need a throwaway Postgres
   `save_household` and comes back out of `load_household`.
 
 On the client, a piece of household data is declared exactly once: a row in
-`HOUSEHOLD_FIELDS` in `src/lib/household-sync.js`. That row carries the
+`HOUSEHOLD_FIELDS` in `src/lib/household-sync.ts`. That row carries the
 localStorage key and default it loads with, the guard that vets a value arriving
 from the cloud or a backup file, whether editing it schedules a save, and
 whether it belongs in an export — and `useHouseholdState()` builds the React
@@ -617,6 +628,35 @@ A departing member's own preferences and push subscriptions go with them, and
 what they added stays with the household. `tests/member-lifecycle.sql` covers
 the rules.
 
+### Saving together: per-field versions, merging, Realtime
+
+Every save stamps the fields it wrote in `household_field_versions`. The app
+sends only the fields it changed (`save_household_fields`), each with the
+version its copy was based on, and the server refuses a field someone else has
+written since. When that happens the app loads their copy and merges it with
+its own row by row (`src/lib/sync-merge.ts`): each entry, goal, occurrence
+override and paid mark on its own. Two people editing different things, or one
+editing while the other adds, both keep their work, and the merged result is
+sent again. The only case left for a person is two different edits to the same
+row. The dialog names those rows ("Entry “Rent”") and keeps everything else
+from both sides whichever answer is chosen.
+
+The copy both sides started from (the merge base) is kept in IndexedDB, so
+edits made offline and carried across a reload merge the same way.
+
+`household_field_versions` is in Supabase's `supabase_realtime` publication
+(`schema.sql` adds it), so the app hears about another member's save as it
+happens and merges it in within a second or two. Realtime delivers a row only
+through its RLS policy, which lets members read their own household's rows and
+nobody else's. Nothing to configure beyond re-running `schema.sql`. Without
+Realtime, other members' changes still arrive on the next load or save.
+
+A database without `save_household_fields` (schema not re-run yet) keeps
+working: the app falls back to the whole-household `save_household`. That
+older save also stamps versions, so a tab still running an old build is seen
+by new ones. `tests/field-versions.sql`, `tests/sync-merge.mjs`,
+`tests/sync-sql.mjs` and the `sync:` browser tests cover it.
+
 ## AI features
 
 Five places in the app call Claude:
@@ -631,7 +671,7 @@ Five places in the app call Claude:
 
 Nothing is ever written on the model's say-so: every feature fills in fields
 you then confirm, and the assessment is a report. All five go through
-`callClaude` in `src/lib/ai.js`, which has two transports.
+`callClaude` in `src/lib/ai.ts`, which has two transports.
 
 ### Transport 1: the `ai-proxy` Edge Function (recommended)
 
@@ -705,7 +745,7 @@ site can't send anything:
    node scripts/gen-vapid-keys.js
    ```
 
-2. **Publish the public half** — paste it into `src/lib/supabase-config.js` as
+2. **Publish the public half** — paste it into `src/lib/supabase-config.ts` as
    `VAPID_PUBLIC_KEY` and run `node build.js`. It ships to every browser by
    design; it is not a secret. Leaving it empty is a supported configuration:
    background push simply stays off and Settings says so.
@@ -749,7 +789,7 @@ row's `items`, so a busy day is one notification rather than eight;
 the Edge Function only looks up today's rows for each device's timezone and
 sends them. That avoids a second, drifting copy of the recurrence/override
 logic in Deno — see the comment on `buildNotificationSchedule` in
-`src/lib/push.js`.
+`src/lib/push.ts`.
 
 The consequence worth knowing: **the schedule only extends 90 days from the last
 time you opened the app.** Open it once a quarter and you'll never notice; leave

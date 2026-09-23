@@ -1,85 +1,56 @@
-// Minimal correctness-only lint gate for the concatenated-module source.
-// The src/ files are esbuild-style output stitched together by build.js, so
-// style rules would be pure noise — this config enables only the rules that
-// catch real, silent bugs in hand-edited compiled code (a duplicate object
-// key once disabled a touch target with no error anywhere).
-// Run: npx --yes eslint@10 "src/lib/**/*.js" "src/components/**/*.js" src/App.js build.js
-//
-// no-undef/no-unused-vars are deliberately NOT enabled here: every src/ file
-// freely references functions/consts defined in sibling files (they only
-// resolve once build.js concatenates them into one shared scope), so linting
-// them per-file would flag every cross-file reference as "undefined" —
-// exactly the noise the comment above used to warn about. Those two rules
-// run instead against the actual concatenated bundle — see the second config
-// block below and `node scripts/lint-bundle.js`.
+// Minimal correctness-only lint gate. src/ is TypeScript (ES modules, bundled
+// by build.js with esbuild; type-checked by tsc, `npm run typecheck`), so
+// ESLint parses it with typescript-eslint and leaves undefined names to tsc.
+// Style rules stay off; these catch real, silent bugs.
+// Run: npm run lint
 
-// True external globals the concatenated app code touches: browser/DOM APIs
-// (not covered by ESLint's language built-ins) plus the vendor scripts that
-// sit in sibling <script> tags — src/vendor/react-bundle.js (React,
-// ReactDOM), src/vendor/mini-recharts.js (Recharts), and
-// src/vendor/supabase-client.js (window.supabase, read off `window` below,
-// not listed separately). Extend this list, not the rule severity, if a
-// legitimate new browser API shows up as "not defined".
-const browserGlobals = {
-  window: "readonly", document: "readonly", navigator: "readonly",
-  location: "readonly", history: "readonly", localStorage: "readonly",
-  sessionStorage: "readonly", indexedDB: "readonly", fetch: "readonly", URL: "readonly",
-  URLSearchParams: "readonly", Blob: "readonly", File: "readonly",
-  FileReader: "readonly", Image: "readonly", CustomEvent: "readonly",
-  Event: "readonly", TextEncoder: "readonly", TextDecoder: "readonly",
-  crypto: "readonly", PublicKeyCredential: "readonly", console: "readonly",
-  Notification: "readonly",
-  alert: "readonly", confirm: "readonly", setTimeout: "readonly",
-  clearTimeout: "readonly", setInterval: "readonly", clearInterval: "readonly",
-  requestAnimationFrame: "readonly", cancelAnimationFrame: "readonly",
-  MutationObserver: "readonly", IntersectionObserver: "readonly",
-  ResizeObserver: "readonly", btoa: "readonly", atob: "readonly",
-  performance: "readonly", structuredClone: "readonly", getComputedStyle: "readonly",
-  queueMicrotask: "readonly", globalThis: "readonly", self: "readonly",
-  React: "readonly", ReactDOM: "readonly", Recharts: "readonly"
+import tseslint from "typescript-eslint";
+
+const CORRECTNESS = {
+  "no-dupe-keys": "error",
+  "no-dupe-args": "error",
+  "no-dupe-else-if": "error",
+  "no-duplicate-case": "error",
+  "no-unreachable": "error",
+  "no-self-assign": "error",
+  "no-const-assign": "error",
+  "no-setter-return": "error",
+  "no-compare-neg-zero": "error",
+  "no-cond-assign": "error",
+  "use-isnan": "error",
+  "valid-typeof": "error",
+  // A `catch {}` with nothing in it is how two real bugs hid here for months
+  // (a service worker that never registered, and a notification API that
+  // throws on Android) — both failed loudly and were swallowed. no-empty does
+  // not flag a block containing a comment, so the rule reads as: swallowing an
+  // error is fine, but say why.
+  "no-empty": ["error", { allowEmptyCatch: false }]
 };
 
 export default [
   {
-    // A no-`files` ignores block is a *global* ignore in flat config (applies
-    // to every block below, not just this one) — .eslint-bundle.js must stay
-    // out of this list so the dedicated block further down can still lint it.
-    ignores: ["src/vendor/**", "src/bootstrap-head.js", "src/bootstrap-tail.js", "index.html"]
+    // A no-`files` ignores block is a global ignore in flat config.
+    ignores: ["src/vendor/**", "src/bootstrap-head.js", "src/bootstrap-tail.js", "src/**/*.d.ts", "index.html"]
   },
   {
-    files: ["src/**/*.js", "build.js"],
-    languageOptions: { ecmaVersion: "latest", sourceType: "script" },
-    rules: {
-      "no-dupe-keys": "error",
-      "no-dupe-args": "error",
-      "no-dupe-else-if": "error",
-      "no-duplicate-case": "error",
-      "no-unreachable": "error",
-      "no-self-assign": "error",
-      "no-const-assign": "error",
-      "no-setter-return": "error",
-      "no-compare-neg-zero": "error",
-      "no-cond-assign": "error",
-      "use-isnan": "error",
-      "valid-typeof": "error",
-      // A `catch {}` with nothing in it is how two real bugs hid here for
-      // months (a service worker that never registered, and a notification
-      // API that throws on Android) — both failed loudly and were swallowed.
-      // no-empty does not flag a block containing a comment, so the rule
-      // reads as: swallowing an error is fine, but say why. If you can't
-      // write the reason, the error probably shouldn't be swallowed.
-      "no-empty": ["error", { allowEmptyCatch: false }]
-    }
+    files: ["src/**/*.ts", "src/**/*.tsx"],
+    languageOptions: { parser: tseslint.parser, ecmaVersion: "latest", sourceType: "module", parserOptions: { ecmaFeatures: { jsx: true } } },
+    plugins: { "@typescript-eslint": tseslint.plugin },
+    rules: Object.assign({}, CORRECTNESS, {
+      "@typescript-eslint/no-unused-vars": ["error", { args: "none", caughtErrors: "none", varsIgnorePattern: "^_" }]
+    })
   },
   {
-    // Generated by `node scripts/lint-bundle.js` — not committed. Same
-    // content as the <script> build.js writes into index.html, so no-undef
-    // and no-unused-vars see the app's real single shared scope.
-    files: [".eslint-bundle.js"],
-    languageOptions: { ecmaVersion: "latest", sourceType: "script", globals: browserGlobals },
-    rules: {
-      "no-undef": "error",
-      "no-unused-vars": ["error", { args: "none", caughtErrors: "none", varsIgnorePattern: "^_" }]
-    }
+    // The service worker is a classic script with the worker's own globals.
+    files: ["src/sw.js"],
+    languageOptions: { ecmaVersion: "latest", sourceType: "script", parserOptions: { ecmaFeatures: { jsx: false } }, globals: {
+      self: "readonly", caches: "readonly", fetch: "readonly", Request: "readonly", Response: "readonly",
+      URL: "readonly", clients: "readonly", console: "readonly", Promise: "readonly" } },
+    rules: Object.assign({}, CORRECTNESS, { "no-undef": "error" })
+  },
+  {
+    files: ["build.js"],
+    languageOptions: { ecmaVersion: "latest", sourceType: "commonjs", globals: { require: "readonly", module: "writable", __dirname: "readonly", process: "readonly", console: "readonly" } },
+    rules: CORRECTNESS
   }
 ];

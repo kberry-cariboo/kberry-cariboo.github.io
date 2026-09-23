@@ -163,9 +163,9 @@ await browser.close();
 server.close();
 const total = written.reduce((n, f) => n + statSync(join(OUT, f)).size, 0);
 console.log(`\n${written.length} shots, ${(total / 1024).toFixed(0)} KB total`);
-console.log('wrote src/lib/help-shots.js');
+console.log('wrote src/lib/help-shots.ts');
 
-// src/lib/help-shots.js is compiled into index.html, so rewriting it leaves the
+// src/lib/help-shots.ts is compiled into index.html, so rewriting it leaves the
 // built bundle one version behind. Running this script and then forgetting to
 // rebuild left index.html silently disagreeing with src/, which CI fails on
 // any branch — it only auto-rebuilds pushes to main — so the omission surfaced

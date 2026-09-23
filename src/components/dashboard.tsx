@@ -1,0 +1,2477 @@
+import { genId, useEffect, useMemo, useState } from "../lib/runtime.js";
+import { centsToDollars, dollarsToCents } from "../lib/migrate.js";
+import { depositShiftNote, getCurrentBalance, getMonthSummaries, monthlyEquivalent, signedAmount, startOfToday, todayStr } from "../lib/dates.js";
+import { findAmountDrift } from "../lib/drift.js";
+import { netWorthSummary } from "../lib/networth.js";
+import { categoryDetail } from "../lib/cat-detail.js";
+import { ExportBar, downloadCSV, fmt, fmtAxisK, printView, roundMoney } from "../lib/format.js";
+import { Area, AreaChart, Bar, BarChart, CAT_PALETTE, CartesianGrid, Cell, Legend, Line, LineChart, MONTHS, Pie, PieChart, RUNWAY_DAYS, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis, haptic, notifyStorageWriteFailure, railTone, useIsMobile } from "../lib/app-data.js";
+import { aiCanRun, aiErrorMessage, callClaude } from "../lib/ai.js";
+import { Card, CatChip, CategoryDetailSheet, ChartTip, ChartToggle, HelpTip, LedgerRow, PillToggle, SectionTitle, SheetHandle, Sparkline, getCatColor } from "./primitives.js";
+import { Icon, RECONCILE_DESC, ReconcileModal, lastReconciledDate, reconcileCategory } from "./misc-ui.js";
+import { OnboardingWizard } from "./forecast-plan.js";
+import { DASH_AXIS_TICK_X, DASH_AXIS_TICK_Y, projectPayoffBalances } from "./plan-dashboard-shared.js";
+import { toast } from "./auth-misc.js";
+import type { Cents, Entry, FlowRow, OverridesByYear, YearConfig } from "../types.js";
+  export interface GlanceTileProps {
+    title: any;
+    children: React.ReactNode;
+  }
+  // Hoisted out of DashboardView's render body — an inline component
+  // definition creates a new type each render and forces React to remount.
+  export const GlanceTile = ({ title, children }: GlanceTileProps) => <div className="glance-tile">
+    <div className="glance-tile-title">{title}</div>
+    {children}
+  </div>;
+  export interface MonthlyBriefCardProps {
+    flow: FlowRow[];
+    activeYear: number;
+    categories?: string[];
+    apiKey?: string;
+    isOffline?: boolean;
+  }
+  // "What changed this month" — the smallest useful AI surface in the app.
+  // Everything it reports is computed here from the same flow the rest of the
+  // dashboard draws; the model is only asked to say which of the differences
+  // matter and why, never to do the arithmetic.
+  export function MonthlyBriefCard({ flow, activeYear, categories = [], apiKey = "", isOffline = false }: MonthlyBriefCardProps) {
+    const [brief, setBrief] = useState(null);
+    const [busy, setBusy] = useState(false);
+    const [err, setErr] = useState("");
+    const now = new Date();
+    const thisMonth = now.getFullYear() === activeYear ? now.getMonth() : 11;
+    const CACHE_KEY = `cf_ai_brief_${activeYear}_${thisMonth}`;
+    useEffect(() => {
+      try {
+        const cached = localStorage.getItem(CACHE_KEY);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed && parsed.brief) setBrief(parsed.brief);
+          else setBrief(null);
+        } else setBrief(null);
+      } catch (e) {
+        // Storage can throw outright in private/partitioned modes. Nothing
+        // here is essential to the current interaction, so a failure is
+        // genuinely ignorable — real save failures surface via
+        // notifyStorageWriteFailure.
+      }
+    }, [CACHE_KEY]);
+    // Both months' totals, plus per-category movement. Categories with no
+    // activity in either month are dropped so the prompt carries signal
+    // instead of a wall of zeroes.
+    const delta = useMemo(() => {
+      if (thisMonth < 1) return null;
+      const prevMonth = thisMonth - 1;
+      const totals = (mi, type) => flow.filter((ev) => ev.month === mi && ev.type === type).reduce((sum, ev) => sum + ev.amount, 0);
+      const byCat = (mi) => {
+        const o = {};
+        flow.filter((ev) => ev.month === mi && ev.type === "expense").forEach((ev) => {
+          o[ev.category] = (o[ev.category] || 0) + ev.amount;
+        });
+        return o;
+      };
+      const currCats = byCat(thisMonth), prevCats = byCat(prevMonth);
+      const cats = [...new Set([...Object.keys(currCats), ...Object.keys(prevCats)])].map((cat) => ({
+        cat,
+        now: currCats[cat] || 0,
+        before: prevCats[cat] || 0,
+        change: (currCats[cat] || 0) - (prevCats[cat] || 0)
+      })).filter((c) => c.now || c.before).sort((a, b) => Math.abs(b.change) - Math.abs(a.change)).slice(0, 10);
+      return {
+        prevMonth,
+        income: { now: totals(thisMonth, "income"), before: totals(prevMonth, "income") },
+        expense: { now: totals(thisMonth, "expense"), before: totals(prevMonth, "expense") },
+        cats
+      };
+    }, [flow, thisMonth]);
+    const run = async () => {
+      if (!delta) return;
+      setBusy(true);
+      setErr("");
+      try {
+        const line = (label, d) => `${label}: ${fmt(d.now)} this month vs ${fmt(d.before)} last month (${d.now - d.before >= 0 ? "+" : ""}${fmt(d.now - d.before, true)})`;
+        const catLines = delta.cats.map((c) => `  ${c.cat}: ${fmt(c.now)} vs ${fmt(c.before)} (${c.change >= 0 ? "+" : ""}${fmt(c.change, true)})`).join("\n");
+        const { data } = await callClaude({
+          system: "You explain month-to-month changes in a household budget. Be concrete and brief. Never restate a number without saying what it means.",
+          messages: [{ role: "user", content: `${MONTHS[thisMonth]} ${activeYear} compared with ${MONTHS[delta.prevMonth]}.\n\n${line("Income", delta.income)}\n${line("Expenses", delta.expense)}\n\nExpense categories (this month vs last):\n${catLines}\n\nSay what actually changed and whether it matters. Skip anything that moved trivially.` }],
+          schema: {
+            type: "object",
+            properties: {
+              headline: { type: "string", description: "One sentence, under 15 words, on the month's main change." },
+              bullets: { type: "array", description: "2-4 short observations, each naming a category and a dollar change.", items: { type: "string" } }
+            },
+            required: ["headline", "bullets"],
+            additionalProperties: false
+          },
+          maxTokens: 1500,
+          effort: "low",
+          apiKey
+        });
+        setBrief(data);
+        try {
+          localStorage.setItem(CACHE_KEY, JSON.stringify({ brief: data }));
+        } catch (e) {
+          notifyStorageWriteFailure(e);
+        }
+      } catch (e) {
+        setErr(aiErrorMessage(e));
+      } finally {
+        setBusy(false);
+      }
+    };
+    if (!delta) return null;
+    // mb-16 like every other full-width widget: .cf-card carries no margin of
+    // its own, so the gap before whatever renders next is each widget's own
+    // job. Without it this card sat flush against the Monthly Summary heading.
+    return <Card className="mb-16">
+      <div className="cf-row-between mb-12">
+        <SectionTitle className="mb-0">{"What changed in "}{MONTHS[thisMonth]}</SectionTitle>
+        <button
+          onClick={run}
+          disabled={busy || isOffline || !aiCanRun(apiKey)}
+          title={isOffline ? "You're offline — this needs a connection." : !aiCanRun(apiKey) ? "Add an Anthropic API key in Settings → General, or deploy the ai-proxy Edge Function." : void 0}
+          className="cf-btn cf-btn--secondary cf-btn--tiny"
+        >
+          {busy ? "Thinking…" : brief ? "Refresh" : "✦ Summarise"}
+        </button>
+      </div>
+      {err && <div className="field-error-text mb-8">{err}</div>}
+      {brief ? <>
+        <div className="txm mb-8" style={{ fontWeight: 600 }}>{brief.headline}</div>
+        {(brief.bullets || []).map((b, i) => <div
+          key={i}
+          className="ai-bullet-row"
+          style={{ marginBottom: 6 }}
+        >
+          <div
+            className="ai-bullet-dot"
+            style={{ width: 6, height: 6, background: "var(--navyLt)", marginTop: 7 }}
+          />
+          <div className="ai-item-text">{b}</div>
+        </div>)}
+      </> : <div className="txl">
+        {"Compare "}
+        {MONTHS[thisMonth]}
+        {" with "}
+        {MONTHS[delta.prevMonth]}
+        {" and have Claude pick out what moved."}
+      </div>}
+    </Card>;
+  }
+  export interface DashboardViewProps {
+    apiKey?: string;
+    isOffline?: boolean;
+    flow: FlowRow[];
+    openBal: Cents;
+    yearFlows: any;
+    viewFlows?: any;
+    yearConfigs: YearConfig[];
+    alertThreshold: any;
+    activeYear: number;
+    budgetTargets?: Record<string, any>;
+    categories?: string[];
+    categoryColors?: Record<string, any>;
+    users?: any[];
+    sessionUser?: any;
+    entries?: Entry[];
+    toggleComplete?: (...args: any[]) => any;
+    setYearConfigs?: (...args: any[]) => any;
+    addEntry?: (...args: any[]) => any;
+    setTab?: (...args: any[]) => any;
+    overridesByYr?: OverridesByYear;
+    applyDriftFix?: (...args: any[]) => any;
+    setEntries?: (...args: any[]) => any;
+    completed?: Record<string, any>;
+    dashHidden?: Record<string, any>;
+    setDashHidden?: (...args: any[]) => any;
+    dashOrder?: any[];
+    setDashOrder?: (...args: any[]) => any;
+    debtData?: Record<string, any>;
+    assets?: any[];
+  }
+  export function DashboardView({ apiKey = "", isOffline = false, flow, openBal, yearFlows, viewFlows = null, yearConfigs, alertThreshold, activeYear, budgetTargets = {}, categories = [], categoryColors = {}, users = [], sessionUser = null, entries = [], toggleComplete = () => {
+  }, setYearConfigs = () => {
+  }, addEntry = () => {
+  }, setTab = () => {
+  }, overridesByYr = {}, applyDriftFix = () => {
+  }, setEntries = () => {
+  }, completed = {}, dashHidden = {}, setDashHidden = () => {
+  }, dashOrder = [], setDashOrder = () => {
+  }, debtData = {}, assets = [] }: DashboardViewProps) {
+    const isMobile = useIsMobile();
+    const [showCustomize, setShowCustomize] = useState(false);
+    // Every other dismissible dialog in the app closes on Escape — the
+    // confirm dialogs, the occurrence editor, the context menus, the receipt
+    // lightbox. Customize was the exception, and it has nothing to lose by
+    // closing: each toggle applies as you make it, so Done is a way out, not
+    // a commit.
+    useEffect(() => {
+      if (!showCustomize) return;
+      const h = (e) => {
+        if (e.key === "Escape") setShowCustomize(false);
+      };
+      window.addEventListener("keydown", h);
+      return () => window.removeEventListener("keydown", h);
+    }, [showCustomize]);
+    const [obDraft, setObDraft] = useState("");
+    useEffect(() => {
+      if (dashHidden.charts || dashHidden.incomeRow) {
+        setDashHidden((prev) => {
+          const next = { ...prev };
+          if (next.charts) {
+            next.balanceChart = 1;
+            next.surplusChart = 1;
+            next.incExpChart = 1;
+            next.topCatsChart = 1;
+            delete next.charts;
+          }
+          if (next.incomeRow) {
+            next.incomeSources = 1;
+            next.bvaYear = 1;
+            delete next.incomeRow;
+          }
+          return next;
+        });
+      }
+    }, []);
+    const DASH_CHART_H = 220;
+    const [yoyMetric, setYoyMetric] = useState("surplus");
+    // Which row of the Annual Comparison table has its "vs Prior Year" cell
+    // open. Null is closed; otherwise the year that was clicked, explained
+    // against the year on the row above it.
+    const [yoyDetailYear, setYoyDetailYear] = useState(null);
+    // Which expense categories in that modal have been expanded to the entries
+    // underneath them. Cleared on every open and close: carrying a previous
+    // year's open rows into a fresh comparison is a small, avoidable lie about
+    // what you are looking at.
+    const [yoyOpenRows, setYoyOpenRows] = useState({});
+    // Whether the list is showing every mover or the biggest few with the rest
+    // rolled up. Reset with the rows, for the same reason.
+    const [yoyShowAll, setYoyShowAll] = useState(false);
+    // Which category's breakdown is open, by name. The widget shows a total
+    // and had no way to ask what it was made of — the answer was two screens
+    // away, in Flow, behind a filter set by hand.
+    const [catDetailName, setCatDetailName] = useState(null);
+    const [catOpenRows, setCatOpenRows] = useState({});
+    const openCatDetail = (cat) => { setCatOpenRows({}); setCatDetailName(cat); };
+    const closeCatDetail = () => { setCatOpenRows({}); setCatDetailName(null); };
+    // Escape closes it, as it does the year-over-year sheet. It is a reading
+    // surface with nothing to commit, so leaving costs nothing.
+    useEffect(() => {
+      if (catDetailName === null) return;
+      const h = (e) => { if (e.key === "Escape") closeCatDetail(); };
+      window.addEventListener("keydown", h);
+      return () => window.removeEventListener("keydown", h);
+    }, [catDetailName]);
+    const openYoyDetail = (year) => {
+      setYoyOpenRows({});
+      setYoyShowAll(false);
+      setYoyDetailYear(year);
+    };
+    const closeYoyDetail = () => {
+      setYoyOpenRows({});
+      setYoyShowAll(false);
+      setYoyDetailYear(null);
+    };
+    // Same bargain as Customize above: Escape closes it. It is a reading
+    // surface with nothing to commit, so there is nothing to lose by leaving.
+    useEffect(() => {
+      if (yoyDetailYear === null) return;
+      const h = (e) => {
+        if (e.key === "Escape") closeYoyDetail();
+      };
+      window.addEventListener("keydown", h);
+      return () => window.removeEventListener("keydown", h);
+    }, [yoyDetailYear]);
+    const [catView, setCatView] = useState("bar");
+    const [balView, setBalView] = useState("area");
+    const [surplusView, setSurplusView] = useState("bar");
+    const [incExpView, setIncExpView] = useState("grouped");
+    const [summaryView, setSummaryView] = useState("table");
+    const [incView, setIncView] = useState("bar");
+    // "All users" first: the household's whole picture is the default
+    // everywhere else, and until the filter actually filtered (see userId in
+    // expandEntries) it is what this view has always shown.
+    const [sharedView, setSharedView] = useState(true);
+    const effectiveFlow = useMemo(() => {
+      if (sharedView || !sessionUser) return flow;
+      // Member ids are strings. Anything else — the placeholder 1 older builds
+      // stamped on entries added while signed out — is nobody's, so shown.
+      return flow.filter((e) => typeof e.userId !== "string" || e.userId === sessionUser.id);
+    }, [flow, sharedView, sessionUser]);
+    // Declared here rather than beside its state above, because it reads
+    // effectiveFlow and a const is in its temporal dead zone until the line
+    // that declares it.
+    const catDetail = useMemo(
+      () => (catDetailName === null ? null : categoryDetail(effectiveFlow, catDetailName)),
+      [effectiveFlow, catDetailName]
+    );
+    const [showReconcile, setShowReconcile] = useState(false);
+    // Posts the difference between the projected balance and the real one as a
+    // dated one-time transfer. See ReconcileModal for why a transfer and not
+    // an income/expense entry.
+    const recordReconcile = ({ actualCents, diff }) => {
+      const today = todayStr();
+      addEntry({
+        desc: RECONCILE_DESC,
+        type: "transfer",
+        transferDirection: diff > 0 ? "in" : "out",
+        amount: Math.abs(diff),
+        category: reconcileCategory(categories),
+        notes: `Reconciled to a bank balance of ${fmt(actualCents)} on ${today}.`,
+        startDate: today,
+        repeats: false,
+        recurEvery: 1,
+        recurUnit: "month",
+        recurDays: [],
+        recurEnd: "",
+        monthlyAmounts: null
+      });
+      setShowReconcile(false);
+      toast(`Adjustment of ${fmt(diff, true)} recorded — today's balance now matches your bank.`);
+    };
+    const summaries = useMemo(() => getMonthSummaries(effectiveFlow, openBal), [effectiveFlow, openBal]);
+    const catTotals = useMemo(() => {
+      const map: Record<string, number> = {};
+      effectiveFlow.filter((e) => e.type === "expense").forEach((e) => {
+        map[e.category] = (map[e.category] || 0) + e.amount;
+      });
+      return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 8);
+    }, [effectiveFlow]);
+    // Income groups by entry description, not category — most income shares one
+    // "Income" category, which collapsed this widget into a single useless bar.
+    const incTotals = useMemo(() => {
+      const map: Record<string, number> = {};
+      effectiveFlow.filter((e) => e.type === "income").forEach((e) => {
+        const key = e.desc || e.category || "Income";
+        map[key] = (map[key] || 0) + e.amount;
+      });
+      return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 8);
+    }, [effectiveFlow]);
+    const catPieData = useMemo(() => catTotals.map(([name, value]) => ({ name, value })), [catTotals]);
+    const incPieData = useMemo(() => incTotals.map(([name, value]) => ({ name, value })), [incTotals]);
+    const totalIncome = summaries.reduce((s, m) => s + m.income, 0);
+    const totalExpense = summaries.reduce((s, m) => s + m.expense, 0);
+    const totalTransfersIn = summaries.reduce((s, m) => s + m.transfersIn, 0);
+    const totalTransfersOut = summaries.reduce((s, m) => s + m.transfersOut, 0);
+    // Sum of the monthly surpluses, each of which is that month's balance
+    // movement — so this telescopes to (year-end close − opening balance) and
+    // matches the Closing Balance column it is printed under. It used to be
+    // totalIncome − totalExpense, which leaves transfers out (they are not
+    // income or expense — see getMonthSummaries) and so reported a year-end
+    // net that missed every transfer: twelve $500 monthly transfers went
+    // $6,000 unaccounted for between the Annual Total row and the balance
+    // directly above it.
+    const netSurplus = summaries.reduce((s, m) => s + m.surplus, 0);
+    // Whether to spend a column on transfers. Zero for the vast majority of
+    // households, and the tables stay exactly as they were for them.
+    const hasTransfers = totalTransfersIn > 0 || totalTransfersOut > 0;
+    // Both Monthly Summary renderings (heatmap and table) share this, so the
+    // sticky last-column rule can key off the array length instead of a
+    // hardcoded index that a new column would silently break.
+    const summaryCols = hasTransfers
+      ? ["Month", "Income", "Expenses", "Transfers", "Surplus / Shortfall", "Closing Balance"]
+      : ["Month", "Income", "Expenses", "Surplus / Shortfall", "Closing Balance"];
+    const netTransfers = totalTransfersIn - totalTransfersOut;
+    const lowestBal = summaries.length ? Math.min(...summaries.map((m) => m.close)) : 0;
+    const lowestMon = summaries.find((m) => m.close === lowestBal)?.month;
+    // One-sentence summaries of what each chart shows, attached to the SVGs as
+    // aria-labels. A chart is a picture: without a description it is either
+    // silence or, worse, a screen reader spelling out every tick and data
+    // label in turn. Each one names the shape and the extreme, then points at
+    // the Monthly Summary table below, which carries the same figures cell by
+    // cell for anyone who wants the detail.
+    const SEE_TABLE = " The same figures are in the Monthly Summary table below.";
+    const chartAlts = useMemo(() => {
+      if (!summaries.length) return {};
+      const span = `${summaries[0].month} to ${summaries[summaries.length - 1].month} ${activeYear}`;
+      const short = summaries.filter((m) => m.surplus < 0).length;
+      const worst = summaries.reduce((a, m) => m.surplus < a.surplus ? m : a, summaries[0]);
+      const best = summaries.reduce((a, m) => m.surplus > a.surplus ? m : a, summaries[0]);
+      const share = (rows, total) => rows.slice(0, 3).map(([n, v]) => `${n} ${fmt(v)}${total > 0 ? ` (${Math.round(v / total * 100)}%)` : ""}`).join(", ");
+      return {
+        balance: `Line chart of the closing balance for each month, ${span}. It opens at ${fmt(summaries[0].close)} and ends at ${fmt(summaries[summaries.length - 1].close)}, with its low of ${fmt(lowestBal)} in ${lowestMon}.` + SEE_TABLE,
+        surplus: `Chart of surplus or shortfall for each month, ${span}. ${short} of ${summaries.length} months spend more than they take in. Best month ${best.month} at ${fmt(best.surplus, true)}, worst ${worst.month} at ${fmt(worst.surplus, true)}.` + SEE_TABLE,
+        incExp: `Chart comparing income against expenses for each month, ${span}. Income totals ${fmt(totalIncome)} against ${fmt(totalExpense)} of expenses, a net of ${fmt(netSurplus, true)}.` + SEE_TABLE,
+        cats: catTotals.length ? `Breakdown of ${fmt(totalExpense)} of expenses across ${catTotals.length} categories. Largest: ${share(catTotals, totalExpense)}.` : "",
+        inc: incTotals.length ? `Breakdown of ${fmt(totalIncome)} of income across ${incTotals.length} sources. Largest: ${share(incTotals, totalIncome)}.` : ""
+      };
+    }, [summaries, activeYear, lowestBal, lowestMon, catTotals, incTotals, totalIncome, totalExpense, netSurplus]);
+    const showYoY = yearConfigs.length >= 2;
+    const yoyMetrics = [{ id: "income", label: "Income" }, { id: "expense", label: "Expenses" }, { id: "surplus", label: "Surplus" }, { id: "close", label: "Balance" }];
+    const YCOLS = ["#2F5496", "#E85D4A", "#27AE73", "#F5A623"];
+    const yoyData = MONTHS.map((m, mi) => {
+      const row = { month: m };
+      yearConfigs.forEach((yc, yi) => {
+        const f = yearFlows[yc.year];
+        if (!f) return;
+        const sums = getMonthSummaries(f, yc.openingBalance);
+        row[yc.year] = sums[mi][yoyMetric];
+      });
+      return row;
+    });
+    const annualRows = yearConfigs.map((yc, yi) => {
+      const f = yearFlows[yc.year];
+      if (!f) return null;
+      const sums = getMonthSummaries(f, yc.openingBalance);
+      const inc = sums.reduce((s, m) => s + m.income, 0), exp = sums.reduce((s, m) => s + m.expense, 0);
+      return { year: yc.year, income: inc, expense: exp, surplus: inc - exp, close: sums[11].close, color: YCOLS[yi % YCOLS.length] };
+    }).filter(Boolean);
+    // What actually moved behind a "vs Prior Year" cell, item by item.
+    //
+    // That cell is the movement in net surplus, and net surplus in this table
+    // is income minus expenses (see annualRows just above) — a transfer is
+    // neither, so it never reaches the figure and none appear here. The rows
+    // below are built from those same two activity totals, which is what lets
+    // the modal make the claim it makes: the drivers sum to the cell exactly,
+    // with nothing swept into an "other" bucket and nothing rounded away. A
+    // breakdown that does not reconcile to the number it is explaining is
+    // worse than no breakdown — it sends the reader off hunting for money
+    // that was never missing.
+    //
+    // Expenses group by category and income by description, matching the Top
+    // Categories and Income Sources widgets further up the page, and for the
+    // same reason those two disagree: nearly every income entry shares the one
+    // "Income" category, so grouping income that way collapses the whole side
+    // of the comparison into a single row that explains nothing.
+    //
+    // Not memoised. It reads annualRows, which is rebuilt on every render, so
+    // a useMemo over it would either recompute anyway or go stale — and this
+    // only runs while the modal is open, which is a deliberate act.
+    const buildYoyDetail = (year) => {
+      const i = annualRows.findIndex((r) => r.year === year);
+      // The first year has nothing before it to compare against, so its cell
+      // is an em dash and never opens this.
+      if (i < 1) return null;
+      const cur = annualRows[i], prev = annualRows[i - 1];
+      // Two levels, because "Personal cost you $1,800 less" is the answer to
+      // half a question — the other half is which entry in it. Expenses carry
+      // their descriptions down one level; income is already grouped by
+      // description, so a second level under it would just repeat the row.
+      const tally = (flow) => {
+        const inc = {}, exp = {};
+        (flow || []).forEach((ev) => {
+          if (ev.type === "income") {
+            const k = ev.desc || ev.category || "Income";
+            inc[k] = (inc[k] || 0) + ev.amount;
+          } else if (ev.type === "expense") {
+            const k = ev.category || "Uncategorised";
+            const d = ev.desc || k;
+            const g = exp[k] || (exp[k] = { total: 0, byDesc: {} });
+            g.total += ev.amount;
+            g.byDesc[d] = (g.byDesc[d] || 0) + ev.amount;
+          }
+        });
+        return { inc, exp };
+      };
+      const c = tally(yearFlows[cur.year]), p = tally(yearFlows[prev.year]);
+      // A line that did not move is not a driver. It contributes zero to the
+      // total either way, so dropping it costs the reconciliation nothing and
+      // saves a reader scrolling past twenty unchanged rows to reach the three
+      // that matter.
+      //
+      // Spending less helps the surplus; earning less hurts it. So an expense
+      // contributes the opposite sign to the one it moved in, and `effect` —
+      // not `change` — is what the table sorts, colours and totals by. A
+      // category that fell $900 reads as a $900 improvement everywhere it
+      // appears, which is the question the reader came here with.
+      const movers = (kind, now, then) => {
+        const out = [];
+        const names = new Set([...Object.keys(now), ...Object.keys(then)]);
+        names.forEach((name) => {
+          const was = roundMoney(then[name] || 0), is = roundMoney(now[name] || 0);
+          const change = roundMoney(is - was);
+          if (change === 0) return;
+          out.push({ kind, name, prev: was, cur: is, change, effect: kind === "income" ? change : -change });
+        });
+        return out.sort((a, b) => Math.abs(b.effect) - Math.abs(a.effect) || a.name.localeCompare(b.name));
+      };
+      const rows = movers("income", c.inc, p.inc);
+      const catNames = new Set([...Object.keys(c.exp), ...Object.keys(p.exp)]);
+      catNames.forEach((name) => {
+        const now = c.exp[name] || { total: 0, byDesc: {} }, then = p.exp[name] || { total: 0, byDesc: {} };
+        const change = roundMoney(now.total - then.total);
+        if (change === 0) return;
+        const kids = movers("expense", now.byDesc, then.byDesc);
+        rows.push({
+          kind: "expense",
+          name,
+          prev: roundMoney(then.total),
+          cur: roundMoney(now.total),
+          change,
+          effect: -change,
+          // One child that says the same thing as its parent is a disclosure
+          // triangle that opens onto a copy of the row above it. Only offer
+          // the level where there is something new behind it.
+          children: kids.length > 1 ? kids : []
+        });
+      });
+      rows.sort((a, b) => Math.abs(b.effect) - Math.abs(a.effect) || a.name.localeCompare(b.name));
+      // A busy year moves twenty-five categories, and twenty-five rows is
+      // sixteen hundred pixels of scrolling on a phone before the way out.
+      // The eight biggest answer the question; the rest go into one row that
+      // carries their total, so the list still sums to the cell exactly — the
+      // whole property this sheet is built on. Everything is one tap away,
+      // and nothing is ever dropped.
+      const TOP_N = 8;
+      const shown = rows.slice(0, TOP_N);
+      const rest = rows.slice(TOP_N);
+      const restEffect = rest.reduce((a, r) => a + r.effect, 0);
+      const rolled = rest.length ? [...shown, {
+        kind: "other",
+        name: `All other movements`,
+        restCount: rest.length,
+        prev: rest.reduce((a, r) => a + r.prev, 0),
+        cur: rest.reduce((a, r) => a + r.cur, 0),
+        change: rest.reduce((a, r) => a + r.change, 0),
+        effect: roundMoney(restEffect),
+        children: []
+      }] : shown;
+      return {
+        cur,
+        prev,
+        rows,
+        rolled,
+        restCount: rest.length,
+        // Scaled to the largest single mover either way, so collapsing and
+        // expanding does not resize every bar under the reader.
+        peak: rows.length ? Math.abs(rows[0].effect) : 0,
+        incomeEffect: roundMoney(cur.income - prev.income),
+        // Signed the way it lands on the surplus, like every row: expenses up
+        // is a negative number here even though the spending went up.
+        expenseEffect: roundMoney(prev.expense - cur.expense),
+        delta: roundMoney(cur.surplus - prev.surplus),
+        // A household with transfers has balance movement this figure does not
+        // count. Saying so in one line is cheaper than letting them go looking
+        // for it in a table that will never show it.
+        hasTransfers: [cur.year, prev.year].some((y) => (yearFlows[y] || []).some((ev) => ev.type === "transfer"))
+      };
+    };
+    const yoyDetail = yoyDetailYear === null ? null : buildYoyDetail(yoyDetailYear);
+    const glance = useMemo(() => {
+      try {
+        const now = new Date();
+        const isCurrentYear = now.getFullYear() === activeYear;
+        const todayM = isCurrentYear ? now.getMonth() : 0, todayD = isCurrentYear ? now.getDate() : 1;
+        const balanceNow = getCurrentBalance(flow, openBal, activeYear);
+        const future = flow.filter((ev) => ev.month > todayM || ev.month === todayM && ev.day >= todayD);
+        let low = null;
+        const end = new Date(activeYear, todayM, todayD);
+        end.setDate(end.getDate() + 60);
+        future.forEach((ev) => {
+          const d = new Date(activeYear, ev.month, ev.day);
+          if (d > end) return;
+          if (low === null || ev.balance < low.balance) low = { balance: ev.balance, month: ev.month, day: ev.day, date: d };
+        });
+        const daysToLow = low ? Math.max(0, Math.round((low.date - (new Date(activeYear, todayM, todayD)).getTime()) / 864e5)) : null;
+        const due = flow.filter((ev) => ev.type === "expense" && ev.month === todayM && ev.day >= todayD && !completed[ev.id]).reduce((s, ev) => s + ev.amount, 0);
+        const dueCount = flow.filter((ev) => ev.type === "expense" && ev.month === todayM && ev.day >= todayD && !completed[ev.id]).length;
+        return { balanceNow, low, daysToLow, due: roundMoney(due), dueCount, month: MONTHS[todayM] };
+      } catch (err) {
+        console.error("dashboard glance computation failed, hiding Balance/Due/Low-point tiles", err);
+        return null;
+      }
+    }, [flow, openBal, activeYear, completed]);
+    // ── The runway ──────────────────────────────────────────────────────
+    // The tiles answer "where am I now" and "how bad does it get"; between
+    // them sat the question neither could show — *when*. A low point 40 days
+    // out reads the same as one tomorrow, and a single dip reads the same as
+    // three lean weeks. This is the projection drawn as one continuous strip,
+    // a day per segment, tinted by the same railTone rule the ledger uses, so
+    // "am I all right?" is answered by shape before any figure is read.
+    const runway = useMemo(() => {
+      try {
+        const now = new Date();
+        const isCurrentYear = now.getFullYear() === activeYear;
+        const todayM = isCurrentYear ? now.getMonth() : 0, todayD = isCurrentYear ? now.getDate() : 1;
+        const start = new Date(activeYear, todayM, todayD);
+        // The last event on a day sets that day's closing balance; a quiet day
+        // carries the one before it, which is what makes the strip continuous
+        // rather than a scatter of the days something happened.
+        const closeByOffset = new Map();
+        flow.forEach((ev) => {
+          const off = Math.round(((new Date(activeYear, ev.month, ev.day)).getTime() - start.getTime()) / 864e5);
+          if (off >= 0 && off <= RUNWAY_DAYS) closeByOffset.set(off, ev.balance);
+        });
+        let bal = getCurrentBalance(flow, openBal, activeYear);
+        const days = [];
+        for (let i = 0; i <= RUNWAY_DAYS; i++) {
+          if (closeByOffset.has(i)) bal = closeByOffset.get(i);
+          days.push({ balance: bal, date: new Date(start.getTime() + i * 864e5) });
+        }
+        const under = days.filter((d) => d.balance < alertThreshold).length;
+        const negative = days.filter((d) => d.balance < 0).length;
+        const low = days.reduce((lo, d) => d.balance < lo.balance ? d : lo, days[0]);
+        // Colour alone answers "is anything wrong", and on a household where
+        // nothing is, every segment came out the same 30% primary — a flat
+        // slab that reads as a component that has not loaded yet. The comment
+        // above promises shape before figures, so give the segments a height:
+        // each day's balance against the range the horizon actually covers,
+        // which makes the strip a filled balance line in the same tones. The
+        // floor keeps a flat run visible as a line rather than nothing, and a
+        // household whose balance never moves gets a full bar instead of NaN.
+        const hi = days.reduce((m, d) => Math.max(m, d.balance), -Infinity);
+        const lo = Math.min(low.balance, 0);
+        const span = hi - lo;
+        days.forEach((d) => {
+          d.height = span > 0 ? Math.round((12 + 88 * ((d.balance - lo) / span)) * 10) / 10 : 100;
+        });
+        return { days, under, negative, low, start, end: days[days.length - 1].date };
+      } catch (err) {
+        console.error("dashboard runway computation failed, hiding the strip", err);
+        return null;
+      }
+    }, [flow, openBal, activeYear, alertThreshold]);
+    // Order is the reading order of Today: what is happening to my money,
+    // what do I owe, what changed, then the analysis. Customize reorders it
+    // and hides what you do not want — hiding is the only thing that takes a
+    // panel off the page, and it is the reader's choice rather than a rule.
+    const DASH_WIDGET_DEFS = [
+      { id: "runway", label: "Runway \u2014 next 90 days", size: "full" },
+      { id: "balanceToday", label: "Balance today", size: "third" },
+      { id: "nextLow", label: "Next low point", size: "third" },
+      { id: "dueMonth", label: "Due rest of month", size: "third" },
+      { id: "upcoming", label: "Upcoming \u2014 next 7", size: "full" },
+      { id: "drift", label: "Bills that have drifted", size: "full" },
+      { id: "endingSoon", label: "Ending-soon chips", size: "full" },
+      { id: "monthlyBrief", label: "What changed this month (AI)", size: "full" },
+      { id: "netWorth", label: "Net worth", size: "third" },
+      { id: "kpis", label: "KPI tiles", size: "full" },
+      { id: "balanceChart", label: "Balance chart", size: "half" },
+      { id: "surplusChart", label: "Monthly surplus chart", size: "half" },
+      { id: "incExpChart", label: "Income vs Expenses chart", size: "wide" },
+      { id: "topCatsChart", label: "Top expense categories", size: "narrow" },
+      { id: "incomeSources", label: "Income sources", size: "half" },
+      { id: "bvaYear", label: "Envelopes (year)", size: "half" },
+      { id: "debtSnap", label: "Debt snapshot", size: "full" },
+      { id: "summary", label: "Monthly summary table", size: "full" },
+      { id: "yoy", label: "Year-over-Year comparison", size: "full" }
+    ];
+    const DASH_ORDER_DEFAULT = DASH_WIDGET_DEFS.map((w) => w.id);
+    const dashOrderEff = useMemo(() => {
+      const stored = Array.isArray(dashOrder) ? dashOrder.filter((id) => DASH_ORDER_DEFAULT.includes(id)) : [];
+      const merged = [...stored];
+      DASH_ORDER_DEFAULT.forEach((id, defIdx) => {
+        if (!merged.includes(id)) merged.splice(Math.min(defIdx, merged.length), 0, id);
+      });
+      return merged;
+    }, [dashOrder]);
+    // Colour is reserved for state. A balance that is simply fine is ordinary
+    // text — it only takes a colour when it has something to say (amber under
+    // the alert threshold, red overdrawn). Eleven of the fourteen balance
+    // readouts already did this; the three that painted a healthy balance
+    // green made the genuinely alarming ones harder to pick out.
+    // What each recurring bill actually costs, against what its entry still
+    // says. The evidence is the actuals already recorded on occurrences — see
+    // src/lib/drift.js for when this is allowed to speak, which is the whole
+    // design problem: a variable bill that swings either side of its planned
+    // figure has not drifted, and saying so would make the panel noise.
+    const driftFindings = useMemo(
+      () => findAmountDrift(entries, overridesByYr, { asOf: todayStr() }),
+      [entries, overridesByYr]
+    );
+    const WIDGET_RENDER = {
+      runway: () => runway && <Card className="runway-card">
+        <div className="lbl mb-5">Next 90 days</div>
+        <div
+          className="runway-bar"
+          role="img"
+          // The strip is a picture of a number, so it says the number: a
+          // reader who cannot see the colour still gets the low point, the
+          // date it falls on and how much of the horizon is under water.
+          aria-label={"Projected balance for the next 90 days. Low point " + fmt(runway.low.balance)
+            + " on " + MONTHS[runway.low.date.getMonth()] + " " + runway.low.date.getDate() + ". "
+            + (runway.negative > 0
+              ? runway.negative + (runway.negative === 1 ? " day" : " days") + " projected overdrawn."
+              : runway.under > 0
+                ? runway.under + (runway.under === 1 ? " day" : " days") + " below your " + fmt(alertThreshold) + " alert threshold."
+                : "Every day stays above your " + fmt(alertThreshold) + " alert threshold.")}
+        >
+          {runway.days.map((d, i) => <i
+            key={i}
+            className="runway-seg"
+            style={{ background: railTone(d.balance, alertThreshold), height: d.height + "%" }}
+          />)}
+        </div>
+        <div className="runway-scale">
+          <span>Today</span>
+          <span>{MONTHS[runway.days[45].date.getMonth()]}{" "}{runway.days[45].date.getDate()}</span>
+          <span>{MONTHS[runway.end.getMonth()]}{" "}{runway.end.getDate()}</span>
+        </div>
+        <div className="runway-note">
+          {runway.negative > 0
+            ? <span className="runway-note-bad">
+              {"Projected overdrawn on "}
+              {runway.negative}
+              {runway.negative === 1 ? " day" : " days"}
+            </span>
+            : runway.under > 0
+              ? <span className="runway-note-warn">
+                {runway.under}
+                {runway.under === 1 ? " day" : " days"}
+                {" below your "}
+                {fmt(alertThreshold)}
+                {" threshold"}
+              </span>
+              : <span>{"Above your "}{fmt(alertThreshold)}{" threshold the whole way"}</span>}
+        </div>
+      </Card>,
+      balanceToday: () => <GlanceTile title="Balance today">
+        <div
+          className="glance-value"
+          style={{
+        color: !glance ? "var(--textLt)" : glance.balanceNow < 0 ? "var(--red)" : glance.balanceNow < alertThreshold ? "var(--amberInk)" : "var(--text)"
+      }}
+        >
+          {glance ? fmt(glance.balanceNow) : "\u2014"}
+        </div>
+        {glance && addEntry && <button
+          className="glance-action"
+          onClick={() => setShowReconcile(true)}
+          title="Compare this against your real bank balance and record the difference"
+        >
+          Reconcile…
+        </button>}
+      </GlanceTile>,
+      nextLow: () => <GlanceTile title="Next low point">
+        {glance && glance.low ? <div
+          className="glance-value"
+          style={{
+        color: glance.low.balance < 0 ? "var(--red)" : glance.low.balance < alertThreshold ? "var(--amberInk)" : "var(--text)"
+      }}
+        >
+          {fmt(glance.low.balance)}
+          <span className="glance-value-sub">
+            {glance.daysToLow === 0 ? "today" : `in ${glance.daysToLow}d`}
+          </span>
+        </div> : <div
+        className="txl"
+      >
+        —
+      </div>}
+      </GlanceTile>,
+      dueMonth: () => <GlanceTile title={"Due rest of " + (glance ? glance.month : "month")}>
+        {glance ? <div className="glance-value c-text">
+          {fmt(glance.due)}
+          <span className="glance-value-sub">
+            {glance.dueCount}
+            {" item"}
+            {glance.dueCount !== 1 ? "s" : ""}
+          </span>
+        </div> : <div
+          className="txl"
+        >
+          —
+        </div>}
+      </GlanceTile>,
+      drift: () => driftFindings.length > 0 && <Card>
+        <SectionTitle
+          help="A recurring entry says what you expect to pay. When the amounts you have actually recorded against it keep landing somewhere else, every projection past today is using the wrong figure — these are the ones far enough out, for long enough, to be worth correcting."
+        >
+          Bills that have drifted
+        </SectionTitle>
+        <div className="drift-list">
+          {driftFindings.slice(0, 5).map((d) => <div key={d.entryId} className="drift-row">
+            <div className="drift-row-main">
+              <div className="drift-desc">{d.desc}</div>
+              <div className="hint">
+                {"Entry says "}
+                {fmt(d.planned)}
+                {" \u00b7 last "}
+                {d.samples}
+                {d.samples === 1 ? " payment" : " payments"}
+                {" ranged "}
+                {fmt(d.low)}
+                –
+                {fmt(d.high)}
+              </div>
+            </div>
+            <div className="drift-row-figure">
+              <div
+                className="drift-suggested"
+                // Direction is the news, so it carries the colour: a bill that
+                // has risen is the one that makes the forecast optimistic.
+                style={{ color: d.direction === "up" ? "var(--red)" : "var(--greenDk)" }}
+              >
+                {d.direction === "up" ? "\u2191 " : "\u2193 "}
+                {fmt(d.suggested)}
+              </div>
+              <div className="hint">{d.delta > 0 ? "+" : "\u2212"}{fmt(Math.abs(d.delta))}{" a time"}</div>
+            </div>
+            <button
+              className="cf-btn cf-btn--secondary cf-btn--compact"
+              onClick={() => applyDriftFix(d)}
+              aria-label={`Update ${d.desc} to ${fmt(d.suggested)}`}
+            >
+              Update
+            </button>
+          </div>)}
+        </div>
+        {driftFindings.length > 5 && <div className="hint mt-8">
+          {"and "}
+          {driftFindings.length - 5}
+          {" more"}
+        </div>}
+      </Card>,
+      netWorth: () => {
+        const nw = netWorthSummary({
+          assets, debtData, cash: getCurrentBalance(flow, openBal, activeYear), asOf: todayStr()
+        });
+        // Nothing recorded is not a net worth of zero. A tile reading "$0.00"
+        // would be a claim about the household rather than an absence of one,
+        // so the empty state says what to do instead.
+        return <GlanceTile title="Net worth">
+          {nw.empty
+            ? <div className="hint">Nothing recorded yet</div>
+            : <>
+              <div className="glance-value" style={nw.total < 0 ? { color: "var(--red)" } : void 0}>
+                {fmt(nw.total, true)}
+              </div>
+              <div className="hint">{fmt(nw.assets + nw.cash)}{" owned \u00b7 "}{fmt(nw.debts)}{" owed"}</div>
+            </>}
+          <button
+            className="glance-action"
+            onClick={() => { setTab("plan"); window.location.hash = "#/plan/networth"; }}
+            title="What you own, what is in your accounts, and what you owe"
+          >
+            {nw.empty ? "Add what you own\u2026" : "Details\u2026"}
+          </button>
+        </GlanceTile>;
+      },
+      endingSoon: () => <>
+        {(() => {
+        const today = startOfToday();
+        const horizon = new Date(today);
+        horizon.setDate(horizon.getDate() + 60);
+        const ending = entries.filter((e) => {
+          if (!e.repeats || !e.recurEnd) return false;
+          const d = new Date(e.recurEnd + "T00:00:00");
+          return d >= today && d <= horizon;
+        }).map((e) => {
+          const monthly = monthlyEquivalent(e);
+          const d = new Date(e.recurEnd + "T00:00:00");
+          return { ...e, monthly, endLabel: MONTHS[d.getMonth()] + " " + d.getDate() };
+        }).sort((a, b) => a.recurEnd.localeCompare(b.recurEnd)).slice(0, 4);
+        if (!ending.length) return null;
+        return <div className="ending-soon-row">
+          {ending.map((e) => <div
+            key={e.id}
+            className="ending-soon-chip"
+            style={{
+          background: e.type === "expense" ? "var(--greenLt)" : "var(--amberLt)",
+          border: `1px solid ${e.type === "expense" ? "var(--greenDk)" : "var(--amberInk)"}33`
+        }}
+          >
+            <span
+              style={{ color: e.type === "expense" ? "var(--greenDk)" : "var(--amberInk)", display: "inline-flex" }}
+            >
+              {e.type === "expense" ? <Icon name="party" size={15} /> : <Icon
+                name="alert-triangle"
+                size={15}
+              />}
+            </span>
+            <span className="c-text">
+              <strong>{e.desc}</strong>
+              {" ends "}
+              {e.endLabel}
+              {e.monthly > 0 && <span
+                style={{ color: e.type === "expense" ? "var(--greenDk)" : "var(--amberInk)", fontWeight: 700 }}
+              >
+                {e.type === "expense" ? " \u2014 frees " : " \u2014 reduces income "}
+                {fmt(e.monthly)}
+                /mo
+              </span>}
+            </span>
+          </div>)}
+        </div>;
+      })()}
+      </>,
+      upcoming: () => <>
+        {(() => {
+        const today = startOfToday();
+        // The next seven things still outstanding — a count of items, not a
+        // window of days. It used to be "everything due in the next seven
+        // days, capped at six", which made the card a hostage to the shape of
+        // the week: a quiet stretch showed two rows and looked broken, and a
+        // busy one hid the tail behind a footnote. Neither is what the card is
+        // for. Seven things, always, however far ahead they reach.
+        //
+        // Read across every budget year rather than the active one. That was
+        // already wrong for a week straddling New Year — seven days from the
+        // 28th of December end on the 4th of January, and filtering a single
+        // year's events by that range left the January half not missing from
+        // the card but missing from the array the card filters, with the
+        // count agreeing so nothing on screen contradicted anything else. It
+        // matters more now: the seventh item ahead crosses into next year
+        // routinely, not just at New Year.
+        //
+        // viewFlows is keyed by year and already carries the account view the
+        // rest of the page is in, and each year's opening balance carries from
+        // the last, so a row on 2 January still shows a balance that follows
+        // on from 31 December.
+        const byYear = viewFlows || { [activeYear]: flow };
+        const ahead = Object.keys(byYear).reduce((acc, y) => acc.concat(byYear[y] || []), [])
+          .filter((ev) => ev.date >= today && !completed[ev.id])
+          .sort((a, b) => a.date - b.date);
+        const upcoming = ahead.slice(0, 7);
+        if (upcoming.length === 0) return null;
+        const lastShown = upcoming[upcoming.length - 1].date;
+        return <Card className="mb-16">
+          <div className="upcoming-header-row">
+            <span className="upcoming-hdr-label">Upcoming — Next 7</span>
+            <span className="upcoming-count">
+              {// How far ahead those seven reach. A bare "7 events" beside a
+          // heading that says Next 7 tells the reader nothing they cannot
+          // already see; the date they run out to is the thing they cannot.
+          // When fewer than seven remain, that is the more useful fact.
+          upcoming.length < 7
+            ? `${upcoming.length} left this year`
+            : `through ${lastShown.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
+}
+            </span>
+          </div>
+          <div className="upcoming-list">
+            {upcoming.map((ev) => {
+          const d = ev.date;
+          const label = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+          const signed = signedAmount(ev);
+          const isInc = signed >= 0;
+          const isPaid = !!completed[ev.id];
+          const balColor = ev.balance < 0 ? "var(--red)" : ev.balance < alertThreshold ? "var(--amberInk)" : "var(--text)";
+          const amtColor = isPaid ? "var(--textLt)" : ev.type === "transfer" ? "var(--accent)" : isInc ? "var(--greenDk)" : "var(--text)";
+          const barDiv = null;
+          const paidBtn = <button
+            type="button"
+            onClick={() => toggleComplete(ev.id)}
+            title={isPaid ? "Mark as not paid" : "Mark as paid"}
+            aria-label={(isPaid ? "Mark as not paid: " : "Mark as paid: ") + ev.desc}
+            aria-pressed={isPaid}
+            className="cf-checkbtn paid-btn"
+            style={{
+                border: isPaid ? "1.5px solid var(--greenDk)" : "1.5px solid var(--border)",
+                background: isPaid ? "var(--greenLt)" : "transparent"
+              }}
+          >
+            {isPaid ? "\u2713" : ""}
+          </button>;
+          if (isMobile) {
+            // The same row this week's occurrences get everywhere else, rail
+            // and all — this list used to draw its own, without one.
+            return <LedgerRow
+              key={ev.id}
+              ev={ev}
+              alertThreshold={alertThreshold}
+              paid={isPaid}
+              dateLabel={label}
+              onTogglePaid={toggleComplete}
+              categories={categories}
+              categoryColors={categoryColors}
+            />;
+          }
+          return <div key={ev.id} style={{ opacity: isPaid ? 0.6 : 1 }}>
+            <div className="upcoming-desktop-row">
+              <div className="upcoming-desktop-left">
+                {paidBtn}
+                <span className="upcoming-desktop-date">
+                  {label}
+                  {ev.depositShifted && <HelpTip
+                    icon="↤"
+                    variant="mark"
+                    label="Deposit date"
+                    text={depositShiftNote(ev)}
+                  />}
+                </span>
+                <span
+                  className="upcoming-desktop-desc"
+                  style={{
+            textDecoration: isPaid ? "line-through" : "none"
+          }}
+                >
+                  {ev.desc}
+                </span>
+                <CatChip category={ev.category} className="text-9" />
+              </div>
+              <div className="upcoming-desktop-amts">
+                <span
+                  className="cf-text-mono-13"
+                  style={{
+            color: amtColor
+          }}
+                >
+                  {isInc ? "+" : "-"}
+                  {fmt(ev.amount)}
+                </span>
+                <span
+                  className="cf-text-mono-13"
+                  style={{
+            color: balColor
+          }}
+                >
+                  {fmt(ev.balance)}
+                </span>
+              </div>
+            </div>
+            {barDiv}
+          </div>;
+        })}
+          </div>
+          {ahead.length > upcoming.length && <div className="upcoming-more-note">
+            Ticking one off brings the next one up — the ledger has the rest.
+          </div>}
+        </Card>;
+      })()}
+      </>,
+      monthlyBrief: () => <MonthlyBriefCard
+        flow={flow}
+        activeYear={activeYear}
+        categories={categories}
+        apiKey={apiKey}
+        isOffline={isOffline}
+      />,
+      kpis: () => <>
+        <div className="kpi-grid-4">
+          <Card className="kpi-tile">
+            <div className="lbl mb-5">Annual Income</div>
+            <div className="kpi-spark-row">
+              <div className="kpi-spark-value" style={{ color: "var(--greenDk)" }}>{fmt(totalIncome)}</div>
+              <Sparkline data={summaries.map((m) => m.income)} height={28} width={64} />
+            </div>
+          </Card>
+          <Card className="kpi-tile">
+            <div className="lbl mb-5">Annual Expenses</div>
+            <div className="kpi-spark-row">
+              <div className="kpi-spark-value" style={{ color: "var(--text)" }}>{fmt(totalExpense)}</div>
+              <Sparkline data={summaries.map((m) => m.expense)} height={28} width={64} />
+            </div>
+          </Card>
+          <Card className="kpi-tile">
+            <div className="lbl mb-5">Net Surplus/Deficit</div>
+            <div className="kpi-spark-row">
+              <div
+                className="kpi-spark-value"
+                style={{ color: netSurplus >= 0 ? "var(--greenDk)" : "var(--red)" }}
+              >
+                {fmt(netSurplus, true)}
+              </div>
+              <Sparkline data={summaries.map((m) => m.surplus)} height={28} width={64} />
+            </div>
+            {netSurplus < 0 && <div className="kpi-warn-note">⚠ Spending exceeds income</div>}
+          </Card>
+          <Card className="kpi-tile">
+            <div className="lbl mb-5">Lowest Balance</div>
+            <div className="kpi-spark-row">
+              <div
+                className="kpi-spark-value"
+                style={{ color: lowestBal < 0 ? "var(--red)" : lowestBal < alertThreshold ? "var(--amberInk)" : "var(--text)" }}
+              >
+                {fmt(lowestBal)}
+              </div>
+              <Sparkline data={summaries.map((m) => m.close)} height={28} width={64} />
+            </div>
+            <div className="kpi-sub-note">{"In "}{lowestMon}</div>
+          </Card>
+        </div>
+      </>,
+      balanceChart: () => <>
+        <Card>
+          <SectionTitle
+            action={<ChartToggle
+              value={balView}
+              onChange={setBalView}
+              label="Running Balance"
+              options={[{ id: "area", icon: <Icon name="chart-area" size={15} />, label: "Area" }, { id: "line", icon: <Icon
+                name="chart-line"
+                size={15}
+              />, label: "Line" }, { id: "bar", icon: <Icon
+                name="chart-bar"
+                size={15}
+              />, label: "Bar" }]}
+            />}
+          >
+            Running Balance
+          </SectionTitle>
+          <div className="pb-28">
+            <ResponsiveContainer width="100%" height={DASH_CHART_H}>
+              {balView === "bar" ? <BarChart
+                data={summaries}
+                ariaLabel={chartAlts.balance}
+                margin={{ top: 4, right: 4, bottom: 0, left: 4 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                <XAxis dataKey="month" tick={DASH_AXIS_TICK_X} tickMargin={4} />
+                <YAxis tickFormatter={fmtAxisK} tick={DASH_AXIS_TICK_Y} tickMargin={6} width={44} />
+                <Tooltip content={ChartTip} />
+                <ReferenceLine y={0} stroke="var(--red)" strokeDasharray="4 4" />
+                <Bar dataKey="close" name="Balance" radius={[4, 4, 0, 0]}>
+                  {summaries.map((m, i) => <Cell
+                    key={i}
+                    fill={m.close < 0 ? "var(--red)" : m.close < alertThreshold ? "var(--amberInk)" : "var(--text)"}
+                  />)}
+                </Bar>
+              </BarChart> : balView === "line" ? <LineChart
+                data={summaries}
+                ariaLabel={chartAlts.balance}
+                margin={{ top: 4, right: 4, bottom: 0, left: 4 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                <XAxis dataKey="month" tick={DASH_AXIS_TICK_X} tickMargin={4} />
+                <YAxis tickFormatter={fmtAxisK} tick={DASH_AXIS_TICK_Y} tickMargin={6} width={44} />
+                <Tooltip content={ChartTip} />
+                <ReferenceLine y={0} stroke="var(--red)" strokeDasharray="4 4" />
+                <Line
+                  type="monotone"
+                  dataKey="close"
+                  name="Balance"
+                  stroke="var(--text)"
+                  strokeWidth={2.5}
+                  dot={{ r: 4, fill: "var(--text)" }}
+                  activeDot={{ r: 6 }}
+                />
+              </LineChart> : <AreaChart
+                data={summaries}
+                ariaLabel={chartAlts.balance}
+                margin={{ top: 4, right: 4, bottom: 0, left: 4 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                <XAxis dataKey="month" tick={DASH_AXIS_TICK_X} tickMargin={4} />
+                <YAxis tickFormatter={fmtAxisK} tick={DASH_AXIS_TICK_Y} tickMargin={6} width={44} />
+                <Tooltip content={ChartTip} />
+                <ReferenceLine y={0} stroke="var(--red)" strokeDasharray="4 4" />
+                <Area
+                  type="monotone"
+                  dataKey="close"
+                  name="Balance"
+                  stroke="var(--text)"
+                  strokeWidth={2.5}
+                  fill="var(--text)"
+                  fillOpacity={0.12}
+                  dot={{ r: 4, fill: "var(--text)" }}
+                />
+              </AreaChart>}
+            </ResponsiveContainer>
+          </div>
+        </Card>
+      </>,
+      surplusChart: () => <>
+        <Card>
+          <SectionTitle
+            action={<ChartToggle
+              value={surplusView}
+              onChange={setSurplusView}
+              label="Surplus / Shortfall"
+              options={[{ id: "bar", icon: <Icon name="chart-bar" size={15} />, label: "Bar" }, { id: "line", icon: <Icon
+                name="chart-line"
+                size={15}
+              />, label: "Line" }]}
+            />}
+          >
+            Surplus / Shortfall
+          </SectionTitle>
+          <div className="pb-28">
+            <ResponsiveContainer width="100%" height={DASH_CHART_H}>
+              {surplusView === "line" ? <LineChart
+                data={summaries}
+                ariaLabel={chartAlts.surplus}
+                margin={{ top: 4, right: 4, bottom: 0, left: 4 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                <XAxis dataKey="month" tick={DASH_AXIS_TICK_X} tickMargin={4} />
+                <YAxis tickFormatter={fmtAxisK} tick={DASH_AXIS_TICK_Y} tickMargin={6} width={44} />
+                <Tooltip content={ChartTip} />
+                <ReferenceLine y={0} stroke="var(--textLt)" strokeDasharray="4 4" />
+                <Line
+                  type="monotone"
+                  dataKey="surplus"
+                  name="Surplus"
+                  stroke="var(--greenDk)"
+                  strokeWidth={2.5}
+                  dot={({ cx, cy, payload }) => <circle
+                    key={cx}
+                    cx={cx}
+                    cy={cy}
+                    r={4}
+                    fill={payload.surplus >= 0 ? "var(--greenDk)" : "var(--red)"}
+                    stroke="none"
+                  />}
+                  activeDot={{ r: 6 }}
+                />
+              </LineChart> : <BarChart
+        data={summaries}
+        ariaLabel={chartAlts.surplus}
+        margin={{ top: 4, right: 4, bottom: 0, left: 4 }}
+      >
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+        <XAxis dataKey="month" tick={DASH_AXIS_TICK_X} tickMargin={4} />
+        <YAxis tickFormatter={fmtAxisK} tick={DASH_AXIS_TICK_Y} tickMargin={6} width={44} />
+        <Tooltip content={ChartTip} />
+        <ReferenceLine y={0} stroke="var(--textLt)" />
+        <Bar dataKey="surplus" name="Surplus" radius={[4, 4, 0, 0]}>
+          {summaries.map((m, i) => <Cell key={i} fill={m.surplus >= 0 ? "var(--greenDk)" : "var(--red)"} />)}
+        </Bar>
+      </BarChart>}
+            </ResponsiveContainer>
+          </div>
+        </Card>
+      </>,
+      incExpChart: () => <>
+        <Card>
+          <SectionTitle
+            action={<ChartToggle
+              value={incExpView}
+              onChange={setIncExpView}
+              label="Income vs Expenses"
+              options={[{ id: "grouped", icon: <Icon name="chart-grouped" size={15} />, label: "Grouped" }, { id: "stacked", icon: <Icon
+                name="chart-stacked"
+                size={15}
+              />, label: "Stacked" }, { id: "line", icon: <Icon
+                name="chart-line"
+                size={15}
+              />, label: "Line" }]}
+            />}
+          >
+            Income vs Expenses
+          </SectionTitle>
+          <div className="pb-28">
+            <ResponsiveContainer width="100%" height={DASH_CHART_H}>
+              {incExpView === "line" ? <LineChart
+                data={summaries}
+                ariaLabel={chartAlts.incExp}
+                margin={{ top: 4, right: 4, bottom: 34, left: 4 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                <XAxis dataKey="month" tick={DASH_AXIS_TICK_X} tickMargin={4} />
+                <YAxis tickFormatter={fmtAxisK} tick={DASH_AXIS_TICK_Y} tickMargin={6} width={44} />
+                <Tooltip content={ChartTip} />
+                <Legend wrapperStyle={{ fontSize: 12 }} />
+                <Line
+                  type="monotone"
+                  dataKey="income"
+                  name="Income"
+                  stroke="var(--greenDk)"
+                  strokeWidth={2.5}
+                  dot={{ r: 3 }}
+                  activeDot={{ r: 5 }}
+                  endLabel={true}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="expense"
+                  name="Expenses"
+                  stroke="var(--red)"
+                  strokeWidth={2.5}
+                  dot={{ r: 3 }}
+                  activeDot={{ r: 5 }}
+                  strokeDasharray="6 4"
+                  endLabel={true}
+                />
+              </LineChart> : <BarChart
+                data={summaries}
+                ariaLabel={chartAlts.incExp}
+                margin={{ top: 4, right: 4, bottom: 34, left: 4 }}
+                barCategoryGap={incExpView === "stacked" ? "20%" : "10%"}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                <XAxis dataKey="month" tick={DASH_AXIS_TICK_X} tickMargin={4} />
+                <YAxis tickFormatter={fmtAxisK} tick={DASH_AXIS_TICK_Y} tickMargin={6} width={44} />
+                <Tooltip content={ChartTip} />
+                <Legend wrapperStyle={{ fontSize: 12 }} />
+                <Bar
+                  dataKey="income"
+                  name="Income"
+                  fill="var(--greenDk)"
+                  radius={incExpView === "stacked" ? [0, 0, 0, 0] : [3, 3, 0, 0]}
+                  stackId={incExpView === "stacked" ? "a" : void 0}
+                />
+                <Bar
+                  dataKey="expense"
+                  name="Expenses"
+                  fill="var(--red)"
+                  radius={[3, 3, 0, 0]}
+                  stackId={incExpView === "stacked" ? "a" : void 0}
+                />
+              </BarChart>}
+            </ResponsiveContainer>
+          </div>
+        </Card>
+      </>,
+      topCatsChart: () => <>
+        <Card>
+          <SectionTitle
+            action={<ChartToggle
+              options={[{ id: "bar", icon: <Icon name="chart-bar" size={15} />, label: "Bars" }, { id: "pie", icon: <Icon
+                name="chart-pie"
+                size={15}
+              />, label: "Pie" }]}
+              value={catView}
+              onChange={setCatView}
+              label="Top Expense Categories"
+            />}
+          >
+            Top Expense Categories
+          </SectionTitle>
+          {catView === "bar" && <div
+            className="dash-cat-bar-wrap"
+            tabIndex={0}
+            role="group"
+            aria-label="Top expense categories, scrollable"
+          >
+            {catTotals.map(([cat, total], i) => {
+        const pct = total / totalExpense * 100;
+        return <button
+          key={cat}
+          type="button"
+          className="dash-cat-open"
+          onClick={() => openCatDetail(cat)}
+          // The row reads as a label and an amount; neither says what
+          // pressing it does, and a screen reader gets only those two.
+          aria-label={`${cat}, ${fmt(total)} \u2014 show the expenses behind it`}
+        >
+          <div className="label-amt-row">
+            <span className="tx">{cat}</span>
+            <span className="cf-text-mono-13 amt-mid-600">{fmt(total)}</span>
+          </div>
+          <div className="progress-track">
+            <div
+              className="progress-fill"
+              style={{
+          width: `${pct}%`,
+          background: getCatColor(cat, categories, categoryColors)
+        }}
+            />
+          </div>
+        </button>;
+      })}
+          </div>}
+          {catView === "pie" && <div className="pb-28">
+            <ResponsiveContainer width="100%" height={DASH_CHART_H}>
+              <PieChart ariaLabel={chartAlts.cats}>
+                <Pie
+                  data={catPieData}
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={80}
+                  dataKey="value"
+                  nameKey="name"
+                  label={({ name, percent }) => name + " " + (percent * 100).toFixed(0) + "%"}
+                  labelLine={false}
+                  // A slice opens the same breakdown a bar does.
+                  onClick={(d) => d && d.name && openCatDetail(d.name)}
+                  className="dash-cat-slice"
+                  // A wedge has no accessible name and its visible label is a
+                  // percentage, so the slice says the category and the amount — the
+                  // same sentence the bar's button says.
+                  sliceLabel={(sl) => `${sl.name}, ${fmt(sl.value)} \u2014 show the expenses behind it`}
+                >
+                  {catTotals.map(([cat], i) => <Cell
+                    key={i}
+                    fill={getCatColor(cat, categories, categoryColors)}
+                  />)}
+                </Pie>
+                <Tooltip
+                  formatter={(v) => fmt(v)}
+                  contentStyle={{ fontSize: 12, background: "var(--navy)", border: "none", borderRadius: 8, color: "#fff" }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>}
+          {catView === "table" && <table className="dash-cat-table">
+            <thead>
+              <tr className="dash-cat-table-hdr-row">
+                {["Category", "Amount", "% of Spend"].map((h, i) => <th
+                  key={h}
+                  className="dash-cat-th"
+                  style={{
+        textAlign: i === 0 ? "left" : "right"
+      }}
+                >
+                  {h}
+                </th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {catTotals.map(([cat, total], i) => <tr
+                key={cat}
+                className="dash-cat-tr dash-cat-tr--open"
+                tabIndex={0}
+                role="button"
+                aria-label={`${cat}, ${fmt(total)} \u2014 show the expenses behind it`}
+                onClick={() => openCatDetail(cat)}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openCatDetail(cat); } }}
+              >
+                <td className="dash-cat-td">
+                  <div
+                    className="dash-cat-dot"
+                    style={{ background: getCatColor(cat, categories, categoryColors) }}
+                  />
+                  <span className="tx">{cat}</span>
+                </td>
+                <td className="cf-text-mono-13 dash-cat-amt-td">{fmt(total)}</td>
+                <td className="cf-text-mono-13 dash-cat-pct-td">
+                  {totalExpense > 0 ? (total / totalExpense * 100).toFixed(1) : 0}
+                  %
+                </td>
+              </tr>)}
+            </tbody>
+          </table>}
+        </Card>
+      </>,
+      incomeSources: () => <>
+        <Card>
+          <SectionTitle
+            action={<ChartToggle
+              value={incView}
+              onChange={setIncView}
+              label="Income Sources"
+              options={[{ id: "bar", icon: <Icon name="chart-bar" size={15} />, label: "Bars" }, { id: "pie", icon: <Icon
+                name="chart-pie"
+                size={15}
+              />, label: "Pie" }]}
+            />}
+          >
+            Income Sources
+          </SectionTitle>
+          {incView === "bar" && <div className="cf-col cf-gap-8 mt-4">
+            {incTotals.length === 0 && <div className="debt-empty-wrap">No income entries</div>}
+            {incTotals.map(([cat, total], i) => {
+        const pct = totalIncome > 0 ? total / totalIncome * 100 : 0;
+        return <div key={cat}>
+          <div className="label-amt-row">
+            <span className="tx">{cat}</span>
+            <span className="cf-text-mono-13 amt-mid-600">{fmt(total)}</span>
+          </div>
+          <div className="progress-track">
+            <div
+              className="progress-fill"
+              style={{ width: `${pct}%`, background: CAT_PALETTE[i % CAT_PALETTE.length] }}
+            />
+          </div>
+        </div>;
+      })}
+          </div>}
+          {incView === "pie" && <div className="pb-28">
+            <ResponsiveContainer width="100%" height={DASH_CHART_H}>
+              <PieChart ariaLabel={chartAlts.inc}>
+                <Pie
+                  data={incPieData}
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={75}
+                  dataKey="value"
+                  nameKey="name"
+                  label={({ name, percent }) => percent >= 0.08 ? name + " " + (percent * 100).toFixed(0) + "%" : ""}
+                  labelLine={true}
+                >
+                  {incTotals.map((_, i) => <Cell key={i} fill={CAT_PALETTE[i % CAT_PALETTE.length]} />)}
+                </Pie>
+                <Tooltip
+                  formatter={(v) => fmt(v)}
+                  contentStyle={{ fontSize: 12, background: "var(--navy)", border: "none", borderRadius: 8, color: "#fff" }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>}
+        </Card>
+      </>,
+      bvaYear: () => <>
+        <Card>
+          <SectionTitle>{"Budget vs Actual \u2014 "}{activeYear}</SectionTitle>
+          {(() => {
+        const _now = new Date();
+        const _lm = _now.getFullYear() > activeYear ? 11 : _now.getFullYear() === activeYear ? _now.getMonth() : -1;
+        return _lm >= 0 ? <div className="bva-subtitle">
+          {MONTHS[0]}
+          –
+          {MONTHS[_lm]}
+          {" "}
+          {activeYear}
+          {" \xB7 year-to-date \xB7 "}
+          <span className="cf-text-mono text-10">spent / budget</span>
+        </div> : null;
+      })()}
+          {(() => {
+        const now = new Date();
+        const isCurrentYear = now.getFullYear() === activeYear;
+        const isPastYear = now.getFullYear() > activeYear;
+        const lastMonth = isPastYear ? 11 : isCurrentYear ? now.getMonth() : -1;
+        const actualByCat = {};
+        flow.filter((e) => e.type === "expense" && e.month <= lastMonth).forEach((e) => {
+          actualByCat[e.category] = (actualByCat[e.category] || 0) + e.amount;
+        });
+        const targetByCat = {};
+        Object.keys(budgetTargets).forEach((key) => {
+          if (!key.startsWith(activeYear + ":")) return;
+          const mIdx = parseInt(key.split(":")[1]);
+          if (isNaN(mIdx) || mIdx > lastMonth) return;
+          const monthTargets = budgetTargets[key] || {};
+          Object.keys(monthTargets).forEach((cat) => {
+            targetByCat[cat] = (targetByCat[cat] || 0) + (Number(monthTargets[cat]) || 0);
+          });
+        });
+        const cats = [...new Set([...Object.keys(targetByCat), ...Object.keys(actualByCat)])].filter((c) => targetByCat[c] > 0).sort((a, b) => (actualByCat[b] || 0) - (actualByCat[a] || 0));
+        if (cats.length === 0) {
+          return <div className="bva-empty-state">
+            <div className="bva-empty-icon"><Icon name="target" size={26} /></div>
+            <div className="bva-empty-title">No budget targets set yet</div>
+            <div className="bva-empty-body">
+              Set monthly category targets in the Budget tab under "Budget vs Actual" to track your spending against plan here.
+            </div>
+          </div>;
+        }
+        const rows = cats.map((c) => {
+          const actual = roundMoney((actualByCat[c] || 0));
+          const target = roundMoney((targetByCat[c] || 0));
+          const diff = roundMoney((actual - target));
+          const over = target > 0 && diff > 0;
+          const color = !over ? "var(--greenDk)" : diff <= 5000 ? "var(--amberInk)" : "var(--red)";
+          const pct = target > 0 ? Math.min(actual / target * 100, 100) : 0;
+          return { cat: c, actual, target, diff, over, color, pct };
+        });
+        const totalActual = roundMoney(rows.reduce((s, r) => s + r.actual, 0));
+        const totalTarget = roundMoney(rows.reduce((s, r) => s + r.target, 0));
+        const tDiff = roundMoney((totalActual - totalTarget));
+        const tOver = totalTarget > 0 && tDiff > 0;
+        const tColor = !tOver ? "var(--greenDk)" : tDiff <= 5000 ? "var(--amberInk)" : "var(--red)";
+        return <>
+          <div
+            className="bva-rows-wrap"
+            tabIndex={0}
+            role="group"
+            aria-label="Budget vs actual by category, scrollable"
+          >
+            {rows.map((r) => <div key={r.cat}>
+              <div className="dash-bva-row-hdr">
+                <CatChip
+                  category={r.cat}
+                  categories={categories}
+                  categoryColors={categoryColors}
+                  className="text-9"
+                />
+                <div className="dash-bva-amounts">
+                  <span
+                    className="cf-text-mono-13"
+                    style={{
+          color: r.over ? r.color : "var(--text)"
+        }}
+                  >
+                    {fmt(r.actual)}
+                  </span>
+                  {r.target > 0 && <span className="cf-text-mono-13 c-textMid">{"/ "}{fmt(r.target)}</span>}
+                  {r.over && <span className="over-note" style={{ color: r.color }}>
+                    {fmt(r.diff) + " over"}
+                  </span>}
+                </div>
+              </div>
+              {r.target > 0 && <div className="progress-track">
+                <div
+                  className="bva-progress-fill"
+                  style={{
+          width: `${r.pct}%`,
+          background: r.color
+        }}
+                />
+              </div>}
+            </div>)}
+          </div>
+          <div className="bva-totals-row">
+            <span className="bva-total-label">Total</span>
+            <div className="cf-row cf-gap-8">
+              <span
+                className="cf-text-mono-13 fw-700"
+                style={{
+          color: tOver ? tColor : "var(--text)"
+        }}
+              >
+                {fmt(totalActual)}
+              </span>
+              {totalTarget > 0 && <span className="cf-text-mono-13 c-textMid">{"/ "}{fmt(totalTarget)}</span>}
+              {tOver && <span className="over-note" style={{ color: tColor }}>{fmt(tDiff) + " over"}</span>}
+            </div>
+          </div>
+        </>;
+      })()}
+        </Card>
+      </>,
+      debtSnap: () => <>
+        {(() => {
+        const dData = debtData && typeof debtData === "object" ? debtData : {};
+        const dkw = [
+          "debt",
+          "credit",
+          "loan",
+          "mortgage",
+          "line of credit",
+          "cc-",
+          "visa",
+          "amex",
+          "mastercard",
+          "car payment",
+          "truck payment",
+          "trailer payment",
+          "scotialine",
+          "loc",
+          "vehicle",
+          "tractor"
+        ];
+        const autoAllEvs = {};
+        flow.filter((ev) => ev.type === "expense" && dkw.some((k) => ev.desc.toLowerCase().includes(k) || ev.category.toLowerCase().includes(k))).forEach((ev) => {
+          const k = ev.desc.replace(/[^a-zA-Z0-9]/g, "_");
+          (autoAllEvs[k] || (autoAllEvs[k] = [])).push(ev);
+        });
+        // Same recurrence-rule annualization as the Debt Payoff Tracker's own
+        // monthly total (see toMonthlyFromEvs in PlanView) — grouped by the
+        // underlying entry so a description covered by more than one entry
+        // sums each entry's own contribution instead of just the first found.
+        const autoMonthly = (key) => {
+          const evs = autoAllEvs[key] || [];
+          if (!evs.length) return 0;
+          const byEntry: Record<string, FlowRow[]> = {};
+          evs.forEach((ev) => {
+            const eid = ev.entryId != null ? ev.entryId : ev.id;
+            (byEntry[eid] || (byEntry[eid] = [])).push(ev);
+          });
+          const total = Object.values(byEntry).reduce((sum, occs) => {
+            const ev = occs[0];
+            if (ev.repeats) {
+              const every = ev.recurEvery || 1;
+              const ppy = { day: 365 / every, week: 52 / every, month: 12 / every, monthend: 12 / every, monthweekday: 12 / every, year: 1 / every, semimonth: 24 }[ev.recurUnit || "month"] ?? 12;
+              return sum + (ev.amount || 0) * (ppy / 12);
+            }
+            return sum + occs.reduce((s, e) => s + (e.amount || 0), 0) / 12;
+          }, 0);
+          return roundMoney(total);
+        };
+        const configuredDebts = Object.entries(dData).filter(([, v]) => !v.hidden && parseFloat(v.balance) > 0);
+        if (configuredDebts.length === 0) return null;
+        const totalBalance = configuredDebts.reduce((s, [, v]) => s + parseFloat(v.balance || 0), 0);
+        return <Card className="mb-16">
+          <div className="debtsnap-header-row">
+            <SectionTitle>Debt Snapshot</SectionTitle>
+            <div className="cf-text-mono-13 debt-item-bal">{"Total: "}{fmt(totalBalance)}</div>
+          </div>
+          <div className="cf-col cf-gap-10">
+            {configuredDebts.map(([key, v]) => {
+          const bal = parseFloat(v.balance) || 0;
+          const rate = parseFloat(v.rate) || 0;
+          const isManual = key.startsWith("manual_");
+          const label = isManual ? v.label || "Unnamed debt" : key.replace(/_/g, " ");
+          const pmt = !isManual ? autoMonthly(key) : parseFloat(v.payment) || 0;
+          const r = rate / 100 / 12;
+          const monthsLeft = bal > 0 && pmt > 0 && !(r > 0 && pmt <= bal * r) ? r > 0 ? Math.ceil(Math.log(pmt / (pmt - bal * r)) / Math.log(1 + r)) : Math.ceil(bal / pmt) : null;
+          const totalInterest = monthsLeft && r > 0 ? roundMoney((pmt * monthsLeft - bal)) : null;
+          const payoffDate = monthsLeft ? (() => {
+            const d = new Date();
+            d.setMonth(d.getMonth() + monthsLeft);
+            return `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+          })() : null;
+          const pct = totalBalance > 0 ? Math.round(bal / totalBalance * 100) : 0;
+          const payoffTrend = monthsLeft > 1 ? projectPayoffBalances(bal, rate, pmt, monthsLeft) : null;
+          return <div key={key}>
+            <div className="debtsnap-row-top">
+              <div className="cf-row cf-gap-8">
+                <span className="tx">{label}</span>
+                {rate > 0 && <span className="debtsnap-apr-badge">{rate}% APR</span>}
+              </div>
+              <div className="debtsnap-amounts">
+                {payoffTrend && <span
+                  title="Projected balance decline to payoff"
+                  style={{ display: "inline-flex", verticalAlign: "middle", marginRight: 2 }}
+                >
+                  <Sparkline data={payoffTrend} color="var(--red)" height={18} width={44} />
+                </span>}
+                <span className="cf-text-mono-13 debt-item-bal">{fmt(bal)}</span>
+                {payoffDate && <span className="debtsnap-payoff">{"\u2713 "}{payoffDate}</span>}
+                {totalInterest != null && <span className="text-10 c-textLt">
+                  +
+                  {fmt(totalInterest)}
+                  {" int."}
+                </span>}
+              </div>
+            </div>
+            <div className="progress-track--clip">
+              <div
+                className="debtsnap-progress-fill"
+                style={{
+            width: `${pct}%`,
+            background: pct > 50 ? "var(--red)" : pct > 25 ? "var(--amberInk)" : "var(--greenDk)"
+          }}
+              />
+            </div>
+            {pmt > 0 && (() => {
+            const evs = autoAllEvs[key] || [];
+            const perOcc = (evs[0]?.amount) || 0;
+            const timesYr = evs.length;
+            const label2 = timesYr === 26 ? "bi-weekly" : timesYr === 24 ? "2\xD7/mo" : timesYr === 12 ? "monthly" : timesYr > 0 ? `${timesYr}\xD7/yr` : "";
+            return <div className="debtsnap-freq-note">
+              {perOcc && label2 ? <>{fmt(perOcc)}{" "}{label2}{" \xB7 "}</> : ""}
+              {fmt(pmt)}
+              /mo
+            </div>;
+          })()}
+          </div>;
+        })}
+          </div>
+        </Card>;
+      })()}
+      </>,
+      summary: () => <Card className="card-flat summary-card">
+        {// The heading and the export toolbar used to sit on the page ground
+      // above a white table, so one widget read as two things: a label
+      // floating over a card. They are inside it now, in a padded header,
+      // and the table keeps the card's zero padding so its rows still run
+      // to the edges.
+      <div className="summary-head">
+        <SectionTitle className="mb-12">Monthly Summary</SectionTitle>
+        <div className="summary-toolbar-row">
+          <div className="cf-row cf-gap-10">
+            <ChartToggle
+              value={summaryView}
+              onChange={setSummaryView}
+              label="Monthly Summary"
+              options={[{ id: "table", icon: <Icon name="file-list" size={15} />, label: "Table" }, { id: "heat", icon: <Icon
+                name="grid"
+                size={15}
+              />, label: "Heatmap" }]}
+            />
+          </div>
+          <ExportBar
+            onCSV={() => downloadCSV(
+              `CashFlow_Monthly_Summary_${activeYear}.csv`,
+              summaries.map((m) => [m.month, centsToDollars(m.income), centsToDollars(m.expense), centsToDollars(m.surplus), centsToDollars(m.close)]),
+              ["Month", "Income", "Expenses", "Surplus", "Closing Balance"]
+            )}
+            onPrint={() => printView(`CashFlow Monthly Summary ${activeYear}`)}
+          />
+        </div>
+      </div>
+}
+        {summaryView === "heat" && <div>
+          <div className="hscroll" tabIndex={0} role="region" aria-label="Monthly summary heatmap">
+            <table className="dash-table-wide">
+              <thead>
+                <tr className="thead-row">
+                  {summaryCols.map((h, i) => <th
+                    key={h}
+                    className="dash-th-16"
+                    style={{
+          textAlign: i === 0 ? "left" : "right",
+          position: i === summaryCols.length - 1 ? "sticky" : "static",
+          right: i === summaryCols.length - 1 ? 0 : "auto",
+          background: i === summaryCols.length - 1 ? "var(--navy)" : "transparent",
+          boxShadow: i === summaryCols.length - 1 ? "-6px 0 8px -6px rgba(0,0,0,0.25)" : "none"
+        }}
+                  >
+                    {h}
+                  </th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {summaries.map((m, i) => {
+          const maxInc = Math.max(...summaries.map((s) => s.income), 1);
+          const maxExp = Math.max(...summaries.map((s) => s.expense), 1);
+          const maxAbs = Math.max(...summaries.map((s) => Math.abs(s.surplus)), 1);
+          const maxBal = Math.max(...summaries.map((s) => Math.abs(s.close)), 1);
+          const heatInc = `rgba(39,174,115,${0.1 + 0.7 * (m.income / maxInc)})`;
+          const heatExp = `rgba(232,93,74,${0.1 + 0.7 * (m.expense / maxExp)})`;
+          const heatSur = m.surplus >= 0 ? `rgba(39,174,115,${0.1 + 0.7 * (m.surplus / maxAbs)})` : `rgba(232,93,74,${0.1 + 0.7 * (Math.abs(m.surplus) / maxAbs)})`;
+          const heatBal = m.close >= 0 ? `rgba(47,84,150,${0.1 + 0.5 * (m.close / maxBal)})` : `rgba(232,93,74,${0.15 + 0.6 * (Math.abs(m.close) / maxBal)})`;
+          return <tr key={m.month} className="dash-table-row">
+            <td className="dash-td-13">{m.month}</td>
+            <td className="cf-text-mono-13 dash-amt-td-16 heat-inc-td" style={{ background: heatInc }}>
+              {fmt(m.income)}
+            </td>
+            <td className="cf-text-mono-13 dash-amt-td-16 heat-exp-td" style={{ background: heatExp }}>
+              {fmt(m.expense)}
+            </td>
+            {hasTransfers && <td className="cf-text-mono-13 dash-amt-td-16 c-text">
+              {m.transfersIn || m.transfersOut ? fmt(m.transfersIn - m.transfersOut, true) : "\u2014"}
+            </td>}
+            <td
+              className="cf-text-mono-13 dash-amt-td-16 fw-700"
+              style={{ background: heatSur, color: m.surplus >= 0 ? "var(--greenDk)" : "var(--red)" }}
+            >
+              {fmt(m.surplus, true)}
+            </td>
+            <td
+              className="cf-text-mono-13 dash-heat-bal-td"
+              style={{ background: heatBal, color: m.close < 0 ? "var(--red)" : m.close < alertThreshold ? "var(--amberInk)" : "var(--text)" }}
+            >
+              {fmt(m.close)}
+            </td>
+          </tr>;
+        })}
+              </tbody>
+            </table>
+          </div>
+        </div>}
+        {summaryView === "table" && <div>
+          <div className="hscroll" tabIndex={0} role="region" aria-label="Monthly summary table">
+            <table className="dash-table-wide">
+              <thead>
+                <tr className="thead-row">
+                  {summaryCols.map((h, i) => <th
+                    key={h}
+                    className="dash-th-16"
+                    style={{
+          textAlign: i === 0 ? "left" : "right",
+          position: i === summaryCols.length - 1 ? "sticky" : "static",
+          right: i === summaryCols.length - 1 ? 0 : "auto",
+          background: i === summaryCols.length - 1 ? "var(--navy)" : "transparent",
+          boxShadow: i === summaryCols.length - 1 ? "-6px 0 8px -6px rgba(0,0,0,0.25)" : "none"
+        }}
+                  >
+                    {h}
+                  </th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {summaries.map((m, i) => <tr
+                  key={m.month}
+                  className="dash-table-row"
+                  style={{ background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)" }}
+                >
+                  <td className="dash-td-13">{m.month}</td>
+                  <td className="cf-text-mono-13 dash-amt-td-16 c-text">{fmt(m.income)}</td>
+                  <td className="cf-text-mono-13 dash-amt-td-16 c-text">{fmt(m.expense)}</td>
+                  {hasTransfers && <td className="cf-text-mono-13 dash-amt-td-16 c-text">
+                    {m.transfersIn || m.transfersOut ? fmt(m.transfersIn - m.transfersOut, true) : "\u2014"}
+                  </td>}
+                  <td
+                    className="cf-text-mono-13 dash-amt-td-16 fw-700"
+                    style={{
+          color: m.surplus >= 0 ? "var(--greenDk)" : "var(--red)",
+          background: m.surplus < 0 ? "var(--redLt)" : "transparent"
+        }}
+                  >
+                    {fmt(m.surplus, true)}
+                  </td>
+                  <td
+                    className="cf-text-mono-13 dash-table-bal-td"
+                    style={{
+          color: m.close < 0 ? "var(--red)" : m.close < alertThreshold ? "var(--amberInk)" : "var(--text)",
+          background: m.close < 0 ? "var(--redLt)" : m.close < alertThreshold ? "var(--amberLt)" : i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)"
+        }}
+                  >
+                    {fmt(m.close)}
+                  </td>
+                </tr>)}
+                <tr className="thead-row">
+                  <td className="dash-annual-total-label">Annual Total</td>
+                  <td className="cf-text-mono-13 dash-annual-total-amt">{fmt(totalIncome)}</td>
+                  <td className="cf-text-mono-13 dash-annual-total-amt">{fmt(totalExpense)}</td>
+                  {hasTransfers && <td className="cf-text-mono-13 dash-annual-total-amt">
+                    {fmt(netTransfers, true)}
+                  </td>}
+                  <td
+                    className="cf-text-mono-13 dash-total-amt-td"
+                    style={{ color: netSurplus >= 0 ? "var(--mint)" : "var(--coral)" }}
+                  >
+                    {fmt(netSurplus, true)}
+                  </td>
+                  <td className="dash-total-spacer-td" />
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>}
+      </Card>,
+      yoy: () => <>
+        {showYoY ? <Card className="mb-16">
+          <SectionTitle
+            action={<PillToggle options={yoyMetrics} value={yoyMetric} onChange={setYoyMetric} size="sm" />}
+          >
+            Year-over-Year Comparison
+          </SectionTitle>
+          <div className="pb-28">
+            <ResponsiveContainer width="100%" height={DASH_CHART_H}>
+              <LineChart
+                data={yoyData}
+                ariaLabel={`Line chart comparing ${(yoyMetrics.find((m) => m.id === yoyMetric) || {}).label} month by month across ${yearConfigs.map((y) => y.year).join(", ")}. The Annual Comparison table below carries the same figures.`}
+                margin={{ top: 4, right: 8, bottom: 34, left: 4 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                <XAxis dataKey="month" tick={DASH_AXIS_TICK_X} tickMargin={4} />
+                <YAxis tickFormatter={fmtAxisK} tick={DASH_AXIS_TICK_Y} tickMargin={6} width={44} />
+                <Tooltip content={ChartTip} />
+                <Legend wrapperStyle={{ fontSize: 12 }} />
+                <ReferenceLine y={0} stroke="var(--textLt)" strokeDasharray="4 4" />
+                {yearConfigs.map((yc, yi) => <Line
+                  key={yc.year}
+                  type="monotone"
+                  dataKey={yc.year}
+                  name={String(yc.year)}
+                  stroke={YCOLS[yi % YCOLS.length]}
+                  strokeWidth={2.5}
+                  dot={{ r: 3 }}
+                  activeDot={{ r: 5 }}
+                />)}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="hscroll mt-16" tabIndex={0} role="region" aria-label="Annual comparison table">
+            <table className="table-collapse">
+              <thead>
+                <tr className="thead-row">
+                  {["Year", "Income", "Expenses", "Net Surplus", "Year-End Balance", "vs Prior Year"].map((h, i) => <th
+                    key={h}
+                    className="dash-th-14"
+                    style={{
+        textAlign: i === 0 ? "left" : "right"
+      }}
+                  >
+                    {h}
+                  </th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {annualRows.map((row, i) => {
+        const prev = annualRows[i - 1];
+        const delta = prev ? row.surplus - prev.surplus : null;
+        return <tr
+          key={row.year}
+          className="dash-table-row"
+          style={{ background: i % 2 === 0 ? "var(--bgCard)" : "var(--stripe)" }}
+        >
+          <td className="dash-td-14">
+            <div className="cf-row cf-gap-8">
+              <div className="dash-year-dot" style={{ background: row.color }} />
+              <span className="dash-year-label">{row.year}</span>
+            </div>
+          </td>
+          <td className="cf-text-mono-13 dash-amt-td-14 c-greenDk">{fmt(row.income)}</td>
+          <td className="cf-text-mono-13 dash-amt-td-14 c-text">{fmt(row.expense)}</td>
+          <td
+            className="cf-text-mono-13 dash-amt-td-14 fw-700"
+            style={{ color: row.surplus >= 0 ? "var(--greenDk)" : "var(--red)" }}
+          >
+            {fmt(row.surplus, true)}
+          </td>
+          <td
+            className="cf-text-mono-13 dash-amt-td-14 fw-700"
+            style={{ color: row.close < 0 ? "var(--red)" : "var(--text)" }}
+          >
+            {fmt(row.close)}
+          </td>
+          <td
+            className="cf-text-mono-13 dash-amt-td-14 fw-600"
+            style={{ color: delta === null ? "#aaa" : delta >= 0 ? "var(--greenDk)" : "var(--red)" }}
+          >
+            {delta === null ? "\u2014" : <button
+              type="button"
+              className="yoy-drill-btn"
+              onClick={() => openYoyDetail(row.year)}
+              // The visible text is a bare amount, which tells a screen reader
+              // nothing about what the button does or which two years it is
+              // about. Both are in the row, and neither reaches the button.
+              aria-label={`What drove the ${fmt(delta, true)} change from ${prev.year} to ${row.year}`}
+            >
+              {fmt(delta, true)}
+              <span className="yoy-drill-caret" aria-hidden="true">›</span>
+            </button>}
+          </td>
+        </tr>;
+      })}
+              </tbody>
+            </table>
+          </div>
+          {annualRows.length > 1 && <div className="yoy-drill-hint" data-noprint={true}>
+            {`${isMobile ? "Tap" : "Click"} any figure in the last column to see what drove it.`}
+          </div>}
+        </Card> : <div
+        className="yoy-empty-wrap"
+      >
+        <Icon name="calendar" size={14} style={{ color: "var(--textLt)", flexShrink: 0 }} />
+        <span className="txl">Add a second year to unlock the Year-over-Year comparison.</span>
+      </div>}
+      </>
+    };
+    const loadSampleData = () => {
+      const y = activeYear;
+      const mk = (e) => ({ id: genId(), notes: "", repeats: false, recurEvery: 1, recurUnit: "month", recurDays: [], recurEnd: "", sample: true, ...e });
+      setEntries((prev) => [...prev, ...[
+        mk({ desc: "(Sample) Paycheque", type: "income", amount: 235000, category: "Income", repeats: true, recurUnit: "semimonth", startDate: `${y}-01-05` }),
+        mk({ desc: "(Sample) Rent", type: "expense", amount: 140000, category: "Housing", repeats: true, startDate: `${y}-01-01` }),
+        mk({ desc: "(Sample) Groceries", type: "expense", amount: 55000, category: "Food", repeats: true, startDate: `${y}-01-08` }),
+        mk({ desc: "(Sample) Hydro & Internet", type: "expense", amount: 21000, category: "Utilities", repeats: true, startDate: `${y}-01-15` }),
+        mk({ desc: "(Sample) Streaming", type: "expense", amount: 3200, category: "Subscriptions", repeats: true, startDate: `${y}-01-20` }),
+        mk({ desc: "(Sample) Fuel", type: "expense", amount: 26000, category: "Transportation", repeats: true, startDate: `${y}-01-12` })
+      ]]);
+    };
+    const stepBadge = (n, done) => <span
+      aria-hidden={true}
+      className="step-badge"
+      style={{ background: done ? "var(--greenLt)" : "var(--stripe)", border: `1.5px solid ${done ? "var(--greenDk)" : "var(--border)"}`, color: done ? "var(--greenDk)" : "var(--textMid)" }}
+    >
+      {done ? "✓" : n}
+    </span>;
+    const quickAdd = () => window.dispatchEvent(new CustomEvent("cf:quickadd"));
+    const firstRunPanel = entries.length === 0 && <Card className="firstrun-card">
+      <div className="firstrun-title">Welcome — let's map out your cash flow</div>
+      <div className="firstrun-subtitle">Three quick steps and this dashboard comes to life.</div>
+      <div className="cf-col cf-gap-14">
+        <div className="cf-row cf-gap-12 cf-wrap">
+          {stepBadge(1, openBal !== 0)}
+          <span className="firstrun-step-text">
+            <strong>Set your opening balance</strong>
+            <span className="firstrun-step-hint">What's in the account today?</span>
+          </span>
+          <span className="cf-row cf-gap-8">
+            <input
+              type="number"
+              inputMode="decimal"
+              placeholder="e.g. 2500"
+              value={obDraft}
+              onChange={(e) => setObDraft(e.target.value)}
+              aria-label="Opening balance"
+              className="field-input field-input--mono firstrun-ob-input"
+              onKeyDown={(e) => {
+      if (e.key === "Enter" && obDraft !== "") {
+        setYearConfigs((prev) => prev.map((yc) => yc.year === activeYear ? { ...yc, openingBalance: dollarsToCents(obDraft) } : yc));
+      }
+    }}
+            />
+            <button
+              className="cf-btn cf-btn--secondary cf-btn--md"
+              disabled={obDraft === ""}
+              onClick={() => setYearConfigs((prev) => prev.map((yc) => yc.year === activeYear ? { ...yc, openingBalance: dollarsToCents(obDraft) } : yc))}
+            >
+              {openBal !== 0 ? "Update" : "Set"}
+            </button>
+          </span>
+        </div>
+        <div className="cf-row cf-gap-12 cf-wrap">
+          {stepBadge(2, false)}
+          <span className="firstrun-step-text">
+            <strong>Add your income</strong>
+            <span className="firstrun-step-hint">
+              Paycheques and anything else that comes in, with how often
+            </span>
+          </span>
+          <button className="cf-btn cf-btn--primary cf-btn--md" onClick={quickAdd}>+ Add income</button>
+        </div>
+        <div className="cf-row cf-gap-12 cf-wrap">
+          {stepBadge(3, false)}
+          <span className="firstrun-step-text">
+            <strong>Add your bills</strong>
+            <span className="firstrun-step-hint">
+              Rent, utilities, loans — recurring entries fill the whole year
+            </span>
+          </span>
+          <button className="cf-btn cf-btn--primary cf-btn--md" onClick={quickAdd}>+ Add bills</button>
+        </div>
+      </div>
+      <div className="firstrun-footer">
+        <span className="firstrun-footer-text">
+          Just looking around? Load clearly-marked fictional data — one tap removes it again.
+        </span>
+        <button className="cf-btn cf-btn--secondary cf-btn--md" onClick={loadSampleData}>
+          Load sample data
+        </button>
+      </div>
+    </Card>;
+    return <div className="cf-page dash-wrap dash-page">
+      {showReconcile && <ReconcileModal
+        projected={glance ? glance.balanceNow : openBal}
+        categories={categories}
+        lastReconciled={lastReconciledDate(entries)}
+        onCancel={() => setShowReconcile(false)}
+        onConfirm={recordReconcile}
+      />}
+      {firstRunPanel}
+      <CategoryDetailSheet
+        detail={catDetail}
+        openRows={catOpenRows}
+        onToggleRow={(key) => setCatOpenRows((prev) => ({ ...prev, [key]: !prev[key] }))}
+        onClose={closeCatDetail}
+        scope={activeYear}
+        year={activeYear}
+      />
+      {yoyDetail && <div
+        className="modal-overlay"
+        role="dialog"
+        aria-modal="true"
+        aria-label={`What drove the change from ${yoyDetail.prev.year} to ${yoyDetail.cur.year}`}
+      >
+        <div className="modal-card yoy-detail-card">
+          <SheetHandle onDismiss={closeYoyDetail} />
+          <div className="modal-title-lg mb-6">
+            {`What changed: ${yoyDetail.cur.year} vs ${yoyDetail.prev.year}`}
+          </div>
+          <div className="yoyd-intro">
+            Net surplus is what the year took in less what it spent. These are the two sides of it, and then every line that moved between them.
+          </div>
+          {// The bridge: last year's surplus, the two effects, this year's
+        // surplus. Four rows that add up in front of the reader, so the big
+        // number at the bottom is arrived at rather than asserted.
+        <div className="yoyd-bridge">
+          {// The opening and closing surplus, on one line. It replaces the two
+          // full rows below at narrow widths, where the bridge cost 212px
+          // before the reader reached a single driver — half the height, the
+          // same two numbers, and the two effect rows in between still add up
+          // between them.
+          <div className="yoyd-bridge-row yoyd-bridge-row--compact">
+            <span className="yoyd-bridge-lbl">Net surplus</span>
+            <span className="cf-text-mono-13 yoyd-bridge-amt">
+              {`${fmt(yoyDetail.prev.surplus, true)} \u2192 ${fmt(yoyDetail.cur.surplus, true)}`}
+            </span>
+          </div>
+}
+          <div className="yoyd-bridge-row yoyd-bridge-row--wide">
+            <span className="yoyd-bridge-lbl">{`${yoyDetail.prev.year} net surplus`}</span>
+            <span className="cf-text-mono-13 yoyd-bridge-amt">{fmt(yoyDetail.prev.surplus, true)}</span>
+          </div>
+          {[
+            { key: "income", label: "Income", was: yoyDetail.prev.income, is: yoyDetail.cur.income, effect: yoyDetail.incomeEffect },
+            { key: "expense", label: "Expenses", was: yoyDetail.prev.expense, is: yoyDetail.cur.expense, effect: yoyDetail.expenseEffect }
+          ].map((r) => <div key={r.key} className="yoyd-bridge-row yoyd-bridge-row--step">
+            <span className="yoyd-bridge-lbl">
+              {r.is === r.was ? `${r.label} unchanged` : `${r.label} ${r.is > r.was ? "up" : "down"} ${fmt(Math.abs(r.is - r.was))}`}
+              <span className="cf-text-mono-13 yoyd-bridge-from">{`${fmt(r.was)} → ${fmt(r.is)}`}</span>
+            </span>
+            <span
+              className={"cf-text-mono-13 yoyd-bridge-amt " + (r.effect > 0 ? "yoy-delta-pos" : r.effect < 0 ? "yoy-delta-neg" : "")}
+            >
+              {fmt(r.effect, true)}
+            </span>
+          </div>)}
+          <div className="yoyd-bridge-row yoyd-bridge-row--total yoyd-bridge-row--wide">
+            <span className="yoyd-bridge-lbl">{`${yoyDetail.cur.year} net surplus`}</span>
+            <span className="cf-text-mono-13 yoyd-bridge-amt">{fmt(yoyDetail.cur.surplus, true)}</span>
+          </div>
+        </div>
+}
+          <div className="yoyd-sub">
+            <span className="yoy-title">What moved</span>
+            <HelpTip
+              label="What moved"
+              text="Effect is what that line did to the net surplus, and the list is sorted by it, biggest first. Income lifts the surplus, so earning more is a gain; spending does the opposite, so a category you spent less on is a gain too — which is why an expense's Effect carries the opposite sign to the direction it moved in. Every line adds up to the change in the table you came from, with nothing left out. A ▸ opens the entries behind a category."
+            />
+          </div>
+          {yoyDetail.rows.length === 0 ? <div className="yoyd-none">
+            {`Nothing moved. Every income source and expense category came to the same total in ${yoyDetail.cur.year} as in ${yoyDetail.prev.year}.`}
+          </div> : <div
+            // Not .hscroll. That wrapper exists to give a too-wide table its own
+            // scrollport, and it brought a max-height with it — so the sheet
+            // scrolled, and the table scrolled inside it, and the sticky Done
+            // bar covered whatever the inner scroll happened to be showing. The
+            // table is fixed-layout now and never outruns its width, so there is
+            // nothing to scroll horizontally and no reason for a second
+            // scrollport: the sheet is the only thing that scrolls. Without
+            // scrolling there is nothing for tabIndex to do either.
+            className="yoyd-table-wrap"
+          >
+            {// A real table, and a fixed one. Auto layout sizes columns from
+          // their content, so `max-width` on a cell is a suggestion it is free
+          // to ignore: eleven movers with a long description wanted 581px of
+          // the 552px this sheet has, and the Effect column — the one the
+          // reader opened this for — was what went over the edge. Fixed layout
+          // takes the widths from the colgroup below instead, so a long name
+          // ellipsizes inside its cell rather than pushing the money out of
+          // the sheet, at every width and for any household.
+          //
+          // The roles are redundant while this is a table and are the point at
+          // narrow widths, where the CSS reflows it to a grid: changing an
+          // element's display drops the implicit table semantics from the
+          // accessibility tree, and these put them back.
+          <table className="forecast-table yoy-table" role="table">
+            <colgroup>
+              <col className="yoyd-col-name" />
+              <col className="yoyd-col-year" />
+              <col className="yoyd-col-year" />
+              <col className="yoyd-col-effect" />
+            </colgroup>
+            <thead>
+              <tr className="thead-row" role="row">
+                <th className="yoy-th-desc" role="columnheader">Line</th>
+                <th className="yoy-th-num yoyd-year-col" role="columnheader">{yoyDetail.prev.year}</th>
+                <th className="yoy-th-num yoyd-year-col" role="columnheader">{yoyDetail.cur.year}</th>
+                <th className="yoy-th-num" role="columnheader">Effect</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(yoyShowAll ? yoyDetail.rows : yoyDetail.rolled).map((r) => {
+              const rowKey = r.kind + "|" + r.name;
+              const open = !!yoyOpenRows[rowKey];
+              const kids = r.kind === "other" ? [] : r.children || [];
+              return <React.Fragment key={rowKey}>
+                <tr className={"yoy-tr" + (r.kind === "other" ? " yoyd-tr--other" : "")} role="row">
+                  <td className="yoy-td-desc" role="cell">
+                    <div className="yoyd-name-row">
+                      {// The triangle hangs in a gutter the cell reserves for
+                      // it, rather than sitting in the flow with an empty
+                      // spacer on the rows that have none. In the flow it
+                      // indented only the name, leaving the kind and the two
+                      // amounts under it starting 18px further left — so each
+                      // row had two left edges, and the rows with a triangle
+                      // made the mismatch obvious.
+                      kids.length ? <button
+                        type="button"
+                        className="yoyd-expand"
+                        aria-expanded={open ? "true" : "false"}
+                        aria-label={`${open ? "Hide" : "Show"} the entries behind ${r.name}`}
+                        onClick={() => setYoyOpenRows((prev) => ({ ...prev, [rowKey]: !prev[rowKey] }))}
+                      >
+                        {open ? "\u25BE" : "\u25B8"}
+                      </button> : null
+}
+                      <span className="yoyd-name" title={r.name}>{r.name}</span>
+                      {r.kind !== "other" && r.prev === 0 && <span className="yoy-tag yoy-tag--new">New</span>}
+                      {r.kind !== "other" && r.cur === 0 && <span className="yoy-tag yoy-tag--gone">
+                        Gone
+                      </span>}
+                    </div>
+                    <span className="yoyd-kind">
+                      {r.kind === "other" ? `${r.restCount} smaller lines` : r.kind === "income" ? "Income" : "Expense"}
+                      {kids.length ? ` \u00b7 ${kids.length} moved` : ""}
+                    </span>
+                    {// The two year columns, folded into the name cell. A phone
+                    // is 361px of usable sheet and the four columns want 421 —
+                    // and the one that would have gone over the edge is Effect,
+                    // which is what the reader opened this for. Hidden on
+                    // anything wider, where the columns themselves show.
+                    <span className="cf-text-mono-13 yoyd-inline-amts">
+                      {`${fmt(r.prev)} \u2192 ${fmt(r.cur)}`}
+                    </span>
+}
+                  </td>
+                  <td className="cf-text-mono-13 yoy-num yoyd-year-col" role="cell">{fmt(r.prev)}</td>
+                  <td className="cf-text-mono-13 yoy-num yoyd-year-col" role="cell">{fmt(r.cur)}</td>
+                  <td
+                    role="cell"
+                    className={"cf-text-mono-13 yoy-num yoyd-effect-td " + (r.effect > 0 ? "yoy-delta-pos" : "yoy-delta-neg")}
+                  >
+                    {// A bar rather than a fifth number: the figure beside it
+                    // already says how much, and what a reader wants from a
+                    // sorted list is how far its top outruns the rest. Drawn
+                    // behind the figure and scaled to the largest effect in
+                    // the list, not to the total — two lines that each moved
+                    // the surplus by half of it should both read as big.
+                    <span
+                      className={"yoyd-fill" + (r.effect >= 0 ? " yoyd-fill--pos" : " yoyd-fill--neg")}
+                      aria-hidden="true"
+                      style={{ width: `${yoyDetail.peak ? Math.max(3, Math.round(Math.abs(r.effect) / yoyDetail.peak * 100)) : 0}%` }}
+                    />
+}
+                    <span className="yoyd-effect-val">{fmt(r.effect, true)}</span>
+                  </td>
+                </tr>
+                {open && kids.map((k) => <tr
+                  key={rowKey + "|" + k.name}
+                  className="yoy-tr yoyd-child-tr"
+                  role="row"
+                >
+                  <td className="yoy-td-desc yoyd-child-td" role="cell">
+                    <div className="yoyd-name-row">
+                      <span className="yoyd-name" title={k.name}>{k.name}</span>
+                      {k.prev === 0 && <span className="yoy-tag yoy-tag--new">New</span>}
+                      {k.cur === 0 && <span className="yoy-tag yoy-tag--gone">Gone</span>}
+                    </div>
+                    <span className="cf-text-mono-13 yoyd-inline-amts">
+                      {`${fmt(k.prev)} \u2192 ${fmt(k.cur)}`}
+                    </span>
+                  </td>
+                  <td className="cf-text-mono-13 yoy-num yoyd-year-col" role="cell">{fmt(k.prev)}</td>
+                  <td className="cf-text-mono-13 yoy-num yoyd-year-col" role="cell">{fmt(k.cur)}</td>
+                  <td
+                    role="cell"
+                    className={"cf-text-mono-13 yoy-num yoyd-effect-td " + (k.effect > 0 ? "yoy-delta-pos" : "yoy-delta-neg")}
+                  >
+                    <span className="yoyd-effect-val">{fmt(k.effect, true)}</span>
+                  </td>
+                </tr>)}
+              </React.Fragment>;
+            })}
+            </tbody>
+            <tfoot>
+              <tr className="yoy-foot" role="row">
+                <td className="yoy-td-desc" role="cell">
+                  Net surplus
+                  <span className="cf-text-mono-13 yoyd-inline-amts">
+                    {`${fmt(yoyDetail.prev.surplus, true)} \u2192 ${fmt(yoyDetail.cur.surplus, true)}`}
+                  </span>
+                </td>
+                <td className="cf-text-mono-13 yoy-num yoyd-year-col" role="cell">
+                  {fmt(yoyDetail.prev.surplus, true)}
+                </td>
+                <td className="cf-text-mono-13 yoy-num yoyd-year-col" role="cell">
+                  {fmt(yoyDetail.cur.surplus, true)}
+                </td>
+                <td
+                  className={"cf-text-mono-13 yoy-num " + (yoyDetail.delta > 0 ? "yoy-delta-pos" : yoyDetail.delta < 0 ? "yoy-delta-neg" : "")}
+                  data-yoyd-total={true}
+                  role="cell"
+                >
+                  <span className="yoyd-effect-val">{fmt(yoyDetail.delta, true)}</span>
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+}
+          </div>}
+          {yoyDetail.restCount > 0 && <div className="yoyd-showall-row">
+            <button
+              type="button"
+              className="cf-btn cf-btn--secondary cf-btn--sm"
+              aria-expanded={yoyShowAll ? "true" : "false"}
+              onClick={() => setYoyShowAll((v) => !v)}
+            >
+              {yoyShowAll ? `Show the ${yoyDetail.rolled.length - 1} biggest` : `Show all ${yoyDetail.rows.length} lines`}
+            </button>
+          </div>}
+          {yoyDetail.hasTransfers && <div className="yoyd-foot-note">
+            One of these years has transfers in it. A transfer is neither income nor an expense, so it moves the balance without touching the net surplus above — which is why none appear here.
+          </div>}
+          <div className="yoyd-done-row">
+            <button onClick={closeYoyDetail} className="cf-btn cf-btn--primary fw-700 btn-pad-24">
+              Done
+            </button>
+          </div>
+        </div>
+      </div>}
+      {// The shared-view toggle stays here: it changes *what* you are reading, so
+    // it belongs above the reading. Customize changes the page itself and now
+    // sits at its foot — see .dash-foot.
+    <div className="dash-toolbar" data-noprint={true}>
+      {showCustomize && <div
+        className="modal-overlay"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Customize dashboard"
+      >
+        <div className="modal-card customize-modal-card" onClick={(e) => e.stopPropagation()}>
+          <SheetHandle onDismiss={() => setShowCustomize(false)} />
+          <div className="customize-title">Customize Dashboard</div>
+          <div className="customize-note">
+            Everything ticked here is on Today, in this order. Untick a panel to take it off the page — nothing is hidden behind a tap.
+          </div>
+          <div className="customize-list">
+            {dashOrderEff.map((id, idx) => {
+          const w = DASH_WIDGET_DEFS.find((x) => x.id === id);
+          if (!w) return null;
+          const move = (dir) => {
+            haptic();
+            const next = [...dashOrderEff];
+            const j = idx + dir;
+            if (j < 0 || j >= next.length) return;
+            [next[idx], next[j]] = [next[j], next[idx]];
+            setDashOrder(next);
+          };
+          const item = <div
+            key={id}
+            className="customize-item"
+            style={{
+            background: dashHidden[id] ? "transparent" : "var(--stripe)"
+          }}
+          >
+            <input
+              type="checkbox"
+              checked={!dashHidden[id]}
+              onChange={(e) => setDashHidden((prev) => ({ ...prev, [id]: !e.target.checked }))}
+              className="customize-checkbox"
+            />
+            <span className="customize-label" style={{ opacity: dashHidden[id] ? 0.5 : 1 }}>{w.label}</span>
+            <button
+              aria-label="Move up"
+              className="wm-arrow"
+              style={{ opacity: idx === 0 ? 0.3 : 1 }}
+              disabled={idx === 0}
+              onClick={() => move(-1)}
+            >
+              ↑
+            </button>
+            <button
+              aria-label="Move down"
+              className="wm-arrow"
+              style={{ opacity: idx === dashOrderEff.length - 1 ? 0.3 : 1 }}
+              disabled={idx === dashOrderEff.length - 1}
+              onClick={() => move(1)}
+            >
+              ↓
+            </button>
+          </div>;
+          return item;
+        })}
+          </div>
+          <div className="customize-done-row">
+            <button
+              onClick={() => setShowCustomize(false)}
+              className="cf-btn cf-btn--primary fw-700 btn-pad-24"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      </div>}
+      {entries.length === 0 && <OnboardingWizard
+        yearConfigs={yearConfigs}
+        setYearConfigs={setYearConfigs}
+        addEntry={addEntry}
+        categories={categories}
+        setTab={setTab}
+      />}
+      {users.length > 1 && <div className="dash-customize-row" data-noprint={true}>
+        <PillToggle
+          options={[{ id: false, label: "My entries" }, { id: true, label: "All users" }]}
+          value={sharedView}
+          onChange={setSharedView}
+          size="sm"
+        />
+      </div>}
+    </div>
+}
+      {(() => {
+      const GLANCE_IDS = ["balanceToday", "nextLow", "dueMonth"];
+      const visible = dashOrderEff.filter((id) => !dashHidden[id] && !(GLANCE_IDS.includes(id) && (!glance || entries.length === 0)));
+      const sizeOf = (id) => (DASH_WIDGET_DEFS.find((w) => w.id === id) || {}).size || "full";
+      // Rows, not widgets: thirds pack three across and halves two, so the
+      // pairing has to be decided over the visible list rather than per
+      // widget — a hidden half would otherwise leave its partner alone in a
+      // two-column grid.
+      const rows = [];
+      let i = 0;
+      while (i < visible.length) {
+        const id = visible[i], sz = sizeOf(id);
+        if (sz === "third") {
+          const run = [id];
+          while (run.length < 3 && i + run.length < visible.length && sizeOf(visible[i + run.length]) === "third") run.push(visible[i + run.length]);
+          rows.push(<div key={run.join("_")} className="glance-grid" data-cols={run.length}>
+            {run.map((rid) => <React.Fragment key={rid}>{WIDGET_RENDER[rid]()}</React.Fragment>)}
+          </div>);
+          i += run.length;
+        } else if (sz !== "full" && i + 1 < visible.length && sizeOf(visible[i + 1]) !== "full" && sizeOf(visible[i + 1]) !== "third") {
+          const id2 = visible[i + 1], sz2 = sizeOf(id2);
+          // The split is named rather than written as a track list, so the
+          // stylesheet owns the columns. It used to arrive as an inline style,
+          // which outranks every layer and is why the mobile override needed
+          // !important — the last two in the file.
+          const split = sz === "wide" && sz2 === "narrow" ? "wide-narrow" : sz === "narrow" && sz2 === "wide" ? "narrow-wide" : "even";
+          rows.push(<div key={id + "_" + id2} className="chart-grid" data-split={split}>
+            {WIDGET_RENDER[id]()}
+            {WIDGET_RENDER[id2]()}
+          </div>);
+          i += 2;
+        } else if (sz !== "full") {
+          rows.push(<div key={id} className="chart-grid" data-split="single">{WIDGET_RENDER[id]()}</div>);
+          i += 1;
+        } else {
+          rows.push(<React.Fragment key={id}>{WIDGET_RENDER[id]()}</React.Fragment>);
+          i += 1;
+        }
+      }
+      // Today is one page. It used to lead with eight panels and keep the
+      // rest behind a "More on 2026" disclosure, which made a short page —
+      // 1.6 screens — cost a tap to finish reading, and made the panels you
+      // had chosen in Customize into panels the page had chosen for you.
+      // Scrolling is cheaper than that tap, and Customize is already the
+      // honest control: untick a panel and it is gone, everywhere, for good.
+      //
+      // The foot of Today is the way to change what is on it — something you
+      // reach for having read the page, not before.
+      const foot = <div key="dash-foot" className="dash-foot dash-customize-row" data-noprint={true}>
+        {entries.length > 0 && <button className="dash-foot-customize" onClick={() => setShowCustomize(true)}>
+          ⚙ Customize
+        </button>}
+      </div>;
+      return [...rows, foot];
+    })()}
+    </div>;
+  }

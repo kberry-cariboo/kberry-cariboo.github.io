@@ -3,8 +3,8 @@
 // The screenshots are committed rather than generated at build time, which is
 // the right trade — `node build.js` stays dependency-free and a shot only
 // changes when the UI in it changes — but it means three things can drift
-// apart: what src/components/help.js asks for, what is actually in
-// images/help/, and the dimensions src/lib/help-shots.js reserves space with.
+// apart: what src/components/help.tsx asks for, what is actually in
+// images/help/, and the dimensions src/lib/help-shots.ts reserves space with.
 // Every one of those drifts fails quietly. A renamed shot is a broken image on
 // a documentation page nobody is looking at while they're happy; a stale
 // dimension is a page that jumps as the reader scrolls.
@@ -25,8 +25,8 @@ const check = (name, ok, detail = '') => {
   console.log((ok ? 'PASS ' : 'FAIL ') + name + (ok ? '' : '\n  ↳ ' + detail));
 };
 
-const help = readFileSync(join(ROOT, 'src/components/help.js'), 'utf8');
-const manifestSrc = readFileSync(join(ROOT, 'src/lib/help-shots.js'), 'utf8');
+const help = readFileSync(join(ROOT, 'src/components/help.tsx'), 'utf8');
+const manifestSrc = readFileSync(join(ROOT, 'src/lib/help-shots.ts'), 'utf8');
 const dir = join(ROOT, 'images', 'help');
 
 // Referenced by the Help page: { shot: ["name", "caption"] }
@@ -49,7 +49,7 @@ check('no screenshot in images/help/ is unused', orphans.length === 0,
 
 const unmeasured = referenced.filter((r) => !manifest[r.name]).map((r) => r.name);
 check('every screenshot has its size in the manifest', unmeasured.length === 0,
-  'src/lib/help-shots.js is missing: ' + unmeasured.join(', '));
+  'src/lib/help-shots.ts is missing: ' + unmeasured.join(', '));
 
 const stale = Object.keys(manifest).filter((k) => !referenced.some((r) => r.name === k));
 check('the manifest lists nothing that is gone', stale.length === 0, 'left over: ' + stale.join(', '));

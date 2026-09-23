@@ -675,6 +675,8 @@
           text-overflow:ellipsis;white-space:nowrap;}
         .cf-menu-item--bordered{border-bottom:1px solid var(--border);}
         .profile-modal-card{padding:var(--space-28);max-width:400px;width:100%;}
+        .sync-clash-list{margin:0 0 var(--space-8);padding-left:var(--space-20);}
+        .sync-clash-list li{margin:2px 0;overflow-wrap:anywhere;}
         .form-note-text{font-size:var(--fs-xs);color:var(--textLt);margin-bottom:var(--space-14);}
         .form-err-text{color:var(--red);font-size:var(--fs-xs);margin-bottom:var(--space-10);}
         .form-ok-text{color:var(--greenDk);font-size:var(--fs-xs);margin-bottom:var(--space-10);}

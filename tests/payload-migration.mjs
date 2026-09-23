@@ -1,6 +1,6 @@
 // Does a payload get migrated exactly once, no matter which version it came from?
 //
-// migrateHouseholdPayload (src/lib/migrate.js) upgrades a payload arriving from
+// migrateHouseholdPayload (src/lib/migrate.ts) upgrades a payload arriving from
 // outside this device's localStorage: a household load from Supabase, or a
 // backup file being restored in Settings. It is the one migration path with no
 // durable "already done" marker behind it — migrateData stamps
@@ -22,27 +22,13 @@
 // converts it. Extend BY_VERSION whenever a migration step is added.
 //
 // Runs standalone — no browser, no database:  node tests/payload-migration.mjs
-import { readFileSync } from 'fs';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
+import { loadSrc } from './load-src.mjs';
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const src = readFileSync(join(ROOT, 'src/lib/migrate.js'), 'utf8');
-const runtime = readFileSync(join(ROOT, 'src/lib/runtime.js'), 'utf8');
-
-// migrate.js is a fragment of the app's single shared scope, not a module. Give
-// it the real runtime.js (the esbuild spread helpers and genId it leans on),
-// stub the two app helpers migrateData needs but this function doesn't, and hand
-// back what the test asserts against. Deliberately the real source rather than a
-// copy: a migration step added to migrate.js and not to BY_VERSION below should
-// fail here, not pass against a stale duplicate.
-const load = new Function('React', 'localStorage', `
-  ${runtime}
-  const localDateStr = () => '2026-01-01';
-  const moveEntryAttachmentsToOverrides = (e, o) => ({ entries: e, overridesByYr: o, moved: false });
-  ${src}
-  return { migrateHouseholdPayload, SCHEMA_VERSION };
-`);
+// Deliberately the real migrate.js rather than a copy: a migration step added
+// there and not to BY_VERSION below should fail here, not pass against a stale
+// duplicate. loadSrc bundles it (and what it imports) and runs it against the
+// stand-ins passed here.
+const load = (_React, localStorage) => loadSrc(['src/lib/migrate.ts'], { localStorage });
 const noHook = () => { throw new Error('payload migration must not need React'); };
 // migrate.js runs migrateData() at module scope. It has nothing to do here, but
 // it needs somewhere to look: an empty store makes it take the fresh-install

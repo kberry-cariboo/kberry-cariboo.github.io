@@ -4172,6 +4172,102 @@ const addEntryVia = async (page, desc, amount) => {
   await page.waitForTimeout(400);
 };
 
+// The same stand-in, speaking the per-field protocol: load_household hands out
+// a version per field and save_household_fields refuses a field whose version
+// moved since the caller's base, as the SQL does. window.__server lets a test
+// play the other device.
+const versionedSyncFixture = () => syncFixture(0)
+  .replace("const store = { data:", "const store = { n: 1, versions: {}, data:")
+  .replace("if (name === 'load_household') return resolved({ data: JSON.parse(JSON.stringify(store.data)), receipts: [] });",
+    `if (name === 'load_household') return resolved({ data: JSON.parse(JSON.stringify(store.data)), receipts: [], versions: Object.assign({}, store.versions) });
+        if (name === 'save_household_fields') {
+          if (sessionStorage.getItem('__offline')) return Promise.resolve({ data: null, error: { message: 'Failed to fetch' } });
+          const p = (args && args.p_data) || {}, b = (args && args.p_base) || {};
+          const keys = Object.keys(p).filter((k) => k !== 'schemaVersion');
+          const conflict = keys.filter((k) => (store.versions[k] || null) !== (b[k] || null));
+          if (conflict.length) { window.__conflicts++; return resolved({ conflict, versions: Object.assign({}, store.versions) }); }
+          keys.forEach((k) => { store.data[k] = p[k]; store.versions[k] = 'v' + (++store.n); });
+          store.data.savedAt = new Date().toISOString();
+          sessionStorage.setItem('__store', JSON.stringify(store));
+          window.__saves.push({ entries: (store.data.entries || []).length });
+          return resolved({ versions: Object.assign({}, store.versions), savedAt: store.data.savedAt });
+        }`)
+  .replace("window.__saves = [];", `window.__saves = [];
+    store.versions = Object.keys(store.data).reduce((o, k) => { o[k] = 'v1'; return o; }, {});
+    // The "server" outlives a reload, as a real one would.
+    try { Object.assign(store, JSON.parse(sessionStorage.getItem('__store')) || {}); } catch (e) {}
+    window.__server = { get data() { return store.data; }, write(k, v) {
+      store.data[k] = v; store.versions[k] = 'v' + (++store.n); store.data.savedAt = new Date().toISOString();
+      sessionStorage.setItem('__store', JSON.stringify(store));
+    } };`);
+
+await test('sync: a clash on one entry asks about that entry only; "Keep theirs" keeps every other change', async () => {
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const page = await ctx.newPage();
+  page.setDefaultTimeout(20000);
+  lastPage = page;
+  page.on('pageerror', (e) => pageErrors.push(String(e).slice(0, 200) + '  [' + (page.url().split('#')[1] || page.url()) + ']'));
+  await page.addInitScript(versionedSyncFixture());
+  await page.goto(BASE + '#/flow/entries', { waitUntil: 'load' });
+  await page.waitForTimeout(1500);
+
+  // The other device raises the rent...
+  await page.evaluate(() => window.__server.write('entries', window.__server.data.entries.map((e) => e.desc === 'Seed Rent' ? Object.assign({}, e, { amount: 170000 }) : e)));
+  // ...while this one, not having heard, adds an entry and deletes the rent.
+  // (A delete rather than an edit: editing a repeating entry that has history
+  // splits it into a new entry, which would be an addition, not a clash.)
+  await addEntryVia(page, 'QA Mine Too', '9.00');
+  await page.locator('tbody tr', { hasText: 'Seed Rent' }).first().locator('.row-menu-btn').click();
+  await page.getByText('Delete entry', { exact: false }).first().click();
+  await page.getByRole('button', { name: 'Delete', exact: true }).click();
+
+  // The save is refused, the lists merge, and only the rent needs a person.
+  const dialog = page.getByRole('alertdialog');
+  await dialog.getByText('You both changed the same thing').waitFor({ timeout: 10000 });
+  const listed = await dialog.locator('.sync-clash-list li').allTextContents();
+  if (listed.length !== 1 || !/Seed Rent/.test(listed[0])) throw new Error('the dialog lists ' + JSON.stringify(listed) + ', not just the rent');
+  await dialog.getByRole('button', { name: 'Keep theirs' }).click();
+  await page.waitForTimeout(3500);
+
+  const server = await page.evaluate(() => window.__server.data.entries.map((e) => e.desc + ':' + e.amount));
+  if (!server.includes('Seed Rent:170000')) throw new Error('their rent is not what was kept: ' + JSON.stringify(server));
+  if (!server.some((x) => x.startsWith('QA Mine Too:'))) throw new Error('this device\'s other change was lost: ' + JSON.stringify(server));
+  if (await page.getByText('Seed Rent').count() === 0) throw new Error('the rent was not restored on screen after "Keep theirs"');
+  if (await page.getByText('QA Mine Too').count() === 0) throw new Error('this device\'s new entry is gone from the screen');
+  if (await page.getByRole('alertdialog').count() > 0) throw new Error('the dialog did not close');
+  await ctx.close();
+});
+
+await test('sync: edits made offline survive a reload and merge with what others saved meanwhile', async () => {
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const page = await ctx.newPage();
+  page.setDefaultTimeout(20000);
+  lastPage = page;
+  page.on('pageerror', (e) => pageErrors.push(String(e).slice(0, 200) + '  [' + (page.url().split('#')[1] || page.url()) + ']'));
+  await page.addInitScript(versionedSyncFixture());
+  await page.goto(BASE + '#/flow/entries', { waitUntil: 'load' });
+  await page.waitForTimeout(1500);
+
+  // Offline: the save fails and the entry stays on this device, unsaved.
+  await page.evaluate(() => sessionStorage.setItem('__offline', '1'));
+  await addEntryVia(page, 'QA Offline Entry', '11.00');
+  await page.waitForTimeout(3000);
+  if (!(await page.evaluate(() => localStorage.getItem('cf_unsaved_since')))) throw new Error('a failed save did not mark the edit unsaved');
+  // Meanwhile another member adds one of their own.
+  await page.evaluate(() => window.__server.write('entries', window.__server.data.entries.concat([{ id: 'other-1', desc: 'QA Their Entry', type: 'expense', amount: 500, category: 'Housing', startDate: '2026-02-02', repeats: false }])));
+
+  // Back online, and the app is opened again.
+  await page.evaluate(() => sessionStorage.removeItem('__offline'));
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForTimeout(6000);
+  if (await page.getByRole('alertdialog').count() > 0) throw new Error('two different entries were put to the user as a clash');
+  const server = await page.evaluate(() => window.__server.data.entries.map((e) => e.desc));
+  if (!server.includes('QA Offline Entry') || !server.includes('QA Their Entry')) throw new Error('after the reload the server has ' + JSON.stringify(server));
+  if (await page.getByText('QA Their Entry').count() === 0 || await page.getByText('QA Offline Entry').count() === 0) throw new Error('both entries are not on screen');
+  if (await page.evaluate(() => localStorage.getItem('cf_unsaved_since'))) throw new Error('still marked unsaved after the merge was saved');
+  await ctx.close();
+});
+
 await test('sync: an entry added while a save is still in flight is not swallowed by a self-inflicted conflict', async () => {
   // The bug this pins: two overlapping saves both quote the savedAt they
   // loaded with, the second loses its own conflict check, and the CONFLICT

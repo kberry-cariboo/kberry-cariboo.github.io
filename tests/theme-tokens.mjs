@@ -5,7 +5,7 @@
 // with, and moving it there is what let the print rules override a token by
 // ordinary cascade instead of !important on every line.
 //
-// src/lib/app-data.js still holds LIGHT and DARK as plain objects, for the one
+// src/lib/app-data.ts still holds LIGHT and DARK as plain objects, for the one
 // job CSS cannot do: chipDot() computes a readable ink for a category chip
 // against the surface behind it, and readableInk() needs a real colour, not a
 // var() it cannot resolve. So the mirror stays, and this is the join.
@@ -34,7 +34,7 @@ const check = (name, ok, detail = '') => {
 // ── The JavaScript mirror ────────────────────────────────────────────────────
 // Both are plain object literals of string values, closed by a brace at the
 // declaration's own indentation.
-const appData = read('src/lib/app-data.js');
+const appData = read('src/lib/app-data.ts');
 const jsPalette = (name) => {
   const i = appData.indexOf(`const ${name} = {`);
   if (i < 0) throw new Error(`${name} not found in app-data.js — has it been renamed?`);

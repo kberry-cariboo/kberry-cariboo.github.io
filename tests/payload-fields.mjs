@@ -6,7 +6,7 @@
 //
 // A household field is declared twice, once on each side of the wire:
 //
-//   HOUSEHOLD_FIELDS   in src/lib/household-sync.js  — the client's table
+//   HOUSEHOLD_FIELDS   in src/lib/household-sync.ts  — the client's table
 //   cf_payload_keys()  in supabase/schema.sql        — the schema's list
 //
 // Everything else on the client derives from the first (state, payload,
@@ -25,7 +25,7 @@
 // to ship rather than merely detectable.
 //
 //   node tests/payload-fields.mjs
-import { readFileSync } from 'fs';
+import { readFileSync, readdirSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
@@ -44,7 +44,7 @@ const between = (src, startMarker, endMarker, what) => {
   return src.slice(i + startMarker.length, j);
 };
 
-const clientBlock = between(read('src/lib/household-sync.js'), 'const HOUSEHOLD_FIELDS = [', '\n  ];', 'HOUSEHOLD_FIELDS in src/lib/household-sync.js');
+const clientBlock = between(read('src/lib/household-sync.ts'), 'const HOUSEHOLD_FIELDS = [', '\n  ] satisfies', 'HOUSEHOLD_FIELDS in src/lib/household-sync.ts');
 const clientKeys = [...clientBlock.matchAll(/\{\s*key:\s*"([^"]+)"/g)].map((m) => m[1]);
 
 const sqlBlock = between(read('supabase/schema.sql'), 'create or replace function cf_payload_keys()', '$$;', 'cf_payload_keys() in supabase/schema.sql');
@@ -93,7 +93,7 @@ if (missingFromClient.length) {
 // be both: a field in both lists would sync to the household *and* per member,
 // and which copy won would depend on load order.
 {
-  const prefBlock = between(read('src/lib/household-sync.js'), 'const MEMBER_PREF_FIELDS = [', '\n  ];', 'MEMBER_PREF_FIELDS in src/lib/household-sync.js');
+  const prefBlock = between(read('src/lib/household-sync.ts'), 'const MEMBER_PREF_FIELDS = [', '\n  ] satisfies', 'MEMBER_PREF_FIELDS in src/lib/household-sync.ts');
   const prefKeys = [...prefBlock.matchAll(/\{\s*key:\s*"([^"]+)"/g)].map((m) => m[1]);
   const sqlPrefBlock = between(read('supabase/schema.sql'), 'create or replace function cf_member_pref_keys()', '$$;', 'cf_member_pref_keys() in supabase/schema.sql');
   const sqlPrefKeys = [...sqlPrefBlock.matchAll(/'([A-Za-z_][A-Za-z0-9_]*)'/g)].map((m) => m[1]);
@@ -111,20 +111,21 @@ if (missingFromClient.length) {
 }
 
 {
-  const appData = read('src/lib/app-data.js');
+  const appData = read('src/lib/app-data.ts');
   const labelsBlock = appData.match(/const ACTIVITY_LABELS = \{([\s\S]*?)\};/);
   if (!labelsBlock) {
-    problems.push('ACTIVITY_LABELS could not be found in src/lib/app-data.js — has it been renamed?');
+    problems.push('ACTIVITY_LABELS could not be found in src/lib/app-data.ts — has it been renamed?');
   } else {
     const labelled = new Set([...labelsBlock[1].matchAll(/^\s*(\w+)\s*:/gm)].map((m) => m[1]));
     const logged = new Set();
-    for (const f of ['src/App.js', 'src/components/settings.js', 'src/components/plan.js',
-                     'src/components/budget.js', 'src/components/entries.js',
-                     'src/components/forms.js', 'src/components/dashboard.js',
-                     'src/components/misc-ui.js', 'src/components/forecast-plan.js',
-                     'src/components/csv-import.js', 'src/components/auth-misc.js',
-                     'src/components/plan-dashboard-shared.js', 'src/components/primitives.js',
-                     'src/components/help.js', 'src/lib/year-copy.js']) {
+    // App.js and every hook it is composed from: a logActivity call can live in any of them.
+    for (const f of ['src/App.tsx', ...readdirSync(join(ROOT, 'src/app')).filter((n) => /\.tsx?$/.test(n)).map((n) => 'src/app/' + n), 'src/components/settings.tsx', 'src/components/plan.tsx',
+                     'src/components/budget.tsx', 'src/components/entries.tsx',
+                     'src/components/forms.tsx', 'src/components/dashboard.tsx',
+                     'src/components/misc-ui.tsx', 'src/components/forecast-plan.tsx',
+                     'src/components/csv-import.tsx', 'src/components/auth-misc.tsx',
+                     'src/components/plan-dashboard-shared.ts', 'src/components/primitives.tsx',
+                     'src/components/help.tsx', 'src/lib/year-copy.ts']) {
       for (const m of read(f).matchAll(/logActivity\(\s*["'](\w+)["']/g)) logged.add(m[1]);
     }
     const unnamed = [...logged].filter((k) => !labelled.has(k)).sort();

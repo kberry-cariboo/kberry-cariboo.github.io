@@ -1,14 +1,14 @@
 // The Help page against the information architecture it describes.
 //
-// Help copy is data in src/components/help.js — English in one place rather
+// Help copy is data in src/components/help.tsx — English in one place rather
 // than threaded through createElement calls — which is what makes it easy to
 // edit and easy to forget. The IA underneath it moves: Budget became Flow,
 // Budget vs Actual became Envelopes and was promoted out of the Flow lenses,
 // Monthly became List, Forecast became Curve. Each of those left the page
 // describing an app that no longer existed, and nothing failed.
 //
-// So this is the binding. It reads the route tables in src/lib/app-data.js
-// and the shortcut handler in src/App.js as the source of truth, and asserts
+// So this is the binding. It reads the route tables in src/lib/app-data.ts
+// and the shortcut handler in src/App.tsx as the source of truth, and asserts
 // the prose agrees with them. It is deliberately cheap — no browser, no
 // build — so it can run on every change rather than only in CI.
 //
@@ -20,9 +20,11 @@ import { dirname, join } from 'path';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (p) => readFileSync(join(ROOT, p), 'utf8');
 
-const helpSrc = read('src/components/help.js');
-const appData = read('src/lib/app-data.js');
-const appSrc = read('src/App.js');
+const helpSrc = read('src/components/help.tsx');
+const appData = read('src/lib/app-data.ts');
+// The shortcut handler moved out of App.js into its own hook; the tab list
+// is still App's. Read both, so this follows the code wherever it lives.
+const appSrc = read('src/App.tsx') + '\n' + read('src/app/use-keyboard-shortcuts.ts');
 
 const results = [];
 const check = (name, ok, detail = '') => {

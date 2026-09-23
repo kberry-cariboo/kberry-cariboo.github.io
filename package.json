@@ -8,16 +8,22 @@
   },
   "scripts": {
     "build": "node build.js",
-    "lint": "node scripts/lint-bundle.js && eslint \"src/lib/**/*.js\" \"src/components/**/*.js\" src/App.js build.js .eslint-bundle.js",
+    "lint": "eslint \"src/**/*.{ts,tsx}\" src/sw.js build.js",
+    "typecheck": "tsc -p .",
     "test": "node scripts/test.mjs fast",
     "test:fast": "node scripts/test.mjs fast",
     "test:browser": "node scripts/test.mjs browser",
     "test:sql": "node scripts/test.mjs sql",
     "test:all": "node scripts/test.mjs all",
-    "check": "npm run build && npm run lint && npm run test:fast"
+    "check": "npm run build && npm run typecheck && npm run lint && npm run test:fast"
   },
   "devDependencies": {
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "esbuild": "0.28.2",
     "eslint": "^10.0.0",
-    "playwright": "1.63.0"
+    "playwright": "1.63.0",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.70.1"
   }
 }
