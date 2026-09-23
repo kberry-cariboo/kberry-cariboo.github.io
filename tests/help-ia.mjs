@@ -22,7 +22,9 @@ const read = (p) => readFileSync(join(ROOT, p), 'utf8');
 
 const helpSrc = read('src/components/help.js');
 const appData = read('src/lib/app-data.js');
-const appSrc = read('src/App.js');
+// The shortcut handler moved out of App.js into its own hook; the tab list
+// is still App's. Read both, so this follows the code wherever it lives.
+const appSrc = read('src/App.js') + '\n' + read('src/app/use-keyboard-shortcuts.js');
 
 const results = [];
 const check = (name, ok, detail = '') => {

@@ -102,7 +102,7 @@ jobs:
       - name: Lint source
         run: |
           node scripts/lint-bundle.js
-          npx --yes eslint@10 "src/lib/**/*.js" "src/components/**/*.js" src/App.js build.js .eslint-bundle.js
+          npx --yes eslint@10 "src/lib/**/*.js" "src/components/**/*.js" "src/app/**/*.js" src/App.js build.js .eslint-bundle.js
 
       # Global install (not a package.json dependency) matches how the rest of
       # this repo has no node_modules — tests/regression.mjs resolves it via

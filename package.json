@@ -8,7 +8,7 @@
   },
   "scripts": {
     "build": "node build.js",
-    "lint": "node scripts/lint-bundle.js && eslint \"src/lib/**/*.js\" \"src/components/**/*.js\" src/App.js build.js .eslint-bundle.js",
+    "lint": "node scripts/lint-bundle.js && eslint \"src/lib/**/*.js\" \"src/components/**/*.js\" \"src/app/**/*.js\" src/App.js build.js .eslint-bundle.js",
     "test": "node scripts/test.mjs fast",
     "test:fast": "node scripts/test.mjs fast",
     "test:browser": "node scripts/test.mjs browser",

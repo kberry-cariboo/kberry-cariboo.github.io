@@ -25,7 +25,11 @@ src/components/            UI components, grouped by area (forms, register,
                             `help.js` is the user documentation — the app's
                             explanatory copy lives there, as data, rather
                             than inline beside the controls it describes
-src/App.js                  The root App component + ReactDOM.render call
+src/app/                    App's hooks, one concern each: routing, the idle
+                            lock, flows, budget actions, notices, notifications,
+                            keyboard shortcuts, undo, search, and so on
+src/App.js                  The root App component, which composes those hooks
+                            and renders, + the ReactDOM.render call
 ```
 
 `build.js` produces **two** files at the repo root: `index.html` and `sw.js`.
@@ -108,7 +112,7 @@ Or suite by suite:
 # edit files under src/, then:
 node build.js                 # rebuilds index.html + sw.js
 node scripts/lint-bundle.js   # restitches .eslint-bundle.js from src/
-npx --yes eslint@10 "src/lib/**/*.js" "src/components/**/*.js" src/App.js \
+npx --yes eslint@10 "src/lib/**/*.js" "src/components/**/*.js" "src/app/**/*.js" src/App.js \
   build.js .eslint-bundle.js  # what CI runs
 node tests/dates.mjs          # the schedule engine, browser-free
 node tests/help-ia.mjs        # Help prose vs the real navigation, browser-free

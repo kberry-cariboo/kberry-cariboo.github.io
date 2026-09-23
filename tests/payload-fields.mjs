@@ -25,7 +25,7 @@
 // to ship rather than merely detectable.
 //
 //   node tests/payload-fields.mjs
-import { readFileSync } from 'fs';
+import { readFileSync, readdirSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
@@ -118,7 +118,8 @@ if (missingFromClient.length) {
   } else {
     const labelled = new Set([...labelsBlock[1].matchAll(/^\s*(\w+)\s*:/gm)].map((m) => m[1]));
     const logged = new Set();
-    for (const f of ['src/App.js', 'src/components/settings.js', 'src/components/plan.js',
+    // App.js and every hook it is composed from: a logActivity call can live in any of them.
+    for (const f of ['src/App.js', ...readdirSync(join(ROOT, 'src/app')).filter((n) => n.endsWith('.js')).map((n) => 'src/app/' + n), 'src/components/settings.js', 'src/components/plan.js',
                      'src/components/budget.js', 'src/components/entries.js',
                      'src/components/forms.js', 'src/components/dashboard.js',
                      'src/components/misc-ui.js', 'src/components/forecast-plan.js',
