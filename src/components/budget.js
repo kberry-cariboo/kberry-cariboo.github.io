@@ -32,14 +32,7 @@
       }
     });
     const dismissSwipeCoach = () => {
-      try {
-        localStorage.setItem("cf_coach_swipe", "1");
-      } catch (e) {
-        // Storage can throw outright in private/partitioned modes. Nothing
-        // here is essential to the current interaction, so a failure is
-        // genuinely ignorable — real save failures surface via
-        // notifyStorageWriteFailure.
-      }
+      safeStorage.set("cf_coach_swipe", "1");
       setShowSwipeCoach(false);
     };
     const [showOccurrenceForm, setShowOccurrenceForm] = useState(false);

@@ -365,6 +365,9 @@
   }, setMemberRole = () => {
   }, setMemberDisabled = () => {
   }, updateMemberName = async () => {
+  }, leaveHousehold = async () => {
+  }, removeMember = async () => {
+  }, deleteMyAccount = async () => {
   }, holidays = {}, setHolidays = () => {
   }, isOffline = false, houseValues = {}, houseSetters = {}, currency = DEFAULT_CURRENCY, setCurrency = () => {
   }, locale = DEFAULT_LOCALE, setLocale = () => {
@@ -386,7 +389,7 @@
     // What each account's name was when its field took focus, so a rename is
     // logged once on blur rather than once per keystroke.
     const renamedFrom = useRef({});
-    const { logActivity, canWrite } = useContext(HouseholdContext);
+    const { logActivity, canWrite, myRole } = useContext(HouseholdContext);
     // What each account opens the first budget year with. Derived, never
     // stored for the first account: it takes the remainder, so the shares can
     // never drift from the one opening balance the user actually sets.
@@ -397,6 +400,38 @@
     const [confirmTgtReset, setConfirmTgtReset] = useState(false);
     const [showAiKey, setShowAiKey] = useState(false);
     const [inviteCode, setInviteCode] = useState("");
+    // Which way out is being confirmed: { kind: "owner" | "remove" | "leave" | "delete", member }.
+    const [lifecycle, setLifecycle] = useState(null);
+    const [lifecycleMsg, setLifecycleMsg] = useState("");
+    const runLifecycle = async () => {
+      const { kind, member } = lifecycle || {};
+      setLifecycle(null);
+      setLifecycleMsg("");
+      try {
+        if (kind === "owner") await setMemberRole(member.user_id, "owner");
+        else if (kind === "remove") await removeMember(member.user_id);
+        else if (kind === "leave") await leaveHousehold();
+        else if (kind === "delete") await deleteMyAccount();
+      } catch (e) {
+        setLifecycleMsg(e.message || "That didn't work.");
+      }
+    };
+    const lifecycleDialog = () => {
+      if (!lifecycle) return null;
+      const name = lifecycle.member ? lifecycle.member.full_name || "this member" : "";
+      const others = members.filter((m) => m.user_id !== (sessionUser && sessionUser.id)).length;
+      const copy = {
+        owner: [`Make ${name} an owner?`, `${name} will be able to do everything you can, including removing members and making other owners. You can't undo this from here.`, "Make owner", "primary"],
+        remove: [`Remove ${name}?`, `${name} loses access to this household straight away. What they added stays; their own settings for it are deleted. They can rejoin only with a new invite code.`, "Remove", "danger"],
+        leave: others
+          ? ["Leave this household?", "You lose access to its budget on every device. What you added stays for the others. To come back you need a new invite code.", "Leave", "danger"]
+          : ["Leave and delete this household?", "You're its only member, so leaving deletes the household and everything in it — entries, receipts, goals, history. Export a backup first if you might want it.", "Leave and delete", "danger"],
+        delete: ["Delete your account?", others
+          ? "You leave this household (what you added stays for the others) and your sign-in is deleted. This can't be undone."
+          : "You're this household's only member, so the household and everything in it is deleted along with your sign-in. Export a backup first if you might want it. This can't be undone.", "Delete my account", "danger"]
+      }[lifecycle.kind];
+      return React.createElement(ConfirmDialog, { title: copy[0], message: copy[1], confirmLabel: copy[2], confirmVariant: copy[3], onConfirm: runLifecycle, onCancel: () => setLifecycle(null) });
+    };
     const [inviteBusy, setInviteBusy] = useState(false);
     const [memberMsg, setMemberMsg] = useState("");
     const [editMemberId, setEditMemberId] = useState(null);
@@ -1091,6 +1126,14 @@
           className: "cf-btn cf-btn--secondary cf-btn--xs"
         },
         m.role === "viewer" ? "Allow changes" : "Make view-only"
+      ), myRole === "owner" && (sessionUser == null ? void 0 : sessionUser.id) !== m.user_id && m.role !== "owner" && /* @__PURE__ */ React.createElement(
+        "button",
+        { onClick: () => setLifecycle({ kind: "owner", member: m }), "aria-label": `Make ${m.full_name || "this member"} an owner`, className: "cf-btn cf-btn--secondary cf-btn--xs" },
+        "Make owner"
+      ), myRole === "owner" && (sessionUser == null ? void 0 : sessionUser.id) !== m.user_id && /* @__PURE__ */ React.createElement(
+        "button",
+        { onClick: () => setLifecycle({ kind: "remove", member: m }), "aria-label": `Remove ${m.full_name || "this member"} from the household`, className: "cf-btn cf-btn--danger cf-btn--xs" },
+        "Remove"
       )));
     }), memberMsg && /* @__PURE__ */ React.createElement("div", { role: "alert", className: "error-text-mt10" }, memberMsg)), /* @__PURE__ */ React.createElement(Card, { className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, { help: "Generate a one-time code. Share it with them, then have them sign up and enter it on the “Join with invite code” screen." }, "Invite a family member"), /* @__PURE__ */ React.createElement(
       "button",
@@ -1112,7 +1155,16 @@
         className: "cf-btn cf-btn--primary cf-btn--md"
       },
       inviteBusy ? "Generating…" : "Generate invite code"
-    ), !canWrite && /* @__PURE__ */ React.createElement("p", { id: "invite-viewonly-note", className: "c-textMid mt-8" }, "View-only members can't invite people. Ask the household owner for a code."), inviteCode && /* @__PURE__ */ React.createElement("div", { className: "invite-code-display" }, inviteCode))) },
+    ), !canWrite && /* @__PURE__ */ React.createElement("p", { id: "invite-viewonly-note", className: "c-textMid mt-8" }, "View-only members can't invite people. Ask the household owner for a code."), inviteCode && /* @__PURE__ */ React.createElement("div", { className: "invite-code-display" }, inviteCode)), /* @__PURE__ */ React.createElement(Card, { className: "mb-20" },
+      /* @__PURE__ */ React.createElement(SectionTitle, null, "Leave this household"),
+      /* @__PURE__ */ React.createElement("p", { className: "c-textMid mb-12" }, members.length > 1
+        ? (myRole === "owner" && !members.some((m) => m.role === "owner" && m.user_id !== (sessionUser && sessionUser.id) && !m.disabled)
+          ? "You're its only owner. Make another member an owner first, so the household isn't left without one."
+          : "You'll lose access on every device. What you added stays for the others.")
+        : "You're its only member, so leaving deletes the household and everything in it."),
+      /* @__PURE__ */ React.createElement("button", { onClick: () => setLifecycle({ kind: "leave" }), className: "cf-btn cf-btn--danger cf-btn--md" }, members.length > 1 ? "Leave household" : "Leave and delete household"),
+      lifecycleMsg && /* @__PURE__ */ React.createElement("div", { role: "alert", className: "error-text-mt10" }, lifecycleMsg)
+    ), lifecycleDialog()) },
       backup: { title: "Backup & restore", value: () => "", render: () => React.createElement(React.Fragment, null, React.createElement(Card, { id: "sec-backup", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Data Backup & Restore"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("button", { onClick: () => {
       exportHouseholdBackup(houseValues);
     }, className: "cf-btn cf-btn--primary cf-btn--md cf-btn--iconrow" }, /* @__PURE__ */ React.createElement(Icon, { name: "download", size: 14 }), "Export Backup"), /* @__PURE__ */ React.createElement("label", { className: "cf-btn cf-btn--secondary cf-btn--md cf-btn--iconrow" }, /* @__PURE__ */ React.createElement(Icon, { name: "upload", size: 14 }), "Import Backup", /* @__PURE__ */ React.createElement("input", { type: "file", accept: ".json", className: "hidden", onChange: (e) => {
@@ -1384,6 +1436,11 @@
         },
         onCancel: () => setConfirmWipe(false)
       }
+    ), household && /* @__PURE__ */ React.createElement("div", { className: "danger-delete-account" },
+      /* @__PURE__ */ React.createElement("p", { className: "c-textMid" }, "Deleting your account removes your sign-in and your own settings, and takes you out of the household. If you're its only member, the household goes too."),
+      /* @__PURE__ */ React.createElement("button", { onClick: () => setLifecycle({ kind: "delete" }), className: "cf-btn cf-btn--danger cf-btn--md" }, "Delete my account"),
+      lifecycleMsg && /* @__PURE__ */ React.createElement("div", { role: "alert", className: "error-text-mt10" }, lifecycleMsg),
+      lifecycleDialog()
     )) }
     };
     // Grouped by what you came here to do, not alphabetically. The old index

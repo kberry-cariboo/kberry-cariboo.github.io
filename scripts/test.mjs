@@ -30,7 +30,7 @@ const GROUPS = {
   ],
   sql: [
     psql('supabase/schema-test.sql'), psql('tests/viewer-role.sql'), psql('tests/invite-flow.sql'),
-    psql('tests/member-prefs.sql'), psql('tests/receipts.sql'), psql('tests/ai-quota.sql'),
+    psql('tests/member-prefs.sql'), psql('tests/receipts.sql'), psql('tests/ai-quota.sql'), psql('tests/member-lifecycle.sql'),
     node('payload-roundtrip.mjs'), node('sync-sql.mjs'),
   ],
   browser: [

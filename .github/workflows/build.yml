@@ -289,6 +289,12 @@ jobs:
       - name: Check the per-member daily AI allowance
         run: psql -v ON_ERROR_STOP=1 -f tests/ai-quota.sql
 
+      # Leaving (never orphaning a household; the last one out takes it),
+      # owner-only removal, and deleting an account with the references that
+      # do not cascade cleared first.
+      - name: Check leaving, removing and deleting accounts
+        run: psql -v ON_ERROR_STOP=1 -f tests/member-lifecycle.sql
+
       - name: Check every payload field survives a save and a load
         run: CF_TEST_PG=1 node tests/payload-roundtrip.mjs
 

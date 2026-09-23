@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-4llOHAxiMfr87wWhUsmKzAqwi1bMLkdCK5o7UBFhUG4=' 'sha256-lJc7oPue1vzJz8L4R8FNqJJYZWoH4eylFQyhuUMNZKk=' 'sha256-hO6b9FaVwd07oVlba8+w8JZyQ0YxNR/8jr6RQFRdX/Y=' 'sha256-qPlVawQryiTeypltI2T6hQz/pRfoJx89+Qpc391Ehtk='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://vhwrflyqcubvybolbifl.supabase.co wss://vhwrflyqcubvybolbifl.supabase.co https://api.anthropic.com https://canada-holidays.ca; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'"/>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-4llOHAxiMfr87wWhUsmKzAqwi1bMLkdCK5o7UBFhUG4=' 'sha256-lJc7oPue1vzJz8L4R8FNqJJYZWoH4eylFQyhuUMNZKk=' 'sha256-hO6b9FaVwd07oVlba8+w8JZyQ0YxNR/8jr6RQFRdX/Y=' 'sha256-4JClVGOMuy9bewCLHT8TFA3qamCj9GWJ/+ufWXtECoA='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://vhwrflyqcubvybolbifl.supabase.co wss://vhwrflyqcubvybolbifl.supabase.co https://api.anthropic.com https://canada-holidays.ca; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 <title>CashFlow Budget</title>
 <meta name="theme-color" content="#14413A"/>
@@ -3614,6 +3614,7 @@
         .mb-6{margin-bottom:var(--space-6);}
         .mb-8{margin-bottom:var(--space-8);}
         .mb-12{margin-bottom:var(--space-12);}
+        .danger-delete-account{margin-top:var(--space-20);padding-top:var(--space-16);border-top:1px solid var(--border);display:flex;flex-direction:column;align-items:flex-start;gap:var(--space-10);}
         .mb-14{margin-bottom:var(--space-14);}
         .mb-20{margin-bottom:var(--space-20);}
         .mt-2{margin-top:var(--space-2);}
@@ -4519,6 +4520,46 @@ document.addEventListener('DOMContentLoaded',function(){
     }
     return "id-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2);
   }
+  // localStorage/sessionStorage that never throw. Both can throw outright — in
+  // a private window, with storage partitioned or full — and the app wrapped
+  // each call in its own try/catch with its own copy of the same comment,
+  // twenty-odd times. Anything that must tell the user a write failed uses
+  // useLS (notifyStorageWriteFailure) instead; these are the calls where a
+  // failure is genuinely ignorable. get returns null on any failure.
+  const safeStorage = {
+    area(which) {
+      try {
+        return which === "session" ? window.sessionStorage : window.localStorage;
+      } catch (e) {
+        return null;
+      }
+    },
+    get(key, which) {
+      try {
+        const a = safeStorage.area(which);
+        return a ? a.getItem(key) : null;
+      } catch (e) {
+        return null;
+      }
+    },
+    set(key, value, which) {
+      try {
+        const a = safeStorage.area(which);
+        if (a) a.setItem(key, value);
+        return true;
+      } catch (e) {
+        return false;
+      }
+    },
+    remove(key, which) {
+      try {
+        const a = safeStorage.area(which);
+        if (a) a.removeItem(key);
+      } catch (e) {
+        // Nothing to undo.
+      }
+    }
+  };
   const SUPABASE_URL = "https://vhwrflyqcubvybolbifl.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZod3JmbHlxY3Vidnlib2xiaWZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQyMzQ5NzUsImV4cCI6MjA5OTgxMDk3NX0.PKKtR6c6mcXV-Sfou3awEDI0HL_1MePaumoOMUZcAug";
   // Web Push application server key (VAPID), base64url, uncompressed P-256
@@ -7028,14 +7069,7 @@ document.addEventListener('DOMContentLoaded',function(){
     return credId;
   }
   function clearBiometric(userId) {
-    try {
-      localStorage.removeItem("cf_webauthn_" + userId);
-    } catch (e) {
-      // Storage can throw outright in private/partitioned modes. Nothing
-      // here is essential to the current interaction, so a failure is
-      // genuinely ignorable — real save failures surface via
-      // notifyStorageWriteFailure.
-    }
+    safeStorage.remove("cf_webauthn_" + userId);
   }
   async function verifyBiometric(userId) {
     const credId = getBiometricCredId(userId);
@@ -7237,6 +7271,24 @@ document.addEventListener('DOMContentLoaded',function(){
     });
     return out;
   }
+  // String figures to numbers; "" (not filled in) and anything unparseable
+  // are left exactly as they were.
+  function normaliseDebtFigures(debts) {
+    const out = {};
+    Object.keys(debts).forEach((k) => {
+      const d = debts[k];
+      if (!d || typeof d !== "object") {
+        out[k] = d;
+        return;
+      }
+      const copy = Object.assign({}, d);
+      ["balance", "rate", "payment"].forEach((f) => {
+        if (typeof copy[f] === "string" && copy[f].trim() !== "" && Number.isFinite(Number(copy[f]))) copy[f] = Number(copy[f]);
+      });
+      out[k] = copy;
+    });
+    return out;
+  }
   const HOUSEHOLD_FIELDS = [
     { key: "entries", storage: "cf_entries", initial: () => [], kind: "array", backup: true },
     { key: "overridesByYr", storage: "cf_overrides", initial: () => ({}), kind: "object", backup: true, toStorage: stripOverrideAttachments },
@@ -7267,7 +7319,12 @@ document.addEventListener('DOMContentLoaded',function(){
     { key: "budgetTargets", storage: "cf_budgtargets", initial: () => ({}), kind: "object", backup: true },
     { key: "templates", storage: "cf_templates", initial: () => [], kind: "array", backup: true },
     { key: "completed", storage: "cf_completed", initial: () => ({}), kind: "object", backup: true },
-    { key: "debtData", storage: "cf_debt_data", initial: () => ({}), kind: "object", backup: true },
+    // Figures arrive as numbers from the cloud; a backup or an older device may
+    // still carry the strings of cents the tracker used to write. Normalised
+    // here so a debt's balance is one type however it got onto this device.
+    { key: "debtData", storage: "cf_debt_data", initial: () => ({}), backup: true, apply: (v, set) => {
+      if (v && typeof v === "object") set(normaliseDebtFigures(v));
+    } },
     // Tombstones for the year-copy sync: source-entry id -> true, recorded
     // whenever the user deletes a one-time entry that was itself a copy
     // (entry.copiedFrom set). Without this, re-running "Copy year -> year+1"
@@ -7428,11 +7485,7 @@ document.addEventListener('DOMContentLoaded',function(){
   function exportHouseholdBackup(values) {
     const blob = new Blob([JSON.stringify(buildHouseholdBackup(values), null, 2)], { type: "application/json" });
     if (!downloadBlob(`CashFlow_Backup_${localDateStr(/* @__PURE__ */ new Date())}.json`, blob)) return false;
-    try {
-      localStorage.setItem("cf_last_backup", String(Date.now()));
-    } catch (e) {
-      // The export itself already succeeded.
-    }
+    safeStorage.set("cf_last_backup", String(Date.now()));
     return true;
   }
   // Every synced field's localStorage key, plus the per-year AI report cache.
@@ -7566,6 +7619,39 @@ document.addEventListener('DOMContentLoaded',function(){
       if (!data || !data.length) throw new Error("Only the household owner can rename other members.");
       await refreshMembership(session.user.id);
     }, [household, session, refreshMembership]);
+    // Leaving, removing and deleting. The rules (last one out takes the
+    // household; never leave it ownerless) are enforced by the RPCs — these
+    // only call them and bring local state into line with the answer.
+    const leaveHousehold = useCallback(async () => {
+      if (!supabaseClient || !session) return;
+      const { error } = await supabaseClient.rpc("leave_household");
+      if (error) throw error;
+      // The data on this device is the household's, and this person is no
+      // longer in it.
+      clearHouseholdLocalState();
+      await refreshMembership(session.user.id);
+    }, [session, refreshMembership]);
+    const removeMember = useCallback(async (userId) => {
+      if (!supabaseClient || !session) return;
+      const { error } = await supabaseClient.rpc("remove_member", { p_user_id: userId });
+      if (error) throw error;
+      await refreshMembership(session.user.id);
+    }, [session, refreshMembership]);
+    const deleteMyAccount = useCallback(async () => {
+      if (!supabaseClient || !session) return;
+      const { error } = await supabaseClient.rpc("delete_my_account");
+      if (error) throw error;
+      clearHouseholdLocalState();
+      try {
+        await supabaseClient.auth.signOut();
+      } catch (e) {
+        // The account is gone; a sign-out that cannot reach the server still
+        // clears the local session below.
+      }
+      setSession(null);
+      setHousehold(null);
+      setMembers([]);
+    }, [session]);
     const signOut = useCallback(async () => {
       if (!supabaseClient) return;
       await supabaseClient.auth.signOut();
@@ -7585,6 +7671,9 @@ document.addEventListener('DOMContentLoaded',function(){
       setMemberRole,
       updateMemberName,
       updateMyName,
+      leaveHousehold,
+      removeMember,
+      deleteMyAccount,
       signOut
     };
   }
@@ -7621,24 +7710,8 @@ document.addEventListener('DOMContentLoaded',function(){
   //                       difference between "safe to push" and "ask the user".
   const UNSAVED_KEY = "cf_unsaved_since";
   const SYNCED_AT_KEY = "cf_last_synced_at";
-  const readMarker = (k) => {
-    try {
-      return localStorage.getItem(k);
-    } catch (e) {
-      return null;
-    }
-  };
-  const writeMarker = (k, v) => {
-    try {
-      if (v == null) localStorage.removeItem(k);
-      else localStorage.setItem(k, v);
-    } catch (e) {
-      // Storage can throw outright in private/partitioned modes. Nothing
-      // here is essential to the current interaction, so a failure is
-      // genuinely ignorable — real save failures surface via
-      // notifyStorageWriteFailure.
-    }
-  };
+  const readMarker = (k) => safeStorage.get(k);
+  const writeMarker = (k, v) => v == null ? safeStorage.remove(k) : safeStorage.set(k, v);
 
   // Puts receipt images into the overrides they belong to, for any override
   // that exists and has no image of its own. Never replaces one: an image
@@ -13327,14 +13400,7 @@ const RUNWAY_DAYS = 90;
       }
     });
     const dismissSwipeCoach = () => {
-      try {
-        localStorage.setItem("cf_coach_swipe", "1");
-      } catch (e) {
-        // Storage can throw outright in private/partitioned modes. Nothing
-        // here is essential to the current interaction, so a failure is
-        // genuinely ignorable — real save failures surface via
-        // notifyStorageWriteFailure.
-      }
+      safeStorage.set("cf_coach_swipe", "1");
       setShowSwipeCoach(false);
     };
     const [showOccurrenceForm, setShowOccurrenceForm] = useState(false);
@@ -14991,14 +15057,7 @@ const RUNWAY_DAYS = 90;
       }
     }, [activeYear]);
     const saveReport = (saved) => {
-      try {
-        localStorage.setItem(CACHE_KEY, JSON.stringify({ report: saved, ts: (/* @__PURE__ */ new Date()).toISOString() }));
-      } catch (e) {
-        // Storage can throw outright in private/partitioned modes. Nothing
-        // here is essential to the current interaction, so a failure is
-        // genuinely ignorable — real save failures surface via
-        // notifyStorageWriteFailure.
-      }
+      safeStorage.set(CACHE_KEY, JSON.stringify({ report: saved, ts: (/* @__PURE__ */ new Date()).toISOString() }));
     };
     const buildContext = () => {
       var _a;
@@ -15335,14 +15394,7 @@ Fill every field of the response schema. Rules:
                 setReport(null);
                 setTruncated(false);
                 setLastRun(null);
-                try {
-                  localStorage.removeItem(CACHE_KEY);
-                } catch (e) {
-                  // Storage can throw outright in private/partitioned modes.
-                  // Nothing here is essential to the current interaction, so a
-                  // failure is genuinely ignorable — real save failures surface
-                  // via notifyStorageWriteFailure.
-                }
+                safeStorage.remove(CACHE_KEY);
               },
               className: "cf-btn cf-btn--secondary cf-btn--wide"
             },
@@ -16159,9 +16211,13 @@ Fill every field of the response schema. Rules:
         // not money, and is stored as-is.
         const formVals = {
           label: debtFormData.label.trim(),
-          balance: isNaN(balN) || balN < 0 ? "" : String(dollarsToCents(balN)),
-          rate: isNaN(rateN) || rateN < 0 ? "" : String(rateN),
-          payment: isNaN(pmtN) || pmtN < 0 ? "" : String(dollarsToCents(pmtN))
+          // Numbers, the same type the cloud hands back (numeric columns in
+          // the debts table). They were written as strings of cents, so a
+          // debt held a number or a string depending on whether it had been
+          // edited here or loaded. "" still means "not filled in yet".
+          balance: isNaN(balN) || balN < 0 ? "" : dollarsToCents(balN),
+          rate: isNaN(rateN) || rateN < 0 ? "" : rateN,
+          payment: isNaN(pmtN) || pmtN < 0 ? "" : dollarsToCents(pmtN)
         };
         if (editKey) {
           setDebtData((p) => __spreadProps(__spreadValues({}, p), { [editKey]: __spreadValues(__spreadValues({}, p[editKey]), formVals) }));
@@ -18870,6 +18926,9 @@ Fill every field of the response schema. Rules:
   }, setMemberRole = () => {
   }, setMemberDisabled = () => {
   }, updateMemberName = async () => {
+  }, leaveHousehold = async () => {
+  }, removeMember = async () => {
+  }, deleteMyAccount = async () => {
   }, holidays = {}, setHolidays = () => {
   }, isOffline = false, houseValues = {}, houseSetters = {}, currency = DEFAULT_CURRENCY, setCurrency = () => {
   }, locale = DEFAULT_LOCALE, setLocale = () => {
@@ -18891,7 +18950,7 @@ Fill every field of the response schema. Rules:
     // What each account's name was when its field took focus, so a rename is
     // logged once on blur rather than once per keystroke.
     const renamedFrom = useRef({});
-    const { logActivity, canWrite } = useContext(HouseholdContext);
+    const { logActivity, canWrite, myRole } = useContext(HouseholdContext);
     // What each account opens the first budget year with. Derived, never
     // stored for the first account: it takes the remainder, so the shares can
     // never drift from the one opening balance the user actually sets.
@@ -18902,6 +18961,38 @@ Fill every field of the response schema. Rules:
     const [confirmTgtReset, setConfirmTgtReset] = useState(false);
     const [showAiKey, setShowAiKey] = useState(false);
     const [inviteCode, setInviteCode] = useState("");
+    // Which way out is being confirmed: { kind: "owner" | "remove" | "leave" | "delete", member }.
+    const [lifecycle, setLifecycle] = useState(null);
+    const [lifecycleMsg, setLifecycleMsg] = useState("");
+    const runLifecycle = async () => {
+      const { kind, member } = lifecycle || {};
+      setLifecycle(null);
+      setLifecycleMsg("");
+      try {
+        if (kind === "owner") await setMemberRole(member.user_id, "owner");
+        else if (kind === "remove") await removeMember(member.user_id);
+        else if (kind === "leave") await leaveHousehold();
+        else if (kind === "delete") await deleteMyAccount();
+      } catch (e) {
+        setLifecycleMsg(e.message || "That didn't work.");
+      }
+    };
+    const lifecycleDialog = () => {
+      if (!lifecycle) return null;
+      const name = lifecycle.member ? lifecycle.member.full_name || "this member" : "";
+      const others = members.filter((m) => m.user_id !== (sessionUser && sessionUser.id)).length;
+      const copy = {
+        owner: [`Make ${name} an owner?`, `${name} will be able to do everything you can, including removing members and making other owners. You can't undo this from here.`, "Make owner", "primary"],
+        remove: [`Remove ${name}?`, `${name} loses access to this household straight away. What they added stays; their own settings for it are deleted. They can rejoin only with a new invite code.`, "Remove", "danger"],
+        leave: others
+          ? ["Leave this household?", "You lose access to its budget on every device. What you added stays for the others. To come back you need a new invite code.", "Leave", "danger"]
+          : ["Leave and delete this household?", "You're its only member, so leaving deletes the household and everything in it — entries, receipts, goals, history. Export a backup first if you might want it.", "Leave and delete", "danger"],
+        delete: ["Delete your account?", others
+          ? "You leave this household (what you added stays for the others) and your sign-in is deleted. This can't be undone."
+          : "You're this household's only member, so the household and everything in it is deleted along with your sign-in. Export a backup first if you might want it. This can't be undone.", "Delete my account", "danger"]
+      }[lifecycle.kind];
+      return React.createElement(ConfirmDialog, { title: copy[0], message: copy[1], confirmLabel: copy[2], confirmVariant: copy[3], onConfirm: runLifecycle, onCancel: () => setLifecycle(null) });
+    };
     const [inviteBusy, setInviteBusy] = useState(false);
     const [memberMsg, setMemberMsg] = useState("");
     const [editMemberId, setEditMemberId] = useState(null);
@@ -19596,6 +19687,14 @@ Fill every field of the response schema. Rules:
           className: "cf-btn cf-btn--secondary cf-btn--xs"
         },
         m.role === "viewer" ? "Allow changes" : "Make view-only"
+      ), myRole === "owner" && (sessionUser == null ? void 0 : sessionUser.id) !== m.user_id && m.role !== "owner" && /* @__PURE__ */ React.createElement(
+        "button",
+        { onClick: () => setLifecycle({ kind: "owner", member: m }), "aria-label": `Make ${m.full_name || "this member"} an owner`, className: "cf-btn cf-btn--secondary cf-btn--xs" },
+        "Make owner"
+      ), myRole === "owner" && (sessionUser == null ? void 0 : sessionUser.id) !== m.user_id && /* @__PURE__ */ React.createElement(
+        "button",
+        { onClick: () => setLifecycle({ kind: "remove", member: m }), "aria-label": `Remove ${m.full_name || "this member"} from the household`, className: "cf-btn cf-btn--danger cf-btn--xs" },
+        "Remove"
       )));
     }), memberMsg && /* @__PURE__ */ React.createElement("div", { role: "alert", className: "error-text-mt10" }, memberMsg)), /* @__PURE__ */ React.createElement(Card, { className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, { help: "Generate a one-time code. Share it with them, then have them sign up and enter it on the “Join with invite code” screen." }, "Invite a family member"), /* @__PURE__ */ React.createElement(
       "button",
@@ -19617,7 +19716,16 @@ Fill every field of the response schema. Rules:
         className: "cf-btn cf-btn--primary cf-btn--md"
       },
       inviteBusy ? "Generating…" : "Generate invite code"
-    ), !canWrite && /* @__PURE__ */ React.createElement("p", { id: "invite-viewonly-note", className: "c-textMid mt-8" }, "View-only members can't invite people. Ask the household owner for a code."), inviteCode && /* @__PURE__ */ React.createElement("div", { className: "invite-code-display" }, inviteCode))) },
+    ), !canWrite && /* @__PURE__ */ React.createElement("p", { id: "invite-viewonly-note", className: "c-textMid mt-8" }, "View-only members can't invite people. Ask the household owner for a code."), inviteCode && /* @__PURE__ */ React.createElement("div", { className: "invite-code-display" }, inviteCode)), /* @__PURE__ */ React.createElement(Card, { className: "mb-20" },
+      /* @__PURE__ */ React.createElement(SectionTitle, null, "Leave this household"),
+      /* @__PURE__ */ React.createElement("p", { className: "c-textMid mb-12" }, members.length > 1
+        ? (myRole === "owner" && !members.some((m) => m.role === "owner" && m.user_id !== (sessionUser && sessionUser.id) && !m.disabled)
+          ? "You're its only owner. Make another member an owner first, so the household isn't left without one."
+          : "You'll lose access on every device. What you added stays for the others.")
+        : "You're its only member, so leaving deletes the household and everything in it."),
+      /* @__PURE__ */ React.createElement("button", { onClick: () => setLifecycle({ kind: "leave" }), className: "cf-btn cf-btn--danger cf-btn--md" }, members.length > 1 ? "Leave household" : "Leave and delete household"),
+      lifecycleMsg && /* @__PURE__ */ React.createElement("div", { role: "alert", className: "error-text-mt10" }, lifecycleMsg)
+    ), lifecycleDialog()) },
       backup: { title: "Backup & restore", value: () => "", render: () => React.createElement(React.Fragment, null, React.createElement(Card, { id: "sec-backup", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Data Backup & Restore"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("button", { onClick: () => {
       exportHouseholdBackup(houseValues);
     }, className: "cf-btn cf-btn--primary cf-btn--md cf-btn--iconrow" }, /* @__PURE__ */ React.createElement(Icon, { name: "download", size: 14 }), "Export Backup"), /* @__PURE__ */ React.createElement("label", { className: "cf-btn cf-btn--secondary cf-btn--md cf-btn--iconrow" }, /* @__PURE__ */ React.createElement(Icon, { name: "upload", size: 14 }), "Import Backup", /* @__PURE__ */ React.createElement("input", { type: "file", accept: ".json", className: "hidden", onChange: (e) => {
@@ -19889,6 +19997,11 @@ Fill every field of the response schema. Rules:
         },
         onCancel: () => setConfirmWipe(false)
       }
+    ), household && /* @__PURE__ */ React.createElement("div", { className: "danger-delete-account" },
+      /* @__PURE__ */ React.createElement("p", { className: "c-textMid" }, "Deleting your account removes your sign-in and your own settings, and takes you out of the household. If you're its only member, the household goes too."),
+      /* @__PURE__ */ React.createElement("button", { onClick: () => setLifecycle({ kind: "delete" }), className: "cf-btn cf-btn--danger cf-btn--md" }, "Delete my account"),
+      lifecycleMsg && /* @__PURE__ */ React.createElement("div", { role: "alert", className: "error-text-mt10" }, lifecycleMsg),
+      lifecycleDialog()
     )) }
     };
     // Grouped by what you came here to do, not alphabetically. The old index
@@ -20113,23 +20226,9 @@ Fill every field of the response schema. Rules:
     const [showPw, setShowPw] = useState(false);
     const rememberEmail = (e) => {
       if (remember) {
-        try {
-          localStorage.setItem("cf_saved_email", e);
-        } catch (err) {
-          // Storage can throw outright in private/partitioned modes.
-          // Nothing here is essential to the current interaction, so a
-          // failure is genuinely ignorable — real save failures surface via
-          // notifyStorageWriteFailure.
-        }
+        safeStorage.set("cf_saved_email", e);
       } else {
-        try {
-          localStorage.removeItem("cf_saved_email");
-        } catch (err) {
-          // Storage can throw outright in private/partitioned modes.
-          // Nothing here is essential to the current interaction, so a
-          // failure is genuinely ignorable — real save failures surface via
-          // notifyStorageWriteFailure.
-        }
+        safeStorage.remove("cf_saved_email");
       }
     };
     const attemptLogin = async () => {
@@ -20849,6 +20948,15 @@ Fill every field of the response schema. Rules:
         houseApply(MEMBER_PREF_FIELDS.find((f) => f.key === "colOrder"))(["desc", "amount", "actions"], (v) => got.push(v));
         return got.length === 1 && got[0].join(",") === "desc,amount";
       });
+      t("debt figures load as numbers, whatever type they were written in", () => {
+        const got = [];
+        houseApply(HOUSEHOLD_FIELDS.find((f) => f.key === "debtData"))(
+          { a: { label: "Visa", balance: "450000", rate: "19.99", payment: 30000 }, b: { balance: "", payment: "12000" }, c: { hidden: true } },
+          (v) => got.push(v));
+        const v = got[0] || {};
+        return got.length === 1 && v.a.balance === 450000 && v.a.rate === 19.99 && v.a.payment === 30000
+          && v.b.balance === "" && v.b.payment === 12000 && v.c.hidden === true && v.a.label === "Visa";
+      });
       t("a member's own preferences are not household fields, and not in backups", () => {
         const house = HOUSEHOLD_FIELDS.map((f) => f.key);
         const backup = HOUSEHOLD_BACKUP_FIELDS.map((f) => f.key);
@@ -21118,6 +21226,9 @@ Fill every field of the response schema. Rules:
       setMemberRole,
       updateMemberName,
       updateMyName,
+      leaveHousehold,
+      removeMember,
+      deleteMyAccount,
       signOut
     } = useHousehold();
     const sessionUser = useMemo(() => {
@@ -21191,14 +21302,7 @@ Fill every field of the response schema. Rules:
     useEffect(() => {
       if (!lockTimeout || !sessionUser || locked) return;
       const stamp = () => {
-        try {
-          sessionStorage.setItem(LOCK_KEY, String(Date.now()));
-        } catch (e) {
-          // Storage can throw outright in private/partitioned modes.
-          // Nothing here is essential to the current interaction, so a
-          // failure is genuinely ignorable — real save failures surface via
-          // notifyStorageWriteFailure.
-        }
+        safeStorage.set(LOCK_KEY, String(Date.now()), "session");
       };
       stamp();
       // Re-stamp periodically while visible so elapsed *hidden* time is what
@@ -21233,14 +21337,7 @@ Fill every field of the response schema. Rules:
       // lock screen can prompt for the fingerprint.
       if (!authLoading && !session) {
         setLocked(false);
-        try {
-          sessionStorage.removeItem(LOCK_KEY);
-        } catch (e) {
-          // Storage can throw outright in private/partitioned modes.
-          // Nothing here is essential to the current interaction, so a
-          // failure is genuinely ignorable — real save failures surface via
-          // notifyStorageWriteFailure.
-        }
+        safeStorage.remove(LOCK_KEY, "session");
       }
     }, [authLoading, session]);
     // Every household-synced field's state at once, created from the single
@@ -21359,14 +21456,7 @@ Fill every field of the response schema. Rules:
       }
     });
     useEffect(() => {
-      try {
-        sessionStorage.setItem("cf_tab", tab);
-      } catch (e) {
-        // Storage can throw outright in private/partitioned modes. Nothing
-        // here is essential to the current interaction, so a failure is
-        // genuinely ignorable — real save failures surface via
-        // notifyStorageWriteFailure.
-      }
+      safeStorage.set("cf_tab", tab, "session");
     }, [tab]);
     const [showQuickAdd, setShowQuickAdd] = useState(false);
     // The Plan screen owns this; the Alerts centre only reads it, so its
@@ -21652,14 +21742,7 @@ Fill every field of the response schema. Rules:
     }, []);
     const dismissBackup = (doExport = false) => {
       setShowBackupNudge(false);
-      try {
-        localStorage.setItem("cf_last_backup", String(Date.now()));
-      } catch (e) {
-        // Storage can throw outright in private/partitioned modes. Nothing
-        // here is essential to the current interaction, so a failure is
-        // genuinely ignorable — real save failures surface via
-        // notifyStorageWriteFailure.
-      }
+      safeStorage.set("cf_last_backup", String(Date.now()));
       // The same file Settings → Backup makes, from the same builder.
       if (doExport) exportHouseholdBackup(houseValues);
     };
@@ -22526,14 +22609,7 @@ Fill every field of the response schema. Rules:
         }
       };
       const markSeen = (k) => {
-        try {
-          localStorage.setItem(k, todayKey);
-        } catch (e) {
-          // Storage can throw outright in private/partitioned modes.
-          // Nothing here is essential to the current interaction, so a
-          // failure is genuinely ignorable — real save failures surface via
-          // notifyStorageWriteFailure.
-        }
+        safeStorage.set(k, todayKey);
       };
       if (navLowInfo && !seen("cf_notified_lowbal")) {
         showLocalNotification("Low balance forecast", {
@@ -22641,14 +22717,7 @@ Fill every field of the response schema. Rules:
     }
     if (locked) {
       return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(LockScreen, { sessionUser, onUnlock: () => {
-        try {
-          sessionStorage.setItem(LOCK_KEY, String(Date.now()));
-        } catch (e) {
-          // Storage can throw outright in private/partitioned modes.
-          // Nothing here is essential to the current interaction, so a
-          // failure is genuinely ignorable — real save failures surface via
-          // notifyStorageWriteFailure.
-        }
+        safeStorage.set(LOCK_KEY, String(Date.now()), "session");
         setLocked(false);
       }, onSignOut: logout }));
     }
@@ -23096,7 +23165,10 @@ Fill every field of the response schema. Rules:
         createInvite,
         setMemberDisabled,
         setMemberRole,
-        updateMemberName
+        updateMemberName,
+        leaveHousehold,
+        removeMember,
+        deleteMyAccount
       }
     ))), undoStack.length > 0 && /* @__PURE__ */ React.createElement(
       UndoToast,

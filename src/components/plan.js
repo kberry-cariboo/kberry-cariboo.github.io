@@ -696,9 +696,13 @@
         // not money, and is stored as-is.
         const formVals = {
           label: debtFormData.label.trim(),
-          balance: isNaN(balN) || balN < 0 ? "" : String(dollarsToCents(balN)),
-          rate: isNaN(rateN) || rateN < 0 ? "" : String(rateN),
-          payment: isNaN(pmtN) || pmtN < 0 ? "" : String(dollarsToCents(pmtN))
+          // Numbers, the same type the cloud hands back (numeric columns in
+          // the debts table). They were written as strings of cents, so a
+          // debt held a number or a string depending on whether it had been
+          // edited here or loaded. "" still means "not filled in yet".
+          balance: isNaN(balN) || balN < 0 ? "" : dollarsToCents(balN),
+          rate: isNaN(rateN) || rateN < 0 ? "" : rateN,
+          payment: isNaN(pmtN) || pmtN < 0 ? "" : dollarsToCents(pmtN)
         };
         if (editKey) {
           setDebtData((p) => __spreadProps(__spreadValues({}, p), { [editKey]: __spreadValues(__spreadValues({}, p[editKey]), formVals) }));

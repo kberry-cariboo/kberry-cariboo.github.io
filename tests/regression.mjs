@@ -3610,6 +3610,68 @@ await test('csp: the page declares a policy, and no screen violates it', async (
   if (v.length) throw new Error('CSP violations: ' + [...new Set(v)].slice(0, 4).join('; '));
 });
 
+// Members could be disabled but never removed, nobody could leave, and there
+// was no way to delete an account. The rules are the database's
+// (tests/member-lifecycle.sql); these check the controls reach it, and say the
+// right thing before they do.
+{
+  const household = (me, other) => (t) => t
+    .replace(/const members = \[[^\n]*\];/, `const members = [{ user_id: 'u-demo', full_name: 'Demo User', disabled: false, role: '${me}', joined_at: '${FIXTURE_YEAR}-01-01T00:00:00Z' }${other ? `, { user_id: 'u-other', full_name: 'Sam', disabled: false, role: '${other}', joined_at: '${FIXTURE_YEAR}-01-02T00:00:00Z' }` : ''}];`)
+    .replace("rpc: (name) => name === 'load_household' ? resolved({ data: payload, receipts: [] }) : resolved(null),",
+      `rpc: (name, args) => { (window.__rpc = window.__rpc || []).push({ name, args: JSON.parse(JSON.stringify(args || null)) });
+         return name === 'load_household' ? resolved({ data: payload, receipts: [] }) : resolved(null); },`);
+  const rpcs = (page, name) => page.evaluate((n) => (window.__rpc || []).filter((c) => c.name === n).map((c) => c.args), name);
+
+  await test('household: an owner can make another member an owner, or remove them, after confirming', async () => {
+    const { ctx, page } = await ctxPage({ stub: household('owner', 'member') });
+    await page.goto(BASE + '#/you/household', { waitUntil: 'load' });
+    await page.getByRole('button', { name: 'Remove Sam from the household' }).click();
+    await page.getByRole('button', { name: 'Remove', exact: true }).last().click();
+    await page.waitForTimeout(400);
+    const removed = await rpcs(page, 'remove_member');
+    if (!removed.length || removed[0].p_user_id !== 'u-other') throw new Error('remove_member was not called for Sam: ' + JSON.stringify(removed));
+    // Make owner: until now the interface could only toggle view-only, so an
+    // owner could never hand over and therefore never leave.
+    await page.getByRole('button', { name: 'Make Sam an owner' }).click();
+    await page.getByRole('button', { name: 'Make owner', exact: true }).last().click();
+    await page.waitForTimeout(400);
+    await ctx.close();
+  });
+
+  await test('household: a member who is not an owner is not offered remove or make-owner', async () => {
+    const { ctx, page } = await ctxPage({ stub: household('member', 'owner') });
+    await page.goto(BASE + '#/you/household', { waitUntil: 'load' });
+    await page.getByText('Leave this household').first().waitFor(V);
+    if (await page.getByRole('button', { name: /Remove Sam|Make Sam an owner/ }).count()) throw new Error('a plain member is offered owner-only controls');
+    await page.getByRole('button', { name: 'Leave household' }).click();
+    await page.getByRole('button', { name: 'Leave', exact: true }).click();
+    await page.waitForTimeout(400);
+    if (!(await rpcs(page, 'leave_household')).length) throw new Error('leaving never called leave_household');
+    await ctx.close();
+  });
+
+  await test('household: the only owner is told to hand over before leaving', async () => {
+    const { ctx, page } = await ctxPage({ stub: household('owner', 'member') });
+    await page.goto(BASE + '#/you/household', { waitUntil: 'load' });
+    await page.getByText(/only owner\. Make another member an owner first/).waitFor(V)
+      .catch(() => { throw new Error('the only owner is not told why leaving would fail'); });
+    await ctx.close();
+  });
+
+  await test('danger zone: deleting your account asks first, then signs you out', async () => {
+    const { ctx, page } = await ctxPage({ stub: household('owner') });
+    await page.goto(BASE + '#/you/danger', { waitUntil: 'load' });
+    await page.getByRole('button', { name: 'Delete my account' }).click();
+    await page.getByText(/only member, so the household and everything in it is deleted/).waitFor(V)
+      .catch(() => { throw new Error('the only member is not told the household goes too'); });
+    await page.getByRole('button', { name: 'Delete my account' }).last().click();
+    await page.getByText('Sign in to your account').waitFor(V)
+      .catch(() => { throw new Error('after deleting the account the app is still signed in'); });
+    if (!(await rpcs(page, 'delete_my_account')).length) throw new Error('delete_my_account was never called');
+    await ctx.close();
+  });
+}
+
 // ── Money schema migration (schema v8: dollars -> cents) ────────────────
 // Every other test's fixture payload declares schemaVersion: 999, so it's
 // taken as already-cents and never exercises the upgrade path. This test
@@ -4496,8 +4558,10 @@ await test('sync: editing a holiday schedules a save of its own', async () => {
     if (back.amount !== rent.amount) throw new Error(`rent restored as ${back.amount}, backed up as ${rent.amount}`);
     if (after.years[0].openingBalance !== json.yearConfigs[0].openingBalance) throw new Error('opening balance changed scale');
     if (after.thresh !== json.alertThreshold) throw new Error('alert threshold changed scale');
-    if (after.debt.visa.balance !== '450000') throw new Error('v8 debt dollars not converted: ' + after.debt.visa.balance);
-    if (after.debt.visa.rate !== '19.99') throw new Error('interest rate was treated as money: ' + after.debt.visa.rate);
+    // Numbers, since debt figures are normalised on load (they used to be
+    // written as strings of cents while the cloud handed back numbers).
+    if (after.debt.visa.balance !== 450000) throw new Error('v8 debt dollars not converted to cents: ' + JSON.stringify(after.debt.visa.balance));
+    if (after.debt.visa.rate !== 19.99) throw new Error('interest rate was treated as money: ' + JSON.stringify(after.debt.visa.rate));
     await ctx.close();
   });
 

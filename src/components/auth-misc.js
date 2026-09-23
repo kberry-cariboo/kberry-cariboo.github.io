@@ -151,23 +151,9 @@
     const [showPw, setShowPw] = useState(false);
     const rememberEmail = (e) => {
       if (remember) {
-        try {
-          localStorage.setItem("cf_saved_email", e);
-        } catch (err) {
-          // Storage can throw outright in private/partitioned modes.
-          // Nothing here is essential to the current interaction, so a
-          // failure is genuinely ignorable — real save failures surface via
-          // notifyStorageWriteFailure.
-        }
+        safeStorage.set("cf_saved_email", e);
       } else {
-        try {
-          localStorage.removeItem("cf_saved_email");
-        } catch (err) {
-          // Storage can throw outright in private/partitioned modes.
-          // Nothing here is essential to the current interaction, so a
-          // failure is genuinely ignorable — real save failures surface via
-          // notifyStorageWriteFailure.
-        }
+        safeStorage.remove("cf_saved_email");
       }
     };
     const attemptLogin = async () => {
@@ -886,6 +872,15 @@
         const got = [];
         houseApply(MEMBER_PREF_FIELDS.find((f) => f.key === "colOrder"))(["desc", "amount", "actions"], (v) => got.push(v));
         return got.length === 1 && got[0].join(",") === "desc,amount";
+      });
+      t("debt figures load as numbers, whatever type they were written in", () => {
+        const got = [];
+        houseApply(HOUSEHOLD_FIELDS.find((f) => f.key === "debtData"))(
+          { a: { label: "Visa", balance: "450000", rate: "19.99", payment: 30000 }, b: { balance: "", payment: "12000" }, c: { hidden: true } },
+          (v) => got.push(v));
+        const v = got[0] || {};
+        return got.length === 1 && v.a.balance === 450000 && v.a.rate === 19.99 && v.a.payment === 30000
+          && v.b.balance === "" && v.b.payment === 12000 && v.c.hidden === true && v.a.label === "Visa";
       });
       t("a member's own preferences are not household fields, and not in backups", () => {
         const house = HOUSEHOLD_FIELDS.map((f) => f.key);

@@ -599,6 +599,24 @@ table is left untouched as a backup — verify your data in the app, then drop i
 whenever you like. The earlier GitHub Gist sync/backup feature has been removed
 entirely; use **You → Backup** for local JSON export/import.
 
+### Leaving, removing, deleting
+
+**You → Household** lets any member leave, and lets an owner make someone else
+an owner or remove them. **You → Danger zone** deletes your own account. The
+rules are in the database (`leave_household`, `remove_member`,
+`delete_my_account`), not the interface:
+
+- The last member to leave takes the household, and everything in it, with them.
+- A household with other members is never left without an owner. Make someone
+  else an owner first.
+- Only an owner removes other people. Leaving is how you remove yourself.
+- Deleting an account leaves the household under the same rules, clears the
+  references to the user that don't cascade, then deletes the sign-in.
+
+A departing member's own preferences and push subscriptions go with them, and
+what they added stays with the household. `tests/member-lifecycle.sql` covers
+the rules.
+
 ## AI features
 
 Five places in the app call Claude:

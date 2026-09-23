@@ -478,14 +478,7 @@
       }
     }, [activeYear]);
     const saveReport = (saved) => {
-      try {
-        localStorage.setItem(CACHE_KEY, JSON.stringify({ report: saved, ts: (/* @__PURE__ */ new Date()).toISOString() }));
-      } catch (e) {
-        // Storage can throw outright in private/partitioned modes. Nothing
-        // here is essential to the current interaction, so a failure is
-        // genuinely ignorable — real save failures surface via
-        // notifyStorageWriteFailure.
-      }
+      safeStorage.set(CACHE_KEY, JSON.stringify({ report: saved, ts: (/* @__PURE__ */ new Date()).toISOString() }));
     };
     const buildContext = () => {
       var _a;
@@ -822,14 +815,7 @@ Fill every field of the response schema. Rules:
                 setReport(null);
                 setTruncated(false);
                 setLastRun(null);
-                try {
-                  localStorage.removeItem(CACHE_KEY);
-                } catch (e) {
-                  // Storage can throw outright in private/partitioned modes.
-                  // Nothing here is essential to the current interaction, so a
-                  // failure is genuinely ignorable — real save failures surface
-                  // via notifyStorageWriteFailure.
-                }
+                safeStorage.remove(CACHE_KEY);
               },
               className: "cf-btn cf-btn--secondary cf-btn--wide"
             },

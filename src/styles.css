@@ -3573,6 +3573,7 @@
         .mb-6{margin-bottom:var(--space-6);}
         .mb-8{margin-bottom:var(--space-8);}
         .mb-12{margin-bottom:var(--space-12);}
+        .danger-delete-account{margin-top:var(--space-20);padding-top:var(--space-16);border-top:1px solid var(--border);display:flex;flex-direction:column;align-items:flex-start;gap:var(--space-10);}
         .mb-14{margin-bottom:var(--space-14);}
         .mb-20{margin-bottom:var(--space-20);}
         .mt-2{margin-top:var(--space-2);}

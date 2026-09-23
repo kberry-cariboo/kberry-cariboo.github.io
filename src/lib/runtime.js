@@ -46,3 +46,43 @@
     }
     return "id-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2);
   }
+  // localStorage/sessionStorage that never throw. Both can throw outright — in
+  // a private window, with storage partitioned or full — and the app wrapped
+  // each call in its own try/catch with its own copy of the same comment,
+  // twenty-odd times. Anything that must tell the user a write failed uses
+  // useLS (notifyStorageWriteFailure) instead; these are the calls where a
+  // failure is genuinely ignorable. get returns null on any failure.
+  const safeStorage = {
+    area(which) {
+      try {
+        return which === "session" ? window.sessionStorage : window.localStorage;
+      } catch (e) {
+        return null;
+      }
+    },
+    get(key, which) {
+      try {
+        const a = safeStorage.area(which);
+        return a ? a.getItem(key) : null;
+      } catch (e) {
+        return null;
+      }
+    },
+    set(key, value, which) {
+      try {
+        const a = safeStorage.area(which);
+        if (a) a.setItem(key, value);
+        return true;
+      } catch (e) {
+        return false;
+      }
+    },
+    remove(key, which) {
+      try {
+        const a = safeStorage.area(which);
+        if (a) a.removeItem(key);
+      } catch (e) {
+        // Nothing to undo.
+      }
+    }
+  };
