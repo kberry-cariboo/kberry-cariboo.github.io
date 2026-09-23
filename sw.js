@@ -1,5 +1,5 @@
 // CashFlow service worker. Built to sw.js at the repo root by build.js, which
-// substitutes v190-16863293c229 with the CF_VERSION constant in bootstrap-head.js
+// substitutes v193-1989f6d6ffc1 with the CF_VERSION constant in bootstrap-head.js
 // so the cache name and the app bundle always bump together.
 //
 // This has to be a real same-origin file: it used to be registered from a
@@ -9,7 +9,7 @@
 // way to receive Web Push — push events are delivered to the worker, not to a
 // page — and on Android it's the only way to show a notification at all
 // (Chrome for Android does not implement the `new Notification()` constructor).
-const CACHE = 'cf-v190-16863293c229';
+const CACHE = 'cf-v193-1989f6d6ffc1';
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
@@ -44,6 +44,14 @@ self.addEventListener('activate', (e) => {
 
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
+  // Only this app's own files. Everything cross-origin — Supabase's REST reads
+  // above all — goes straight to the network, untouched. The cache-first branch
+  // at the bottom used to take them too, which answered every API read with
+  // the *previous* response: an owner changed a member's role and the list
+  // came back showing the old one, and a new member who had just redeemed an
+  // invite was told, from the cache, that they still had no household. Live
+  // data is not an app shell; it has no business in this cache.
+  if (new URL(e.request.url).origin !== self.location.origin) return;
 
   // Everything below reads and writes through `caches.open(CACHE)` rather than
   // the global `caches.match()`. That distinction is load-bearing: the global

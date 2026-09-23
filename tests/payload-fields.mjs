@@ -86,6 +86,30 @@ if (missingFromClient.length) {
 // mistake that has bitten this codebase three times over (the autosave
 // dependency array, the unsaved-marker list, and the payload keys above), and
 // it costs nothing to close.
+// Each member's own preferences are a second pair of declarations with the
+// same failure mode: MEMBER_PREF_FIELDS on the client, cf_member_pref_keys() in
+// the schema. save_my_preferences refuses a key the database doesn't list, so a
+// client ahead of its database would fail every preference save. And no key may
+// be both: a field in both lists would sync to the household *and* per member,
+// and which copy won would depend on load order.
+{
+  const prefBlock = between(read('src/lib/household-sync.js'), 'const MEMBER_PREF_FIELDS = [', '\n  ];', 'MEMBER_PREF_FIELDS in src/lib/household-sync.js');
+  const prefKeys = [...prefBlock.matchAll(/\{\s*key:\s*"([^"]+)"/g)].map((m) => m[1]);
+  const sqlPrefBlock = between(read('supabase/schema.sql'), 'create or replace function cf_member_pref_keys()', '$$;', 'cf_member_pref_keys() in supabase/schema.sql');
+  const sqlPrefKeys = [...sqlPrefBlock.matchAll(/'([A-Za-z_][A-Za-z0-9_]*)'/g)].map((m) => m[1]);
+  if (prefKeys.length < 5) problems.push(`found only ${prefKeys.length} field(s) in MEMBER_PREF_FIELDS — the parser above is out of date`);
+  const onlyClient = prefKeys.filter((k) => !sqlPrefKeys.includes(k));
+  const onlySql = sqlPrefKeys.filter((k) => !prefKeys.includes(k));
+  if (onlyClient.length) problems.push(`MEMBER_PREF_FIELDS has ${onlyClient.join(', ')} but cf_member_pref_keys() does not — every preference save would be refused`);
+  if (onlySql.length) problems.push(`cf_member_pref_keys() lists ${onlySql.join(', ')} but no row of MEMBER_PREF_FIELDS produces it`);
+  const both = prefKeys.filter((k) => clientKeys.includes(k));
+  if (both.length) problems.push(`${both.join(', ')} is declared both per household and per member`);
+  // The retired list is what lets a tab from before the split keep saving.
+  const retired = between(read('supabase/schema.sql'), 'create or replace function cf_payload_retired_keys()', '$$;', 'cf_payload_retired_keys()');
+  const notRetired = prefKeys.filter((k) => !retired.includes(`'${k}'`));
+  if (notRetired.length) problems.push(`${notRetired.join(', ')} moved to member preferences but is not in cf_payload_retired_keys(), so an older tab's household save would be refused`);
+}
+
 {
   const appData = read('src/lib/app-data.js');
   const labelsBlock = appData.match(/const ACTIVITY_LABELS = \{([\s\S]*?)\};/);
@@ -114,7 +138,7 @@ if (missingFromClient.length) {
 }
 
 if (!problems.length) {
-  console.log(`PASS payload-fields: the client and the schema agree on all ${clientKeys.length} household fields,`
+  console.log(`PASS payload-fields: the client and the schema agree on all ${clientKeys.length} household fields and every member preference,`
     + ' and every kind the activity log records has a name');
 } else {
   console.error(`FAIL payload-fields: ${problems.length} disagreement(s) between declarations that have to match\n`);

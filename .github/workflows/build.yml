@@ -223,6 +223,14 @@ jobs:
       - name: Check the Help page matches the app's navigation
         run: node tests/help-ia.mjs
 
+      # Browser-free and Deno-free: drives the ai-proxy Edge Function's real
+      # handler with a fake caller and a fake Anthropic. Signing up is open, so
+      # the function must answer household members only — it once answered
+      # any login, which made it a free relay to Claude on the owner's bill.
+      # The flag is a no-op from Node 23.6 on; it is here for anyone on 22.
+      - name: Check the AI proxy answers household members only
+        run: node --experimental-strip-types tests/ai-proxy.mjs
+
       # The Help screenshots are committed, not built, so nothing else notices
       # when the page names a file that isn't there or a shot is left behind
       # after a rename. Browser-free.
@@ -256,6 +264,15 @@ jobs:
 
       - name: Check the schema round-trips what the client sends
         run: psql -v ON_ERROR_STOP=1 -f supabase/schema-test.sql
+
+      # Theme, forecast window, column orders, dashboard layout and Entries
+      # filters are each member's own row, not household data. Asserts, as each
+      # caller, that one member's preferences never reach another (by RPC or
+      # by reading the table), that a viewer keeps their own, that the upgrade
+      # seeded them from what the household shared, and that an old tab still
+      # sending them in the household payload is accepted.
+      - name: Check each member's preferences stay their own
+        run: psql -v ON_ERROR_STOP=1 -f tests/member-prefs.sql
 
       - name: Check every payload field survives a save and a load
         run: CF_TEST_PG=1 node tests/payload-roundtrip.mjs

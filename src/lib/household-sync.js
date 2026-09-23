@@ -79,39 +79,11 @@
     // fresh installs pointed at an empty year once the calendar rolled over.
     { key: "activeYear", storage: "cf_activeYear", initial: () => (/* @__PURE__ */ new Date()).getFullYear(), kind: "truthy", backup: true },
     { key: "alertThreshold", storage: "cf_alertThresh", initial: () => DEFAULT_ALERT_THRESHOLD, kind: "value", backup: true },
-    { key: "darkMode", storage: "cf_darkMode", initial: () => {
-      try {
-        return window.matchMedia("(prefers-color-scheme: dark)").matches;
-      } catch (e) {
-        return false;
-      }
-    }, kind: "value", backup: true },
-    { key: "forecastHorizon", storage: "cf_forecastHorizon", initial: () => 90, kind: "value" },
     // What the household owns, for the net worth figure. Debts are already
     // known (debtData) and the projection already knows what is in the
     // accounts; this is the third part, and the only one nothing could infer.
     { key: "assets", storage: "cf_assets", initial: () => [], kind: "array", backup: true },
     { key: "goals", storage: "cf_goals", initial: () => [], kind: "array", backup: true },
-    { key: "dashHidden", storage: "cf_dash_hidden", initial: () => ({}), kind: "object" },
-    { key: "dashOrder", storage: "cf_dash_order", initial: () => [], kind: "array" },
-    // "actions" is a fixed trailing column, not a reorderable one: an older
-    // payload that still lists it would otherwise reintroduce it.
-    { key: "colOrder", storage: "cf_col_order", initial: () => DEFAULT_ENTRIES_COLS, apply: (v, set) => {
-      if (Array.isArray(v) && v.length > 1) set(v.filter((c) => c !== "actions"));
-    } },
-    // The four Entries filters keep their old "cf_reg_filter"/"regFilter"
-    // names on purpose: renaming a storage key or a payload field would
-    // silently reset every existing user's saved filters, locally and in any
-    // synced household, on upgrade. Only the in-code bindings in App.js were
-    // renamed to the "entries" wording used everywhere else.
-    // The Budget grid's column order, beside the Entries grid's `colOrder`
-    // above. It was the device's alone while its sibling was the household's,
-    // which is not a distinction anyone would have designed on purpose — you
-    // reorder the columns of one grid and it follows you to your phone, you
-    // reorder the other and it doesn't.
-    { key: "budgetColOrder", storage: "cf_budget_col_order", initial: () => DEFAULT_BUDGET_COLS, apply: (v, set) => {
-      if (Array.isArray(v) && v.length > 1) set(v);
-    } },
     // The two inputs to the payoff simulation. Not reading preferences: they
     // change the debt-free date, the total interest and the payoff order the
     // Payoff screen reports, so with them on the device two people looking at
@@ -124,10 +96,6 @@
     // to be reading is yours.
     { key: "debtExtra", storage: "cf_debt_extra", initial: () => "100", kind: "truthy", backup: true },
     { key: "debtSimExcluded", storage: "cf_debt_sim_excluded", initial: () => [], kind: "array", backup: true },
-    { key: "regFilter", storage: "cf_reg_filter", initial: () => "all", kind: "truthy" },
-    { key: "regFilterCats", storage: "cf_reg_filter_cats", initial: () => [], kind: "array" },
-    { key: "regFilterScheds", storage: "cf_reg_filter_scheds", initial: () => [], kind: "array" },
-    { key: "regFilterStatus", storage: "cf_reg_filter_status", initial: () => [], kind: "array" },
     { key: "budgetTargets", storage: "cf_budgtargets", initial: () => ({}), kind: "object", backup: true },
     { key: "templates", storage: "cf_templates", initial: () => [], kind: "array", backup: true },
     { key: "completed", storage: "cf_completed", initial: () => ({}), kind: "object", backup: true },
@@ -174,6 +142,52 @@
     { key: "accounts", storage: "cf_accounts", initial: () => [{ id: DEFAULT_ACCOUNT_ID, name: DEFAULT_ACCOUNT_NAME, kind: "chequing" }], backup: true, apply: (v, set) => {
       if (Array.isArray(v) && v.length > 0) set(v);
     } }
+  ];
+  // One member's view of the household — not the household. These used to be
+  // rows of the table above, so they synced to everyone: switching to dark
+  // mode, reordering a grid or filtering Entries changed every other member's
+  // screen on their next load. They were put there so a preference would follow
+  // you to your phone, which is right; following your partner to theirs is not.
+  //
+  // Now each member has their own row (member_preferences, via
+  // load_my_preferences / save_my_preferences), which follows them to every
+  // device they sign in on and nowhere else. Same storage keys as before, so a
+  // device keeps what it had across the upgrade; same `kind`/`apply` guards,
+  // applied to what the server sends. Not in backups: a backup is the
+  // household's, and these are one person's. The schema declares the same keys
+  // in cf_member_pref_keys(), and tests/payload-fields.mjs holds the two
+  // together.
+  const MEMBER_PREF_FIELDS = [
+    { key: "darkMode", storage: "cf_darkMode", initial: () => {
+      try {
+        return window.matchMedia("(prefers-color-scheme: dark)").matches;
+      } catch (e) {
+        return false;
+      }
+    }, kind: "value" },
+    { key: "forecastHorizon", storage: "cf_forecastHorizon", initial: () => 90, kind: "value" },
+    { key: "dashHidden", storage: "cf_dash_hidden", initial: () => ({}), kind: "object" },
+    { key: "dashOrder", storage: "cf_dash_order", initial: () => [], kind: "array" },
+    // "actions" is a fixed trailing column, not a reorderable one: an older
+    // payload that still lists it would otherwise reintroduce it.
+    { key: "colOrder", storage: "cf_col_order", initial: () => DEFAULT_ENTRIES_COLS, apply: (v, set) => {
+      if (Array.isArray(v) && v.length > 1) set(v.filter((c) => c !== "actions"));
+    } },
+    // The four Entries filters keep their old "cf_reg_filter"/"regFilter"
+    // names on purpose: renaming a storage key or a payload field would
+    // silently reset every existing user's saved filters, locally and in any
+    // synced household, on upgrade. Only the in-code bindings in App.js were
+    // renamed to the "entries" wording used everywhere else.
+    // The Budget grid's column order, beside the Entries grid's `colOrder`
+    // above. Both follow you to every device you sign in on — and, since they
+    // moved here, no further: not to the other members of the household.
+    { key: "budgetColOrder", storage: "cf_budget_col_order", initial: () => DEFAULT_BUDGET_COLS, apply: (v, set) => {
+      if (Array.isArray(v) && v.length > 1) set(v);
+    } },
+    { key: "regFilter", storage: "cf_reg_filter", initial: () => "all", kind: "truthy" },
+    { key: "regFilterCats", storage: "cf_reg_filter_cats", initial: () => [], kind: "array" },
+    { key: "regFilterScheds", storage: "cf_reg_filter_scheds", initial: () => [], kind: "array" },
+    { key: "regFilterStatus", storage: "cf_reg_filter_status", initial: () => [], kind: "array" },
   ];
   // Long enough to answer "what happened while I was away" across a busy week,
   // short enough that the log never becomes the largest thing in the payload:
@@ -230,6 +244,29 @@
   // cleared from — both were separate hand-written lists.
   const HOUSEHOLD_SYNCED_FIELDS = HOUSEHOLD_FIELDS.map((f) => ({ key: f.key, apply: houseApply(f) }));
   const HOUSEHOLD_BACKUP_FIELDS = HOUSEHOLD_FIELDS.filter((f) => f.backup);
+  // The one way a backup file is made. There used to be two: Settings built
+  // it from the table above, and the 30-day reminder's "Export backup" listed
+  // fourteen fields by hand — and missed nine, accounts among them, so a
+  // restore from that file left every entry pointing at an account that no
+  // longer existed. Both buttons call this now.
+  function buildHouseholdBackup(values) {
+    return HOUSEHOLD_BACKUP_FIELDS.reduce((acc, f) => {
+      acc[f.key] = values[f.key];
+      return acc;
+    }, { schemaVersion: SCHEMA_VERSION, exportedAt: (/* @__PURE__ */ new Date()).toISOString() });
+  }
+  // Downloads it, and records the date only when the download started — the
+  // reminder coming back is a far smaller problem than a backup that wasn't.
+  function exportHouseholdBackup(values) {
+    const blob = new Blob([JSON.stringify(buildHouseholdBackup(values), null, 2)], { type: "application/json" });
+    if (!downloadBlob(`CashFlow_Backup_${localDateStr(/* @__PURE__ */ new Date())}.json`, blob)) return false;
+    try {
+      localStorage.setItem("cf_last_backup", String(Date.now()));
+    } catch (e) {
+      // The export itself already succeeded.
+    }
+    return true;
+  }
   // Every synced field's localStorage key, plus the per-year AI report cache.
   // On a shared device, a field's apply() only overwrites local state when the
   // newly-loaded household actually has a value for it — so without clearing
@@ -243,6 +280,11 @@
   function clearHouseholdLocalState() {
     try {
       HOUSEHOLD_LOCAL_STORAGE_KEYS.forEach((k) => localStorage.removeItem(k));
+      // The member's own preferences too: they are that person's, kept on the
+      // server, and come back when they sign in again. Left behind, the next
+      // person to sign in on this device would start from them.
+      MEMBER_PREF_FIELDS.forEach((f) => localStorage.removeItem(f.storage));
+      localStorage.removeItem(PREFS_UNSAVED_KEY);
       Object.keys(localStorage).filter((k) => k.startsWith("cf_ai_report_")).forEach((k) => localStorage.removeItem(k));
     } catch (e) {
       // Storage can throw outright in private/partitioned modes. Nothing
@@ -893,4 +935,104 @@
     }, HOUSEHOLD_FIELDS.map((f) => values[f.key]).concat([household, markUnsaved]));
 
     return { status, msg, saveData, loadData, unsaved, divergence, keepLocalChanges, discardLocalChanges };
+  }
+
+  // --- Each member's own preferences ---------------------------------------
+  // State for MEMBER_PREF_FIELDS, loaded from and saved to the signed-in
+  // member's own row. Deliberately far simpler than the household sync above:
+  // nobody else writes this row, so there is no conflict to detect — only this
+  // member's other devices, and the last one to change something is right.
+  //
+  // One marker makes offline edits safe: it is set when a change is waiting to
+  // be saved and cleared when a save lands. A load that finds it set pushes
+  // this device's values instead of applying the server's, so a preference
+  // changed on a train is not replaced by the older copy the next time the app
+  // opens.
+  const PREFS_UNSAVED_KEY = "cf_prefs_unsaved";
+  function useMemberPrefs(household) {
+    const values = {};
+    const setterList = [];
+    // useLS in a loop, safe for the same reason as useHouseholdState: the
+    // table is a module constant, so the hooks never change number or order.
+    for (const f of MEMBER_PREF_FIELDS) {
+      const [value, set] = useLS(f.storage, f.initial);
+      values[f.key] = value;
+      setterList.push(set);
+    }
+    const setters = useMemo(() => MEMBER_PREF_FIELDS.reduce((o, f, i) => {
+      o[f.key] = setterList[i];
+      return o;
+    }, {}), []);
+    const valuesRef = useRef(values);
+    valuesRef.current = values;
+    const pick = (src) => MEMBER_PREF_FIELDS.reduce((o, f) => {
+      o[f.key] = src[f.key];
+      return o;
+    }, {});
+    // Which household's row has been loaded, and the last thing the server is
+    // known to hold. Saving waits for the first: a device must not push its
+    // stale local copy over the row before it has even read it.
+    const loadedFor = useRef(null);
+    const lastSent = useRef(null);
+    const hid = household ? household.id : null;
+    const push = useCallback(async () => {
+      if (!supabaseClient || !loadedFor.current) return;
+      const snapshot = pick(valuesRef.current);
+      const { error } = await supabaseClient.rpc("save_my_preferences", { p: snapshot });
+      if (error) return; // the marker stays, and the next change or reconnect retries
+      lastSent.current = JSON.stringify(snapshot);
+      if (JSON.stringify(pick(valuesRef.current)) === lastSent.current) writeMarker(PREFS_UNSAVED_KEY, null);
+    }, []);
+    useEffect(() => {
+      loadedFor.current = null;
+      if (!supabaseClient || !hid) return;
+      let live = true;
+      (async () => {
+        let res;
+        try {
+          res = await supabaseClient.rpc("load_my_preferences");
+        } catch (e) {
+          return;
+        }
+        // A database from before member_preferences answers with an error.
+        // Stay on this device's values and don't try to save either — every
+        // save would fail the same way until the schema is re-run.
+        if (!live || !res || res.error) return;
+        loadedFor.current = hid;
+        if (readMarker(PREFS_UNSAVED_KEY)) {
+          push();
+          return;
+        }
+        const data = res.data || {};
+        const merged = Object.assign({}, valuesRef.current);
+        MEMBER_PREF_FIELDS.forEach((f) => {
+          if (data[f.key] === void 0) return;
+          houseApply(f)(data[f.key], (v) => {
+            merged[f.key] = v;
+            setters[f.key](v);
+          });
+        });
+        // What was just applied is what the server holds, so the render it
+        // causes is not an edit and must not be saved back.
+        lastSent.current = JSON.stringify(pick(merged));
+      })();
+      return () => {
+        live = false;
+      };
+    }, [hid, push, setters]);
+    useEffect(() => {
+      if (!hid || loadedFor.current !== hid) return;
+      if (JSON.stringify(pick(values)) === lastSent.current) return;
+      writeMarker(PREFS_UNSAVED_KEY, new Date().toISOString());
+      const t = setTimeout(push, 800);
+      return () => clearTimeout(t);
+    }, MEMBER_PREF_FIELDS.map((f) => values[f.key]).concat([hid, push]));
+    useEffect(() => {
+      const retry = () => {
+        if (readMarker(PREFS_UNSAVED_KEY)) push();
+      };
+      window.addEventListener("online", retry);
+      return () => window.removeEventListener("online", retry);
+    }, [push]);
+    return { values, setters };
   }

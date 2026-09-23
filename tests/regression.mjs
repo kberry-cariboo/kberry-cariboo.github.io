@@ -3253,6 +3253,160 @@ await test('auth: the login screen switches to create-account mode', async () =>
   await ctx.close();
 });
 
+// The app's chrome — header, footer, sign-in, dark sheets — is dark in both
+// themes, and its ink is the --on-dark-* family: white at six strengths. When
+// those tokens were declared as themselves (`--on-dark-30:var(--on-dark-30)`)
+// every rule using one fell back to inherited ink, and the sign-in tagline,
+// the footer and the header search went near-black on dark green. The token
+// tests read the stylesheet as text and passed. This asks the browser what it
+// actually painted: no text on a dark surface may be darker than the surface.
+const DARK_INK_PROBE = () => {
+  const rgba = (s) => { const m = s.match(/[\d.]+/g) || []; return { r: +m[0], g: +m[1], b: +m[2], a: m[3] === undefined ? 1 : +m[3] }; };
+  const lum = ({ r, g, b }) => {
+    const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+    return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+  };
+  const bgOf = (el) => {
+    for (let n = el; n; n = n.parentElement) {
+      const c = rgba(getComputedStyle(n).backgroundColor);
+      if (c.a > 0.5) return c;
+    }
+    return { r: 255, g: 255, b: 255, a: 1 };
+  };
+  const bad = [];
+  for (const el of document.querySelectorAll('body *')) {
+    const own = [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim());
+    if (!own || !el.getClientRects().length) continue;
+    const cs = getComputedStyle(el);
+    if (cs.visibility === 'hidden' || +cs.opacity === 0) continue;
+    const bg = bgOf(el);
+    if (lum(bg) > 0.1) continue; // only dark surfaces
+    const c = rgba(cs.color);
+    const ink = { r: c.r * c.a + bg.r * (1 - c.a), g: c.g * c.a + bg.g * (1 - c.a), b: c.b * c.a + bg.b * (1 - c.a) };
+    if (lum(ink) <= lum(bg)) bad.push(`"${el.textContent.trim().slice(0, 40)}" ${cs.color} on rgb(${bg.r},${bg.g},${bg.b})`);
+  }
+  return bad;
+};
+await test('auth: text on the dark chrome is lighter than the chrome, signed out and in', async () => {
+  const { ctx, page } = await ctxPage({ loggedIn: false });
+  await page.goto(BASE, { waitUntil: 'load' });
+  await page.getByText('Sign in to your account', V).waitFor(V);
+  const signedOut = await page.evaluate(DARK_INK_PROBE);
+  await ctx.close();
+  const { ctx: ctx2, page: page2 } = await ctxPage();
+  await page2.goto(BASE + '#/plan/goals', { waitUntil: 'load' });
+  await page2.locator('.app-footer').waitFor(V);
+  const signedIn = await page2.evaluate(DARK_INK_PROBE);
+  await ctx2.close();
+  const bad = [...signedOut.map((s) => 'sign-in: ' + s), ...signedIn.map((s) => 'app: ' + s)];
+  if (bad.length) throw new Error(`dark ink on dark chrome — ${bad.slice(0, 3).join('; ')}`);
+});
+
+// The server now refuses create_invite() from a view-only member (it would
+// seat a writer — tests/viewer-role.sql). The button should say so before it
+// is pressed, and an ordinary owner's button must be untouched.
+await test('household: a view-only member cannot generate an invite code', async () => {
+  const { ctx, page } = await ctxPage({ stub: (x) => x.replace("role: 'owner'", "role: 'viewer'") });
+  await page.goto(BASE + '#/you/household', { waitUntil: 'load' });
+  const btn = page.getByRole('button', { name: 'Generate invite code' });
+  await btn.waitFor(V);
+  if (!(await btn.isDisabled())) throw new Error('a viewer is offered an active "Generate invite code" button');
+  await page.getByText("View-only members can't invite people", V).waitFor(V);
+  await ctx.close();
+  const { ctx: ctx2, page: page2 } = await ctxPage();
+  await page2.goto(BASE + '#/you/household', { waitUntil: 'load' });
+  const ownerBtn = page2.getByRole('button', { name: 'Generate invite code' });
+  await ownerBtn.waitFor(V);
+  if (await ownerBtn.isDisabled()) throw new Error('the owner can no longer generate an invite code');
+  await ctx2.close();
+});
+
+// The fixture's car loan is $385 a month from January to 18 September. The
+// "ends soon" line used to divide the year's nine payments by twelve and say
+// it freed $288.75 a month. Pinned to early September, when it is ending soon.
+await test('today: a bill that is ending says what it frees per month, not a twelfth of the year', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.clock.setFixedTime(new Date('2026-09-03T12:00:00'));
+  await page.goto(BASE + '#/today', { waitUntil: 'load' });
+  const line = page.getByText(/Car loan/).locator('xpath=ancestor::*[contains(., "ends")][1]').filter({ hasText: 'frees' }).first();
+  await line.waitFor(V);
+  const text = (await line.textContent()) || '';
+  if (!/frees \$385\.00\/mo/.test(text)) throw new Error('expected "frees $385.00/mo", got: ' + text.trim().slice(0, 80));
+  await ctx.close();
+});
+
+// The low-balance warning looks sixty days ahead, which from November on runs
+// into January. It used to read only the active year's flow, so a dip in the
+// first week of the new year was never mentioned until the year had turned.
+await test('today: the low-balance warning sees a dip just past the new year', async () => {
+  const bigJanBill = (t) => spansYearEnd(t).replace('const monthTargets',
+    `entries.push({ id: 900, desc: 'Roof', type: 'expense', amount: 9000000, category: 'Housing', repeats: false, recurUnit: 'month', recurEvery: 1, startDate: '${FIXTURE_YEAR + 1}-01-08', notes: '' }); const monthTargets`);
+  const { ctx, page } = await ctxPage({ stub: bigJanBill });
+  await page.clock.setFixedTime(new Date(`${FIXTURE_YEAR}-12-10T12:00:00`));
+  await page.goto(BASE + '#/today', { waitUntil: 'load' });
+  const banner = page.getByText(/forecast to dip to/).first();
+  await banner.waitFor({ timeout: 6000 }).catch(() => {
+    throw new Error('no low-balance warning for a dip on 8 January, 29 days away');
+  });
+  const text = (await banner.locator('xpath=..').textContent()) || '';
+  // The bottom is a few days after the bill, once the next ones land too.
+  if (!new RegExp(`Jan \\d+, ${FIXTURE_YEAR + 1}`).test(text)) throw new Error('the warning does not name a January date in the new year: ' + text.slice(0, 120));
+  await ctx.close();
+});
+
+// Theme, forecast window, column orders, dashboard layout and the Entries
+// filters are each member's own now (member_preferences). They used to ride in
+// the household payload, so one person switching to dark mode switched
+// everyone. This records every RPC the page makes, serves a stored preference
+// back, and checks a change goes to the member's own row and never into the
+// household's.
+const recordRpc = (prefs) => (t) => t.replace(
+  "rpc: (name) => name === 'load_household' ? resolved({ data: payload, receipts: [] }) : resolved(null),",
+  `rpc: (name, args) => { (window.__rpc = window.__rpc || []).push({ name, args: JSON.parse(JSON.stringify(args || null)) });
+     if (name === 'load_household') return resolved({ data: payload, receipts: [] });
+     if (name === 'load_my_preferences') return resolved(${JSON.stringify(prefs)});
+     return resolved(null); },`);
+await test('preferences: each member\'s own — loaded from their row, saved to it, never to the household', async () => {
+  // This device last had light; the member's row says dark and a 30-day window.
+  const { ctx, page } = await ctxPage({ stub: recordRpc({ darkMode: true, forecastHorizon: 30 }) });
+  await page.goto(BASE + '#/you/appearance', { waitUntil: 'load' });
+  await page.waitForFunction(() => document.documentElement.dataset.theme === 'dark', null, { timeout: 5000 })
+    .catch(() => { throw new Error('the member\'s stored dark theme was not applied on load'); });
+  const horizon = await page.evaluate(() => localStorage.getItem('cf_forecastHorizon'));
+  if (horizon !== '30') throw new Error('the member\'s forecast window was not applied: ' + horizon);
+  // Applying what the server sent is not an edit: nothing is saved back yet.
+  await page.waitForTimeout(1500);
+  const early = await page.evaluate(() => (window.__rpc || []).filter((c) => c.name === 'save_my_preferences').length);
+  if (early) throw new Error('loading the member\'s preferences saved them straight back');
+
+  await page.getByRole('switch', { name: 'Dark Mode' }).click();
+  await page.waitForTimeout(1800);
+  const calls = await page.evaluate(() => window.__rpc || []);
+  const mine = calls.filter((c) => c.name === 'save_my_preferences');
+  if (!mine.length) throw new Error('turning dark mode off saved nothing to the member\'s row');
+  const last = mine[mine.length - 1].args.p;
+  if (last.darkMode !== false || last.forecastHorizon !== 30) throw new Error('the saved preferences are wrong: ' + JSON.stringify(last));
+  const leaked = calls.filter((c) => c.name === 'save_household')
+    .filter((c) => ['darkMode', 'forecastHorizon', 'colOrder', 'regFilter'].some((k) => c.args && c.args.p_data && k in c.args.p_data));
+  if (leaked.length) throw new Error('a member preference went into the household save: ' + Object.keys(leaked[0].args.p_data).join(', '));
+  await ctx.close();
+});
+
+// A preference changed offline is waiting to be saved (cf_prefs_unsaved). The
+// next launch must push it, not replace it with the server's older copy.
+await test('preferences: a change made offline wins over the older copy on the next launch', async () => {
+  const { ctx, page } = await ctxPage({ dark: true, stub: recordRpc({ darkMode: false }) });
+  await page.addInitScript("try{localStorage.setItem('cf_prefs_unsaved', new Date().toISOString())}catch(e){}");
+  await page.goto(BASE + '#/today', { waitUntil: 'load' });
+  await page.waitForTimeout(1800);
+  const theme = await page.evaluate(() => document.documentElement.dataset.theme);
+  if (theme !== 'dark') throw new Error('the server\'s older light theme replaced the dark one chosen offline');
+  const saves = await page.evaluate(() => (window.__rpc || []).filter((c) => c.name === 'save_my_preferences').map((c) => c.args.p.darkMode));
+  if (!saves.includes(true)) throw new Error('the offline change was never pushed: ' + JSON.stringify(saves));
+  if (await page.evaluate(() => localStorage.getItem('cf_prefs_unsaved'))) throw new Error('the unsaved marker survived a successful save');
+  await ctx.close();
+});
+
 // ── Money schema migration (schema v8: dollars -> cents) ────────────────
 // Every other test's fixture payload declares schemaVersion: 999, so it's
 // taken as already-cents and never exercises the upgrade path. This test
@@ -4000,6 +4154,33 @@ await test('sync: editing a holiday schedules a save of its own', async () => {
     await page.waitForTimeout(800);
     return true;
   };
+
+  // Two buttons make a backup: Settings → Export Backup, and the 30-day
+  // reminder's "Export backup". The reminder's used to list its fields by hand
+  // and missed nine — accounts, currency, holidays among them — so a restore
+  // from that file left entries pointing at accounts that no longer existed.
+  await test('backup: the 30-day reminder exports the same fields as Settings', async () => {
+    const { ctx, page } = await openSettings();
+    const fromSettings = await exportBackup(page);
+    await ctx.close();
+    const { ctx: ctx2, page: page2 } = await ctxPage();
+    await page2.addInitScript(CAPTURE_DOWNLOADS);
+    await page2.addInitScript("try{localStorage.removeItem('cf_last_backup')}catch(e){}");
+    await page2.goto(BASE + '#/today', { waitUntil: 'load' });
+    // The reminder waits five seconds before it speaks.
+    const btn = page2.getByRole('button', { name: /Export backup/ });
+    await btn.waitFor({ timeout: 9000 });
+    await btn.click();
+    await page2.waitForTimeout(700);
+    const d = await page2.evaluate(() => window.__downloads[0] || null);
+    await ctx2.close();
+    if (!d) throw new Error('the reminder\'s Export backup produced no file');
+    const want = Object.keys(fromSettings.json).filter((k) => k !== 'exportedAt').sort();
+    const got = Object.keys(JSON.parse(d.text)).filter((k) => k !== 'exportedAt').sort();
+    const missing = want.filter((k) => !got.includes(k));
+    if (missing.length) throw new Error('the reminder\'s backup is missing: ' + missing.join(', '));
+    if (got.length !== want.length) throw new Error('the two backups differ: ' + got.filter((k) => !want.includes(k)).join(', '));
+  });
   const stored = (page) => page.evaluate(() => {
     const g = (k) => { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } };
     return { entries: g('cf_entries'), overrides: g('cf_overrides'), years: g('cf_years'),
@@ -4018,7 +4199,7 @@ await test('sync: editing a holiday schedules a save of its own', async () => {
     // the same commit that changes that flag — the point is that dropping a
     // field from the backup has to be a decision, not a side effect.
     for (const k of ['entries', 'overridesByYr', 'yearConfigs', 'categories', 'categoryColors',
-      'activeYear', 'alertThreshold', 'darkMode', 'goals', 'budgetTargets', 'templates',
+      'activeYear', 'alertThreshold', 'goals', 'budgetTargets', 'templates',
       'completed', 'debtData', 'deletedCopyIds', 'holidays', 'activity', 'accounts']) {
       if (!(k in json)) throw new Error('missing from the export: ' + k);
     }
@@ -4058,7 +4239,8 @@ await test('sync: editing a holiday schedules a save of its own', async () => {
     await ctx.close();
   });
 
-  // The dialog says the file replaces the current data and cannot be undone.
+  // The dialog says the file replaces the current data (undoable only from the
+  // notice straight afterwards).
   // A field the file does not carry used to be left alone, so restoring a
   // backup taken before a goal existed left that goal in place — the user is
   // handed a blend of two points in time and told it is the backup.
@@ -4637,6 +4819,46 @@ await test('service worker: a repeat launch is served from cache, and a deploy s
   await ctx.close();
 });
 
+
+// The worker is for the app's own files. It used to answer every GET
+// cache-first, cross-origin ones included — so each Supabase REST read came
+// back as the response to the read before it. Every other test replaces
+// window.supabase with a stub, so no request of that shape ever reached the
+// worker and nothing noticed. This one sends real cross-origin reads through a
+// controlled page and counts what the server actually answered.
+await test('service worker: cross-origin reads (the Supabase API) always reach the network', async () => {
+  let hits = 0;
+  const api = createServer((req, res) => {
+    hits++;
+    res.writeHead(200, { 'content-type': 'application/json', 'access-control-allow-origin': '*' });
+    res.end(JSON.stringify({ call: hits }));
+  });
+  await new Promise((r) => api.listen(PORT - 1, '127.0.0.1', r));
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  try {
+    const page = await ctx.newPage();
+    await page.addInitScript(mkStub(false, true));
+    await page.goto(BASE, { waitUntil: 'load' });
+    await page.waitForFunction(() => !!navigator.serviceWorker.controller, null, { timeout: 15000 });
+    // "localhost" against a page on 127.0.0.1: a different origin, as the
+    // Supabase project is.
+    const url = `http://localhost:${PORT - 1}/rest/v1/household_members?user_id=eq.x`;
+    const seen = [];
+    for (let i = 0; i < 3; i++) seen.push(await page.evaluate((u) => fetch(u).then((r) => r.json()).then((j) => j.call), url));
+    if (seen.join() !== '1,2,3') {
+      throw new Error(`three reads came back as calls ${seen.join(', ')} — the worker answered from its cache instead of the network`);
+    }
+    const cached = await page.evaluate(async () => {
+      const out = [];
+      for (const k of await caches.keys()) for (const r of await (await caches.open(k)).keys()) out.push(r.url);
+      return out.filter((u) => new URL(u).origin !== location.origin);
+    });
+    if (cached.length) throw new Error('cross-origin responses are in the cache: ' + cached.join(', '));
+  } finally {
+    await ctx.close();
+    await new Promise((r) => api.close(r));
+  }
+});
 
 // ── Worth building ───────────────────────────────────────────────────────────
 
@@ -5780,6 +6002,35 @@ await test('settings: renaming a category takes its entries and targets with it'
   await page.waitForTimeout(1000);
   const undo = page.getByRole('button', { name: /Undo/i }).first();
   if (await undo.count() === 0) throw new Error('a rename that moves entries offers no undo');
+  await ctx.close();
+});
+
+// Ctrl/⌘+Z is the undo toast's button under a keyboard. Its comment said it
+// never fired under an open dialog, but the guard sat below it, so pressing it
+// with a form open reverted the last action behind the form.
+await test('undo: Ctrl+Z does nothing under an open dialog, and undoes once it is closed', async () => {
+  const { ctx, page } = await ctxPage();
+  await page.goto(BASE + '#/you/categories', { waitUntil: 'load' });
+  await settled(page);
+  const cats = () => page.evaluate(() => JSON.parse(localStorage.getItem('cf_categories') || '[]'));
+  await page.locator('.cat-row', { hasText: 'Subscriptions' }).first().click();
+  await page.waitForTimeout(400);
+  await page.locator('main').getByRole('button', { name: 'Remove', exact: true }).first().click();
+  await page.waitForTimeout(400);
+  if ((await cats()).includes('Subscriptions')) throw new Error('setup: the category was not removed');
+  // Open the entry form (the "n" shortcut) and press Ctrl+Z on the dialog.
+  await page.locator('body').click({ position: { x: 5, y: 5 } }).catch(() => {});
+  await page.keyboard.press('n');
+  await page.locator('.modal-overlay').first().waitFor(V);
+  await page.locator('.modal-overlay button').first().focus();
+  await page.keyboard.press('ControlOrMeta+z');
+  await page.waitForTimeout(300);
+  if ((await cats()).includes('Subscriptions')) throw new Error('Ctrl+Z undid the removal behind the open dialog');
+  await page.keyboard.press('Escape');
+  await page.locator('.modal-overlay').first().waitFor({ state: 'detached', timeout: 4000 });
+  await page.keyboard.press('ControlOrMeta+z');
+  await page.waitForTimeout(300);
+  if (!(await cats()).includes('Subscriptions')) throw new Error('Ctrl+Z did not undo once the dialog was closed');
   await ctx.close();
 });
 

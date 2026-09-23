@@ -41,7 +41,7 @@ The worker serves navigations **cache-first with background revalidation**: a
 launch paints the cached shell immediately and the network request goes out
 behind it. Before, navigations were network-first with `cache: 'no-store'`,
 which made the cache an offline fallback and nothing else — every launch
-re-downloaded the whole app (387 KB gzipped), not just the first.
+re-downloaded the whole app (387 KB gzipped then, about 510 KB now), not just the first.
 
 That makes the background request the thing that delivers an update, so it
 reports what it found: when the revalidated page carries a different
@@ -94,6 +94,7 @@ node tests/cat-detail.mjs     # the category drill-down's grouping, browser-free
 node tests/theme-tokens.mjs   # CSS palette vs its JS mirror, browser-free
 node tests/breakpoints.mjs    # one ladder of media widths, browser-free
 node tests/contrast.mjs       # WCAG contrast in both themes, browser-free
+node --experimental-strip-types tests/ai-proxy.mjs  # who the AI proxy serves, browser-free
 node tests/regression.mjs     # the browser suite
 node tests/layout-sweep.mjs   # every route at every width
 ```
@@ -198,9 +199,9 @@ an hour:
 ### The layout sweep
 
 `tests/regression.mjs` goes where a test author thought to send it.
-`tests/layout-sweep.mjs` goes everywhere: all thirty routes — the seventeen
+`tests/layout-sweep.mjs` goes everywhere: all thirty-one routes — the seventeen
 Settings pages included — at five widths plus two of them again in dark mode,
-210 screens in about four and a half minutes. On each one it asserts only the
+217 screens in about four and a half minutes. On each one it asserts only the
 things that have to be true of *every* screen:
 
 - the page does not scroll sideways, and nothing hangs off either edge
@@ -423,6 +424,21 @@ scenario sandbox, which payoff order is highlighted. Everything the household
 *owns* is in `HOUSEHOLD_FIELDS`, and `tests/payload-fields.mjs` fails if that
 table and `cf_payload_keys()` in the schema disagree.
 
+Between the two sits what each **member** prefers: theme, forecast window, the
+column order of both grids, which dashboard panels are hidden and in what order,
+and the Entries filters. These follow a person to every device they sign in on,
+and no further. They used to be household fields, so one member switching to
+dark mode switched everyone. They are rows in `member_preferences` now, one per
+member and readable only by that member, reached through `load_my_preferences()`
+and `save_my_preferences()`. A view-only member can save them too, since they
+aren't household data. The client declares them in `MEMBER_PREF_FIELDS`, beside
+`HOUSEHOLD_FIELDS`. `tests/payload-fields.mjs` holds that table to
+`cf_member_pref_keys()` and fails if a key appears in both lists. Their old
+payload keys are in `cf_payload_retired_keys()`, so a tab opened before the
+split keeps saving. Re-running `schema.sql` seeds each member's row from what
+the household shared until then (`cf_seed_member_preferences()`, never
+overwriting a row that exists). `tests/member-prefs.sql` covers all of it.
+
 A synced field must have exactly one piece of state. `useLS` is per-hook
 `useState` over a localStorage key, so a second `useLS` on a key that
 `useHouseholdState` already owns is a second copy the payload never sees
@@ -571,7 +587,9 @@ supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
 
 Deploy it **without** `--no-verify-jwt` (unlike `send-notifications`): the JWT
 check is what stops the function being an open relay to your Anthropic account.
-It only answers signed-in household members, rebuilds each request from an
+It only answers signed-in, active household members — sign-up is open, so a
+login alone proves nothing, and before this was checked any account could spend
+your key — rebuilds each request from an
 allowlist — so a caller can't choose its own model or ask for a 128k-token
 reply on your bill — and caps request size.
 
@@ -668,7 +686,7 @@ notification entirely if everything due that day is settled).
 
 ## Fonts, icons, manifest
 
-- `fonts/*.woff2` — self-hosted Inter and IBM Plex Mono (latin subset), so the installed PWA has real fonts offline.
+- `fonts/*.woff2` — self-hosted Schibsted Grotesk (UI) and Spline Sans Mono (figures), variable, latin and latin-ext subsets, so the installed PWA has real fonts offline.
 - `icon-192.png` / `icon-512.png` — generated from the app's own logo mark on its navy brand color.
 - `manifest.json` — real PWA manifest (not a data: URI).
 

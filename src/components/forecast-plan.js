@@ -637,31 +637,31 @@
       const prompt = `You are a certified financial planner reviewing a personal budget for ${ctx.year}. Analyse the financial data below and provide a comprehensive, actionable assessment. Be specific \u2014 reference actual dollar amounts and category names from the data.
 
 FINANCIAL DATA (${ctx.reportingWindow}):
-Opening Balance: $${centsToDollars(ctx.openingBalance).toLocaleString()}
-Closing Balance: $${centsToDollars(ctx.closingBalance).toLocaleString()}
-Total Income: $${centsToDollars(ctx.totalIncome).toLocaleString()}
-Total Expenses: $${centsToDollars(ctx.totalExpenses).toLocaleString()}
-Net Surplus/Shortfall: $${centsToDollars(ctx.totalSurplus).toLocaleString()} (${ctx.totalSurplus >= 0 ? "+" : ""}${ctx.savingsRatePct}% savings rate)
-Lowest Balance This Period: $${centsToDollars(ctx.lowestBalance).toLocaleString()}
-Average Monthly Expenses: $${centsToDollars(ctx.avgMonthlyExpense).toLocaleString()}
+Opening Balance: ${fmt(ctx.openingBalance)}
+Closing Balance: ${fmt(ctx.closingBalance)}
+Total Income: ${fmt(ctx.totalIncome)}
+Total Expenses: ${fmt(ctx.totalExpenses)}
+Net Surplus/Shortfall: ${fmt(ctx.totalSurplus)} (${ctx.totalSurplus >= 0 ? "+" : ""}${ctx.savingsRatePct}% savings rate)
+Lowest Balance This Period: ${fmt(ctx.lowestBalance)}
+Average Monthly Expenses: ${fmt(ctx.avgMonthlyExpense)}
 
 MONTHLY BREAKDOWN:
-${ctx.monthlyBreakdown.map((m) => `  ${m.month}: Income $${centsToDollars(m.income).toLocaleString()}, Expenses $${centsToDollars(m.expenses).toLocaleString()}, ${m.surplus >= 0 ? "Surplus" : "Shortfall"} $${Math.abs(centsToDollars(m.surplus)).toLocaleString()}, Balance $${centsToDollars(m.closingBalance).toLocaleString()}`).join("\n")}
+${ctx.monthlyBreakdown.map((m) => `  ${m.month}: Income ${fmt(m.income)}, Expenses ${fmt(m.expenses)}, ${m.surplus >= 0 ? "Surplus" : "Shortfall"} ${fmt(Math.abs(m.surplus))}, Balance ${fmt(m.closingBalance)}`).join("\n")}
 
 TOP EXPENSE CATEGORIES (YTD):
-${ctx.topExpenseCategories.map((c) => `  ${c.category}: $${centsToDollars(c.total).toLocaleString()} (${c.pctOfExpenses}% of expenses)`).join("\n")}
+${ctx.topExpenseCategories.map((c) => `  ${c.category}: ${fmt(c.total)} (${c.pctOfExpenses}% of expenses)`).join("\n")}
 
 INCOME SOURCES:
-${ctx.incomeCategories.map((c) => `  ${c.category}: $${centsToDollars(c.total).toLocaleString()}`).join("\n")}
+${ctx.incomeCategories.map((c) => `  ${c.category}: ${fmt(c.total)}`).join("\n")}
 
 ${ctx.debtObligations.length ? `DEBT / CREDIT OBLIGATIONS (YTD paid):
-${ctx.debtObligations.map((d) => `  ${d.category}: $${centsToDollars(d.ytdPaid).toLocaleString()}`).join("\n")}` : "No debt categories identified."}
+${ctx.debtObligations.map((d) => `  ${d.category}: ${fmt(d.ytdPaid)}`).join("\n")}` : "No debt categories identified."}
 
 ${((_a = ctx.debtTrackerItems) == null ? void 0 : _a.length) ? `DEBT TRACKER (user-entered balances & rates):
-${ctx.debtTrackerItems.map((d) => `  ${d.name}: Balance $${centsToDollars(d.balance).toLocaleString()}, Rate ${d.rate}%, Payment $${centsToDollars(d.monthlyPayment).toLocaleString()}/mo`).join("\n")}` : "No debt balances entered in tracker yet."}
+${ctx.debtTrackerItems.map((d) => `  ${d.name}: Balance ${fmt(d.balance)}, Rate ${d.rate}%, Payment ${fmt(d.monthlyPayment)}/mo`).join("\n")}` : "No debt balances entered in tracker yet."}
 
 ${ctx.hasBudgetTargets ? `BUDGET VS ACTUAL (top variances):
-${ctx.budgetVsActual.map((r) => `  ${r.category}: Actual $${centsToDollars(r.actual).toLocaleString()} vs Target $${centsToDollars(r.target).toLocaleString()} (${r.variance >= 0 ? "over" : "under"} by $${Math.abs(centsToDollars(r.variance)).toLocaleString()})`).join("\n")}` : "No budget targets have been set yet."}
+${ctx.budgetVsActual.map((r) => `  ${r.category}: Actual ${fmt(r.actual)} vs Target ${fmt(r.target)} (${r.variance >= 0 ? "over" : "under"} by ${fmt(Math.abs(r.variance))})`).join("\n")}` : "No budget targets have been set yet."}
 
 Fill every field of the response schema. Rules:
 - Each bullet is one short sentence (under ~18 words), anchored to a specific dollar amount or category from the data above.

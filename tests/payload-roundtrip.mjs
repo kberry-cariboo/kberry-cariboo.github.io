@@ -218,11 +218,25 @@ for (const [occ, ov] of Object.entries(payload.overridesByYr[2026])) {
   for (const k of Object.keys(ov)) check(`override ${occ}.${k}`, ov[k], g[k]);
 }
 for (const k of ['completed', 'assets', 'goals', 'categories', 'categoryColors', 'yearConfigs', 'budgetTargets',
-                 'templates', 'debtData', 'deletedCopyIds', 'holidays', 'dashHidden', 'dashOrder',
-                 'colOrder', 'regFilter', 'regFilterCats', 'regFilterScheds', 'regFilterStatus',
-                 'activeYear', 'alertThreshold', 'darkMode', 'forecastHorizon',
-                 'budgetColOrder', 'debtExtra', 'debtSimExcluded', 'activity']) {
+                 'templates', 'debtData', 'deletedCopyIds', 'holidays',
+                 'activeYear', 'alertThreshold', 'debtExtra', 'debtSimExcluded', 'activity']) {
   check(k, payload[k], back[k]);
+}
+
+// Each member's own preferences. The payload above still carries them, the
+// way a tab from before the split does: that save must be accepted (it was),
+// and none of them may come back out of the household load, where every
+// member would receive them. They round-trip through the member's own row.
+const PREF_KEYS = ['darkMode', 'forecastHorizon', 'colOrder', 'budgetColOrder', 'dashHidden',
+                   'dashOrder', 'regFilter', 'regFilterCats', 'regFilterScheds', 'regFilterStatus'];
+for (const k of PREF_KEYS) {
+  if (k in back) issues.push({ label: `${k} is handed out by load_household`, sent: '(absent)', got: show(back[k]) });
+}
+{
+  const prefs = Object.fromEntries(PREF_KEYS.map((k) => [k, payload[k]]));
+  psql(`select save_my_preferences($cfp$${JSON.stringify(prefs)}$cfp$::jsonb);`, UID);
+  const mine = JSON.parse(psql("select load_my_preferences()::text;", UID));
+  for (const k of PREF_KEYS) check(`preference ${k}`, prefs[k], mine[k]);
 }
 
 // The round trip above would pass just as well if debtData were still a jsonb

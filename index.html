@@ -26,13 +26,13 @@
   @layer boot {
   *{box-sizing:border-box;margin:0;padding:0;}
   html{height:100%;-webkit-text-size-adjust:100%;scrollbar-gutter:stable;}
-  body{height:100%;background:var(--bg);font-family:Inter,sans-serif;overflow-x:hidden;scrollbar-gutter:stable;}
+  body{height:100%;background:var(--bg);font-family:var(--font-ui);overflow-x:hidden;}
   #boot{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:14px;
         background:var(--headerBg);}
   .bbar{width:180px;height:3px;background:var(--navyMid);border-radius:2px;overflow:hidden;}
   .bfill{height:100%;background:var(--headerText);border-radius:2px;animation:bload 1.2s ease-in-out infinite;}
-  .bicon{font-size:36px;margin-bottom:4px;}
-  .bname{font-family:'IBM Plex Mono',monospace;font-weight:700;color:var(--headerText);font-size:16px;letter-spacing:0.04em;}
+  .bicon{display:block;border-radius:12px;margin-bottom:4px;}
+  .bname{font-family:var(--font-mono);font-weight:700;color:var(--headerText);font-size:16px;letter-spacing:0.04em;}
   .bmsg{font-size:11px;color:rgba(255,255,255,0.4);}
   @keyframes bload{0%{width:0%}60%{width:80%}100%{width:100%}}
   svg{max-width:100%;}
@@ -274,9 +274,16 @@
              LIGHT/DARK mirror in app-data.js, which is keyed that way. */
           --inkOnDanger:#FFFFFF;
           --inkOnSuccess:#FFFFFF;
-          --on-dark-08:var(--on-dark-08); --on-dark-16:var(--on-dark-16);
-          --on-dark-30:var(--on-dark-30); --on-dark-45:var(--on-dark-45);
-          --on-dark-60:var(--on-dark-60); --on-dark-85:var(--on-dark-85);
+          /* White at six strengths, for ink and hairlines on the dark
+             chrome (header, footer, sign-in, sheets, chart tooltips), which
+             is dark in both themes. Literal values: these are the bottom of
+             the chain. They once read `--on-dark-30:var(--on-dark-30)` — a
+             self-reference, which CSS treats as invalid, so every rule using
+             one fell back to inherited ink and painted near-black text on the
+             dark green. tests/theme-tokens.mjs now fails on any cycle. */
+          --on-dark-08:rgba(255,255,255,0.08); --on-dark-16:rgba(255,255,255,0.16);
+          --on-dark-30:rgba(255,255,255,0.30); --on-dark-45:rgba(255,255,255,0.45);
+          --on-dark-60:rgba(255,255,255,0.60); --on-dark-85:rgba(255,255,255,0.85);
           /* Scrims and the shadow ink used by the handful of bespoke,
              directional box-shadows the --shadow* tokens do not cover. These
              keep one value across both themes, as they did before; making
@@ -2301,7 +2308,9 @@
         .month-picker-fade{position:absolute;top:0;bottom:0;width:20px;pointer-events:none;z-index:1;}
         .month-picker-fade--left{left:0;background:linear-gradient(to right,var(--bg),transparent);}
         .month-picker-fade--right{right:0;background:linear-gradient(to left,var(--bg),transparent);}
-        body{margin:0;background:var(--bg);scrollbar-gutter:stable;
+        /* The scrollbar gutter is declared on html, which owns the page's
+           scrollbar; the copy that used to sit here on body had no effect. */
+        body{margin:0;background:var(--bg);
           -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;}
         /* Stray horizontal overflow must never widen the mobile layout viewport —
            that zooms the page out and scales/displaces position:fixed chrome
@@ -3693,7 +3702,7 @@
 <body>
 <div id="root">
   <div id="boot">
-    <div class="bicon">💰</div>
+    <img class="bicon" src="icon-192.png" width="48" height="48" alt=""/>
     <div class="bname">CashFlow</div>
     <div class="bbar"><div class="bfill"></div></div>
     <div class="bmsg">Loading…</div>
@@ -4367,7 +4376,7 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
 // is exactly what happened across the notification work: four rounds of
 // changes all shipped under v177, and the app kept showing the old Settings
 // copy after the new one was live.)
-const CF_VERSION='v190';
+const CF_VERSION='v193';
 if('serviceWorker'in navigator){
 try{
   const hadController=!!navigator.serviceWorker.controller;
@@ -5317,6 +5326,24 @@ document.addEventListener('DOMContentLoaded',function(){
   // shows up twice: out of one, into the other. Anything else — an old
   // transfer, or one with no destination — keeps its single-sided meaning.
   const isInterAccountTransfer = (e) => !!(e && e.type === "transfer" && e.toAccountId && e.toAccountId !== accountIdOf(e));
+  // What a repeating entry costs (or brings in) in an ordinary month, from its
+  // schedule rather than from a year's total. Dividing the year's occurrences
+  // by twelve — which is what "Car loan ends — frees $X/mo" used to do — is
+  // only right for an entry that runs all twelve months: a nine-month loan at
+  // $385 read as freeing $288.75. Units mirror expandEntries below; a
+  // multi-weekday weekly entry counts each of its days, as that loop does.
+  function monthlyEquivalent(e) {
+    if (!e || !e.repeats) return (e && e.amount) || 0;
+    const every = Math.max(1, e.recurEvery || 1);
+    const unit = e.recurUnit || "month";
+    const wdays = (e.recurDays || []).length;
+    const perMonth = unit === "day" ? 365 / 12 / every
+      : unit === "week" ? (52 / 12) / every * (every === 1 && wdays > 1 ? wdays : 1)
+      : unit === "semimonth" ? 2 / every
+      : unit === "year" ? 1 / (12 * every)
+      : 1 / every; // month, monthend, monthweekday
+    return roundMoney((e.amount || 0) * perMonth);
+  }
   function expandEntries(entries, year, overrides = {}) {
     const events = [];
     const yearStart = new Date(year, 0, 1);
@@ -7088,39 +7115,11 @@ document.addEventListener('DOMContentLoaded',function(){
     // fresh installs pointed at an empty year once the calendar rolled over.
     { key: "activeYear", storage: "cf_activeYear", initial: () => (/* @__PURE__ */ new Date()).getFullYear(), kind: "truthy", backup: true },
     { key: "alertThreshold", storage: "cf_alertThresh", initial: () => DEFAULT_ALERT_THRESHOLD, kind: "value", backup: true },
-    { key: "darkMode", storage: "cf_darkMode", initial: () => {
-      try {
-        return window.matchMedia("(prefers-color-scheme: dark)").matches;
-      } catch (e) {
-        return false;
-      }
-    }, kind: "value", backup: true },
-    { key: "forecastHorizon", storage: "cf_forecastHorizon", initial: () => 90, kind: "value" },
     // What the household owns, for the net worth figure. Debts are already
     // known (debtData) and the projection already knows what is in the
     // accounts; this is the third part, and the only one nothing could infer.
     { key: "assets", storage: "cf_assets", initial: () => [], kind: "array", backup: true },
     { key: "goals", storage: "cf_goals", initial: () => [], kind: "array", backup: true },
-    { key: "dashHidden", storage: "cf_dash_hidden", initial: () => ({}), kind: "object" },
-    { key: "dashOrder", storage: "cf_dash_order", initial: () => [], kind: "array" },
-    // "actions" is a fixed trailing column, not a reorderable one: an older
-    // payload that still lists it would otherwise reintroduce it.
-    { key: "colOrder", storage: "cf_col_order", initial: () => DEFAULT_ENTRIES_COLS, apply: (v, set) => {
-      if (Array.isArray(v) && v.length > 1) set(v.filter((c) => c !== "actions"));
-    } },
-    // The four Entries filters keep their old "cf_reg_filter"/"regFilter"
-    // names on purpose: renaming a storage key or a payload field would
-    // silently reset every existing user's saved filters, locally and in any
-    // synced household, on upgrade. Only the in-code bindings in App.js were
-    // renamed to the "entries" wording used everywhere else.
-    // The Budget grid's column order, beside the Entries grid's `colOrder`
-    // above. It was the device's alone while its sibling was the household's,
-    // which is not a distinction anyone would have designed on purpose — you
-    // reorder the columns of one grid and it follows you to your phone, you
-    // reorder the other and it doesn't.
-    { key: "budgetColOrder", storage: "cf_budget_col_order", initial: () => DEFAULT_BUDGET_COLS, apply: (v, set) => {
-      if (Array.isArray(v) && v.length > 1) set(v);
-    } },
     // The two inputs to the payoff simulation. Not reading preferences: they
     // change the debt-free date, the total interest and the payoff order the
     // Payoff screen reports, so with them on the device two people looking at
@@ -7133,10 +7132,6 @@ document.addEventListener('DOMContentLoaded',function(){
     // to be reading is yours.
     { key: "debtExtra", storage: "cf_debt_extra", initial: () => "100", kind: "truthy", backup: true },
     { key: "debtSimExcluded", storage: "cf_debt_sim_excluded", initial: () => [], kind: "array", backup: true },
-    { key: "regFilter", storage: "cf_reg_filter", initial: () => "all", kind: "truthy" },
-    { key: "regFilterCats", storage: "cf_reg_filter_cats", initial: () => [], kind: "array" },
-    { key: "regFilterScheds", storage: "cf_reg_filter_scheds", initial: () => [], kind: "array" },
-    { key: "regFilterStatus", storage: "cf_reg_filter_status", initial: () => [], kind: "array" },
     { key: "budgetTargets", storage: "cf_budgtargets", initial: () => ({}), kind: "object", backup: true },
     { key: "templates", storage: "cf_templates", initial: () => [], kind: "array", backup: true },
     { key: "completed", storage: "cf_completed", initial: () => ({}), kind: "object", backup: true },
@@ -7183,6 +7178,52 @@ document.addEventListener('DOMContentLoaded',function(){
     { key: "accounts", storage: "cf_accounts", initial: () => [{ id: DEFAULT_ACCOUNT_ID, name: DEFAULT_ACCOUNT_NAME, kind: "chequing" }], backup: true, apply: (v, set) => {
       if (Array.isArray(v) && v.length > 0) set(v);
     } }
+  ];
+  // One member's view of the household — not the household. These used to be
+  // rows of the table above, so they synced to everyone: switching to dark
+  // mode, reordering a grid or filtering Entries changed every other member's
+  // screen on their next load. They were put there so a preference would follow
+  // you to your phone, which is right; following your partner to theirs is not.
+  //
+  // Now each member has their own row (member_preferences, via
+  // load_my_preferences / save_my_preferences), which follows them to every
+  // device they sign in on and nowhere else. Same storage keys as before, so a
+  // device keeps what it had across the upgrade; same `kind`/`apply` guards,
+  // applied to what the server sends. Not in backups: a backup is the
+  // household's, and these are one person's. The schema declares the same keys
+  // in cf_member_pref_keys(), and tests/payload-fields.mjs holds the two
+  // together.
+  const MEMBER_PREF_FIELDS = [
+    { key: "darkMode", storage: "cf_darkMode", initial: () => {
+      try {
+        return window.matchMedia("(prefers-color-scheme: dark)").matches;
+      } catch (e) {
+        return false;
+      }
+    }, kind: "value" },
+    { key: "forecastHorizon", storage: "cf_forecastHorizon", initial: () => 90, kind: "value" },
+    { key: "dashHidden", storage: "cf_dash_hidden", initial: () => ({}), kind: "object" },
+    { key: "dashOrder", storage: "cf_dash_order", initial: () => [], kind: "array" },
+    // "actions" is a fixed trailing column, not a reorderable one: an older
+    // payload that still lists it would otherwise reintroduce it.
+    { key: "colOrder", storage: "cf_col_order", initial: () => DEFAULT_ENTRIES_COLS, apply: (v, set) => {
+      if (Array.isArray(v) && v.length > 1) set(v.filter((c) => c !== "actions"));
+    } },
+    // The four Entries filters keep their old "cf_reg_filter"/"regFilter"
+    // names on purpose: renaming a storage key or a payload field would
+    // silently reset every existing user's saved filters, locally and in any
+    // synced household, on upgrade. Only the in-code bindings in App.js were
+    // renamed to the "entries" wording used everywhere else.
+    // The Budget grid's column order, beside the Entries grid's `colOrder`
+    // above. Both follow you to every device you sign in on — and, since they
+    // moved here, no further: not to the other members of the household.
+    { key: "budgetColOrder", storage: "cf_budget_col_order", initial: () => DEFAULT_BUDGET_COLS, apply: (v, set) => {
+      if (Array.isArray(v) && v.length > 1) set(v);
+    } },
+    { key: "regFilter", storage: "cf_reg_filter", initial: () => "all", kind: "truthy" },
+    { key: "regFilterCats", storage: "cf_reg_filter_cats", initial: () => [], kind: "array" },
+    { key: "regFilterScheds", storage: "cf_reg_filter_scheds", initial: () => [], kind: "array" },
+    { key: "regFilterStatus", storage: "cf_reg_filter_status", initial: () => [], kind: "array" },
   ];
   // Long enough to answer "what happened while I was away" across a busy week,
   // short enough that the log never becomes the largest thing in the payload:
@@ -7239,6 +7280,29 @@ document.addEventListener('DOMContentLoaded',function(){
   // cleared from — both were separate hand-written lists.
   const HOUSEHOLD_SYNCED_FIELDS = HOUSEHOLD_FIELDS.map((f) => ({ key: f.key, apply: houseApply(f) }));
   const HOUSEHOLD_BACKUP_FIELDS = HOUSEHOLD_FIELDS.filter((f) => f.backup);
+  // The one way a backup file is made. There used to be two: Settings built
+  // it from the table above, and the 30-day reminder's "Export backup" listed
+  // fourteen fields by hand — and missed nine, accounts among them, so a
+  // restore from that file left every entry pointing at an account that no
+  // longer existed. Both buttons call this now.
+  function buildHouseholdBackup(values) {
+    return HOUSEHOLD_BACKUP_FIELDS.reduce((acc, f) => {
+      acc[f.key] = values[f.key];
+      return acc;
+    }, { schemaVersion: SCHEMA_VERSION, exportedAt: (/* @__PURE__ */ new Date()).toISOString() });
+  }
+  // Downloads it, and records the date only when the download started — the
+  // reminder coming back is a far smaller problem than a backup that wasn't.
+  function exportHouseholdBackup(values) {
+    const blob = new Blob([JSON.stringify(buildHouseholdBackup(values), null, 2)], { type: "application/json" });
+    if (!downloadBlob(`CashFlow_Backup_${localDateStr(/* @__PURE__ */ new Date())}.json`, blob)) return false;
+    try {
+      localStorage.setItem("cf_last_backup", String(Date.now()));
+    } catch (e) {
+      // The export itself already succeeded.
+    }
+    return true;
+  }
   // Every synced field's localStorage key, plus the per-year AI report cache.
   // On a shared device, a field's apply() only overwrites local state when the
   // newly-loaded household actually has a value for it — so without clearing
@@ -7252,6 +7316,11 @@ document.addEventListener('DOMContentLoaded',function(){
   function clearHouseholdLocalState() {
     try {
       HOUSEHOLD_LOCAL_STORAGE_KEYS.forEach((k) => localStorage.removeItem(k));
+      // The member's own preferences too: they are that person's, kept on the
+      // server, and come back when they sign in again. Left behind, the next
+      // person to sign in on this device would start from them.
+      MEMBER_PREF_FIELDS.forEach((f) => localStorage.removeItem(f.storage));
+      localStorage.removeItem(PREFS_UNSAVED_KEY);
       Object.keys(localStorage).filter((k) => k.startsWith("cf_ai_report_")).forEach((k) => localStorage.removeItem(k));
     } catch (e) {
       // Storage can throw outright in private/partitioned modes. Nothing
@@ -7902,6 +7971,106 @@ document.addEventListener('DOMContentLoaded',function(){
     }, HOUSEHOLD_FIELDS.map((f) => values[f.key]).concat([household, markUnsaved]));
 
     return { status, msg, saveData, loadData, unsaved, divergence, keepLocalChanges, discardLocalChanges };
+  }
+
+  // --- Each member's own preferences ---------------------------------------
+  // State for MEMBER_PREF_FIELDS, loaded from and saved to the signed-in
+  // member's own row. Deliberately far simpler than the household sync above:
+  // nobody else writes this row, so there is no conflict to detect — only this
+  // member's other devices, and the last one to change something is right.
+  //
+  // One marker makes offline edits safe: it is set when a change is waiting to
+  // be saved and cleared when a save lands. A load that finds it set pushes
+  // this device's values instead of applying the server's, so a preference
+  // changed on a train is not replaced by the older copy the next time the app
+  // opens.
+  const PREFS_UNSAVED_KEY = "cf_prefs_unsaved";
+  function useMemberPrefs(household) {
+    const values = {};
+    const setterList = [];
+    // useLS in a loop, safe for the same reason as useHouseholdState: the
+    // table is a module constant, so the hooks never change number or order.
+    for (const f of MEMBER_PREF_FIELDS) {
+      const [value, set] = useLS(f.storage, f.initial);
+      values[f.key] = value;
+      setterList.push(set);
+    }
+    const setters = useMemo(() => MEMBER_PREF_FIELDS.reduce((o, f, i) => {
+      o[f.key] = setterList[i];
+      return o;
+    }, {}), []);
+    const valuesRef = useRef(values);
+    valuesRef.current = values;
+    const pick = (src) => MEMBER_PREF_FIELDS.reduce((o, f) => {
+      o[f.key] = src[f.key];
+      return o;
+    }, {});
+    // Which household's row has been loaded, and the last thing the server is
+    // known to hold. Saving waits for the first: a device must not push its
+    // stale local copy over the row before it has even read it.
+    const loadedFor = useRef(null);
+    const lastSent = useRef(null);
+    const hid = household ? household.id : null;
+    const push = useCallback(async () => {
+      if (!supabaseClient || !loadedFor.current) return;
+      const snapshot = pick(valuesRef.current);
+      const { error } = await supabaseClient.rpc("save_my_preferences", { p: snapshot });
+      if (error) return; // the marker stays, and the next change or reconnect retries
+      lastSent.current = JSON.stringify(snapshot);
+      if (JSON.stringify(pick(valuesRef.current)) === lastSent.current) writeMarker(PREFS_UNSAVED_KEY, null);
+    }, []);
+    useEffect(() => {
+      loadedFor.current = null;
+      if (!supabaseClient || !hid) return;
+      let live = true;
+      (async () => {
+        let res;
+        try {
+          res = await supabaseClient.rpc("load_my_preferences");
+        } catch (e) {
+          return;
+        }
+        // A database from before member_preferences answers with an error.
+        // Stay on this device's values and don't try to save either — every
+        // save would fail the same way until the schema is re-run.
+        if (!live || !res || res.error) return;
+        loadedFor.current = hid;
+        if (readMarker(PREFS_UNSAVED_KEY)) {
+          push();
+          return;
+        }
+        const data = res.data || {};
+        const merged = Object.assign({}, valuesRef.current);
+        MEMBER_PREF_FIELDS.forEach((f) => {
+          if (data[f.key] === void 0) return;
+          houseApply(f)(data[f.key], (v) => {
+            merged[f.key] = v;
+            setters[f.key](v);
+          });
+        });
+        // What was just applied is what the server holds, so the render it
+        // causes is not an edit and must not be saved back.
+        lastSent.current = JSON.stringify(pick(merged));
+      })();
+      return () => {
+        live = false;
+      };
+    }, [hid, push, setters]);
+    useEffect(() => {
+      if (!hid || loadedFor.current !== hid) return;
+      if (JSON.stringify(pick(values)) === lastSent.current) return;
+      writeMarker(PREFS_UNSAVED_KEY, new Date().toISOString());
+      const t = setTimeout(push, 800);
+      return () => clearTimeout(t);
+    }, MEMBER_PREF_FIELDS.map((f) => values[f.key]).concat([hid, push]));
+    useEffect(() => {
+      const retry = () => {
+        if (readMarker(PREFS_UNSAVED_KEY)) push();
+      };
+      window.addEventListener("online", retry);
+      return () => window.removeEventListener("online", retry);
+    }, [push]);
+    return { values, setters };
   }
   // Notifications — foreground (shown by the page while it's open) and
   // background Web Push (delivered by the browser's push service with the app
@@ -9160,6 +9329,15 @@ const RUNWAY_DAYS = 90;
           return false;
         }
         const { data, error } = await supabaseClient.functions.invoke(AI_PROXY_FN, { body: { ping: true } });
+        // 403 is the function answering about *this account*, not about
+        // itself: it serves household members only, and someone still on the
+        // create-or-join screen is not one yet. Like signed-out above, that
+        // is an answer about right now, so it is not remembered — the probe
+        // runs again once they have a household.
+        if (error && error.context && error.context.status === 403) {
+          _aiProxyProbe = null;
+          return false;
+        }
         _aiProxyAvailable = !error && !!(data && data.ok);
       } catch (e) {
         _aiProxyAvailable = false;
@@ -10477,7 +10655,7 @@ const RUNWAY_DAYS = 90;
           if (errors.desc) setErrors((p) => __spreadProps(__spreadValues({}, p), { desc: void 0 }));
         }
       }
-    ), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.desc })), /* @__PURE__ */ React.createElement("div", { className: "entry-form-row2" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-type" }, "Type"), /* @__PURE__ */ React.createElement("select", { id: "ef-type", className: inpCls(false), value: f.type, onChange: (e) => set({ type: e.target.value }) }, /* @__PURE__ */ React.createElement("option", { value: "income" }, "Income"), /* @__PURE__ */ React.createElement("option", { value: "expense" }, "Expense"), /* @__PURE__ */ React.createElement("option", { value: "transfer" }, "Transfer")), f.type === "transfer" && !f.toAccountId && /* @__PURE__ */ React.createElement("select", { "aria-label": "Transfer direction", className: inpCls(false) + " mt-6", value: f.transferDirection, onChange: (e) => set({ transferDirection: e.target.value }) }, /* @__PURE__ */ React.createElement("option", { value: "out" }, "Money out of this account"), /* @__PURE__ */ React.createElement("option", { value: "in" }, "Money into this account"))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-amount" }, "Amount ($)", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement(
+    ), /* @__PURE__ */ React.createElement(FieldError, { msg: errors.desc })), /* @__PURE__ */ React.createElement("div", { className: "entry-form-row2" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-type" }, "Type"), /* @__PURE__ */ React.createElement("select", { id: "ef-type", className: inpCls(false), value: f.type, onChange: (e) => set({ type: e.target.value }) }, /* @__PURE__ */ React.createElement("option", { value: "income" }, "Income"), /* @__PURE__ */ React.createElement("option", { value: "expense" }, "Expense"), /* @__PURE__ */ React.createElement("option", { value: "transfer" }, "Transfer")), f.type === "transfer" && !f.toAccountId && /* @__PURE__ */ React.createElement("select", { "aria-label": "Transfer direction", className: inpCls(false) + " mt-6", value: f.transferDirection, onChange: (e) => set({ transferDirection: e.target.value }) }, /* @__PURE__ */ React.createElement("option", { value: "out" }, "Money out of this account"), /* @__PURE__ */ React.createElement("option", { value: "in" }, "Money into this account"))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: lblCls, htmlFor: "ef-amount" }, "Amount (" + moneySymbol().trim() + ")", /* @__PURE__ */ React.createElement("span", { className: "required-mark" }, "*")), /* @__PURE__ */ React.createElement(
       "input",
       {
         id: "ef-amount",
@@ -14642,31 +14820,31 @@ const RUNWAY_DAYS = 90;
       const prompt = `You are a certified financial planner reviewing a personal budget for ${ctx.year}. Analyse the financial data below and provide a comprehensive, actionable assessment. Be specific \u2014 reference actual dollar amounts and category names from the data.
 
 FINANCIAL DATA (${ctx.reportingWindow}):
-Opening Balance: $${centsToDollars(ctx.openingBalance).toLocaleString()}
-Closing Balance: $${centsToDollars(ctx.closingBalance).toLocaleString()}
-Total Income: $${centsToDollars(ctx.totalIncome).toLocaleString()}
-Total Expenses: $${centsToDollars(ctx.totalExpenses).toLocaleString()}
-Net Surplus/Shortfall: $${centsToDollars(ctx.totalSurplus).toLocaleString()} (${ctx.totalSurplus >= 0 ? "+" : ""}${ctx.savingsRatePct}% savings rate)
-Lowest Balance This Period: $${centsToDollars(ctx.lowestBalance).toLocaleString()}
-Average Monthly Expenses: $${centsToDollars(ctx.avgMonthlyExpense).toLocaleString()}
+Opening Balance: ${fmt(ctx.openingBalance)}
+Closing Balance: ${fmt(ctx.closingBalance)}
+Total Income: ${fmt(ctx.totalIncome)}
+Total Expenses: ${fmt(ctx.totalExpenses)}
+Net Surplus/Shortfall: ${fmt(ctx.totalSurplus)} (${ctx.totalSurplus >= 0 ? "+" : ""}${ctx.savingsRatePct}% savings rate)
+Lowest Balance This Period: ${fmt(ctx.lowestBalance)}
+Average Monthly Expenses: ${fmt(ctx.avgMonthlyExpense)}
 
 MONTHLY BREAKDOWN:
-${ctx.monthlyBreakdown.map((m) => `  ${m.month}: Income $${centsToDollars(m.income).toLocaleString()}, Expenses $${centsToDollars(m.expenses).toLocaleString()}, ${m.surplus >= 0 ? "Surplus" : "Shortfall"} $${Math.abs(centsToDollars(m.surplus)).toLocaleString()}, Balance $${centsToDollars(m.closingBalance).toLocaleString()}`).join("\n")}
+${ctx.monthlyBreakdown.map((m) => `  ${m.month}: Income ${fmt(m.income)}, Expenses ${fmt(m.expenses)}, ${m.surplus >= 0 ? "Surplus" : "Shortfall"} ${fmt(Math.abs(m.surplus))}, Balance ${fmt(m.closingBalance)}`).join("\n")}
 
 TOP EXPENSE CATEGORIES (YTD):
-${ctx.topExpenseCategories.map((c) => `  ${c.category}: $${centsToDollars(c.total).toLocaleString()} (${c.pctOfExpenses}% of expenses)`).join("\n")}
+${ctx.topExpenseCategories.map((c) => `  ${c.category}: ${fmt(c.total)} (${c.pctOfExpenses}% of expenses)`).join("\n")}
 
 INCOME SOURCES:
-${ctx.incomeCategories.map((c) => `  ${c.category}: $${centsToDollars(c.total).toLocaleString()}`).join("\n")}
+${ctx.incomeCategories.map((c) => `  ${c.category}: ${fmt(c.total)}`).join("\n")}
 
 ${ctx.debtObligations.length ? `DEBT / CREDIT OBLIGATIONS (YTD paid):
-${ctx.debtObligations.map((d) => `  ${d.category}: $${centsToDollars(d.ytdPaid).toLocaleString()}`).join("\n")}` : "No debt categories identified."}
+${ctx.debtObligations.map((d) => `  ${d.category}: ${fmt(d.ytdPaid)}`).join("\n")}` : "No debt categories identified."}
 
 ${((_a = ctx.debtTrackerItems) == null ? void 0 : _a.length) ? `DEBT TRACKER (user-entered balances & rates):
-${ctx.debtTrackerItems.map((d) => `  ${d.name}: Balance $${centsToDollars(d.balance).toLocaleString()}, Rate ${d.rate}%, Payment $${centsToDollars(d.monthlyPayment).toLocaleString()}/mo`).join("\n")}` : "No debt balances entered in tracker yet."}
+${ctx.debtTrackerItems.map((d) => `  ${d.name}: Balance ${fmt(d.balance)}, Rate ${d.rate}%, Payment ${fmt(d.monthlyPayment)}/mo`).join("\n")}` : "No debt balances entered in tracker yet."}
 
 ${ctx.hasBudgetTargets ? `BUDGET VS ACTUAL (top variances):
-${ctx.budgetVsActual.map((r) => `  ${r.category}: Actual $${centsToDollars(r.actual).toLocaleString()} vs Target $${centsToDollars(r.target).toLocaleString()} (${r.variance >= 0 ? "over" : "under"} by $${Math.abs(centsToDollars(r.variance)).toLocaleString()})`).join("\n")}` : "No budget targets have been set yet."}
+${ctx.budgetVsActual.map((r) => `  ${r.category}: Actual ${fmt(r.actual)} vs Target ${fmt(r.target)} (${r.variance >= 0 ? "over" : "under"} by ${fmt(Math.abs(r.variance))})`).join("\n")}` : "No budget targets have been set yet."}
 
 Fill every field of the response schema. Rules:
 - Each bullet is one short sentence (under ~18 words), anchored to a specific dollar amount or category from the data above.
@@ -16848,8 +17026,7 @@ Fill every field of the response schema. Rules:
           const d = /* @__PURE__ */ new Date(e.recurEnd + "T00:00:00");
           return d >= today && d <= horizon;
         }).map((e) => {
-          const evs = flow.filter((ev) => ev.entryId === e.id);
-          const monthly = evs.length ? roundMoney(evs.reduce((s, ev) => s + (ev.amount || 0), 0) / 12) : e.amount;
+          const monthly = monthlyEquivalent(e);
           const d = /* @__PURE__ */ new Date(e.recurEnd + "T00:00:00");
           return __spreadProps(__spreadValues({}, e), { monthly, endLabel: MONTHS[d.getMonth()] + " " + d.getDate() });
         }).sort((a, b) => a.recurEnd.localeCompare(b.recurEnd)).slice(0, 4);
@@ -18378,7 +18555,7 @@ Fill every field of the response schema. Rules:
     // What each account's name was when its field took focus, so a rename is
     // logged once on blur rather than once per keystroke.
     const renamedFrom = useRef({});
-    const { logActivity } = useContext(HouseholdContext);
+    const { logActivity, canWrite } = useContext(HouseholdContext);
     // What each account opens the first budget year with. Derived, never
     // stored for the first account: it takes the remainder, so the shares can
     // never drift from the one opening balance the user actually sets.
@@ -19097,28 +19274,16 @@ Fill every field of the response schema. Rules:
           }
           setInviteBusy(false);
         },
-        disabled: inviteBusy,
+        // Inviting seats the newcomer as a writer, so the server refuses a
+        // view-only member; say so here rather than after the press.
+        disabled: inviteBusy || !canWrite,
+        "aria-describedby": canWrite ? void 0 : "invite-viewonly-note",
         className: "cf-btn cf-btn--primary cf-btn--md"
       },
       inviteBusy ? "Generating…" : "Generate invite code"
-    ), inviteCode && /* @__PURE__ */ React.createElement("div", { className: "invite-code-display" }, inviteCode))) },
+    ), !canWrite && /* @__PURE__ */ React.createElement("p", { id: "invite-viewonly-note", className: "c-textMid mt-8" }, "View-only members can't invite people. Ask the household owner for a code."), inviteCode && /* @__PURE__ */ React.createElement("div", { className: "invite-code-display" }, inviteCode))) },
       backup: { title: "Backup & restore", value: () => "", render: () => React.createElement(React.Fragment, null, React.createElement(Card, { id: "sec-backup", className: "mb-20" }, /* @__PURE__ */ React.createElement(SectionTitle, null, "Data Backup & Restore"), /* @__PURE__ */ React.createElement("div", { className: "cf-row cf-gap-10 cf-wrap" }, /* @__PURE__ */ React.createElement("button", { onClick: () => {
-      // Built from the household-field table, so a new field is in the backup
-      // the moment it is marked `backup: true` — this list used to be written
-      // out by hand and drifted from what the app actually stores.
-      const data = HOUSEHOLD_BACKUP_FIELDS.reduce((acc, f) => {
-        acc[f.key] = houseValues[f.key];
-        return acc;
-      }, { schemaVersion: SCHEMA_VERSION, exportedAt: (/* @__PURE__ */ new Date()).toISOString() });
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-      if (downloadBlob(`CashFlow_Backup_${localDateStr(/* @__PURE__ */ new Date())}.json`, blob)) {
-        try {
-          localStorage.setItem("cf_last_backup", String(Date.now()));
-        } catch (e) {
-          // The nudge re-appearing is a far smaller problem than a failed
-          // export, and the export itself already succeeded.
-        }
-      }
+      exportHouseholdBackup(houseValues);
     }, className: "cf-btn cf-btn--primary cf-btn--md cf-btn--iconrow" }, /* @__PURE__ */ React.createElement(Icon, { name: "download", size: 14 }), "Export Backup"), /* @__PURE__ */ React.createElement("label", { className: "cf-btn cf-btn--secondary cf-btn--md cf-btn--iconrow" }, /* @__PURE__ */ React.createElement(Icon, { name: "upload", size: 14 }), "Import Backup", /* @__PURE__ */ React.createElement("input", { type: "file", accept: ".json", className: "hidden", onChange: (e) => {
       const file = e.target.files[0];
       if (!file) return;
@@ -19152,7 +19317,7 @@ Fill every field of the response schema. Rules:
       ConfirmDialog,
       {
         title: "Restore backup?",
-        message: `Restoring "${pendingRestore.fileName}" replaces everything this app stores for your household \u2014 entries, overrides, budget targets, goals, categories, debts and the rest \u2014 with what's in this file. Anything the file doesn't carry goes back to its default. This cannot be undone.`,
+        message: `Restoring "${pendingRestore.fileName}" replaces everything this app stores for your household \u2014 entries, overrides, budget targets, goals, categories, debts and the rest \u2014 with what's in this file. Anything the file doesn't carry goes back to its default. You can undo it from the notice that appears straight afterwards; after that, it's permanent.`,
         confirmLabel: "Restore",
         confirmVariant: "danger",
         onCancel: () => setPendingRestore(null),
@@ -20345,8 +20510,13 @@ Fill every field of the response schema. Rules:
       });
       t("colOrder drops the fixed actions column", () => {
         const got = [];
-        houseApply(HOUSEHOLD_FIELDS.find((f) => f.key === "colOrder"))(["desc", "amount", "actions"], (v) => got.push(v));
+        houseApply(MEMBER_PREF_FIELDS.find((f) => f.key === "colOrder"))(["desc", "amount", "actions"], (v) => got.push(v));
         return got.length === 1 && got[0].join(",") === "desc,amount";
+      });
+      t("a member's own preferences are not household fields, and not in backups", () => {
+        const house = HOUSEHOLD_FIELDS.map((f) => f.key);
+        const backup = HOUSEHOLD_BACKUP_FIELDS.map((f) => f.key);
+        return MEMBER_PREF_FIELDS.length > 0 && MEMBER_PREF_FIELDS.every((f) => !house.includes(f.key) && !backup.includes(f.key) && typeof f.initial === "function");
       });
       t("the backup export carries the fields worth restoring", () => {
         const keys = HOUSEHOLD_BACKUP_FIELDS.map((f) => f.key);
@@ -20755,22 +20925,10 @@ Fill every field of the response schema. Rules:
       categoryColors,
       activeYear,
       alertThreshold: alertThresh,
-      darkMode,
-      forecastHorizon,
       assets,
       goals,
-      dashHidden,
-      dashOrder,
-      colOrder,
-      budgetColOrder,
       debtExtra,
       debtSimExcluded,
-      // The Entries filters keep their "regFilter*" payload names for
-      // compatibility (see the table); only these bindings are renamed.
-      regFilter: entriesFilter,
-      regFilterCats: entriesFilterCats,
-      regFilterScheds: entriesFilterScheds,
-      regFilterStatus: entriesFilterStatus,
       budgetTargets,
       templates,
       completed,
@@ -20791,20 +20949,10 @@ Fill every field of the response schema. Rules:
       categoryColors: setCategoryColors,
       activeYear: setActiveYear,
       alertThreshold: setAlertThresh,
-      darkMode: setDarkMode,
-      forecastHorizon: setForecastHorizon,
       assets: setAssets,
       goals: setGoals,
-      dashHidden: setDashHidden,
-      dashOrder: setDashOrder,
-      colOrder: setColOrder,
-      budgetColOrder: setBudgetColOrder,
       debtExtra: setDebtExtra,
       debtSimExcluded: setDebtSimExcluded,
-      regFilter: setEntriesFilter,
-      regFilterCats: setEntriesFilterCats,
-      regFilterScheds: setEntriesFilterScheds,
-      regFilterStatus: setEntriesFilterStatus,
       budgetTargets: setBudgetTargets,
       templates: setTemplates,
       completed: setCompleted,
@@ -20817,6 +20965,37 @@ Fill every field of the response schema. Rules:
       activity: setActivity,
       accounts: setAccounts
     } = houseSetters;
+    // How this member likes to look at the household — theme, forecast window,
+    // column orders, dashboard layout, Entries filters. Their own row on the
+    // server, following them to every device they sign in on and to no one
+    // else's (see MEMBER_PREF_FIELDS in household-sync.js).
+    const { values: prefValues, setters: prefSetters } = useMemberPrefs(household);
+    const {
+      darkMode,
+      forecastHorizon,
+      dashHidden,
+      dashOrder,
+      colOrder,
+      budgetColOrder,
+      // The Entries filters keep their "regFilter*" names for compatibility
+      // (see the table); only these bindings are renamed.
+      regFilter: entriesFilter,
+      regFilterCats: entriesFilterCats,
+      regFilterScheds: entriesFilterScheds,
+      regFilterStatus: entriesFilterStatus
+    } = prefValues;
+    const {
+      darkMode: setDarkMode,
+      forecastHorizon: setForecastHorizon,
+      dashHidden: setDashHidden,
+      dashOrder: setDashOrder,
+      colOrder: setColOrder,
+      budgetColOrder: setBudgetColOrder,
+      regFilter: setEntriesFilter,
+      regFilterCats: setEntriesFilterCats,
+      regFilterScheds: setEntriesFilterScheds,
+      regFilterStatus: setEntriesFilterStatus
+    } = prefSetters;
     // Deliberately not a household field: a personal API credential, never
     // synced to the household and never written into a backup file.
     const [aiApiKey, setAiApiKey] = useLS("cf_ai_key", "");
@@ -21119,7 +21298,9 @@ Fill every field of the response schema. Rules:
       return () => {
         live = false;
       };
-    }, [session]);
+      // household too: the proxy answers members only, so a probe made before
+      // joining one has to be asked again after.
+    }, [session, household]);
     const [showBackupNudge, setShowBackupNudge] = useState(false);
     useEffect(() => {
       try {
@@ -21143,15 +21324,8 @@ Fill every field of the response schema. Rules:
         // genuinely ignorable — real save failures surface via
         // notifyStorageWriteFailure.
       }
-      if (doExport) {
-        // Same full field set (and schemaVersion stamp) as Settings' Export
-        // Backup — a partial payload here would restore with fields silently
-        // missing, and an unstamped one gets misread as pre-v8 dollar-scale
-        // data and re-centsified (100x-inflated) on import.
-        const data = { entries, overridesByYr, yearConfigs, categories, categoryColors, budgetTargets, templates, completed, goals, debtData, deletedCopyIds, activeYear, alertThreshold: alertThresh, darkMode, schemaVersion: SCHEMA_VERSION, exportedAt: (/* @__PURE__ */ new Date()).toISOString() };
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-        downloadBlob(`CashFlow_Backup_${todayStr()}.json`, blob);
-      }
+      // The same file Settings → Backup makes, from the same builder.
+      if (doExport) exportHouseholdBackup(houseValues);
     };
     // Not household fields: which month the Budget tab is showing and how its
     // columns are ordered are per-device view preferences.
@@ -21644,6 +21818,10 @@ Fill every field of the response schema. Rules:
           setGlobalSearch("");
           return;
         }
+        // Nothing below runs under an open dialog. Undo used to sit above
+        // this line despite its comment, so Ctrl+Z reverted the last action
+        // behind a form the user was still looking at.
+        if (document.querySelector(".modal-overlay")) return;
         // Undo the last undoable action. Guarded the same way the letter
         // shortcuts are (never while typing, never under a modal), and it only
         // does anything while the toast is up — this is the toast's button
@@ -21660,7 +21838,6 @@ Fill every field of the response schema. Rules:
           undoLast();
           return;
         }
-        if (document.querySelector(".modal-overlay")) return;
         if (TAB_KEYS[e.key]) {
           e.preventDefault();
           setTab(TAB_KEYS[e.key]);
@@ -21742,24 +21919,30 @@ Fill every field of the response schema. Rules:
       try {
         const now = /* @__PURE__ */ new Date();
         if (now.getFullYear() !== activeYear || !activeFlow.length) return null;
-        const tm = now.getMonth(), td = now.getDate();
-        const end = new Date(activeYear, tm, td);
+        const today = new Date(activeYear, now.getMonth(), now.getDate());
+        const end = new Date(today);
         end.setDate(end.getDate() + 60);
-        let min = null, minEv = null;
-        activeFlow.forEach((ev) => {
-          if (ev.month < tm || ev.month === tm && ev.day < td) return;
-          const d = new Date(activeYear, ev.month, ev.day);
-          if (d > end) return;
-          if (min === null || ev.balance < min) {
-            min = ev.balance;
-            minEv = ev;
-          }
+        // The sixty days run into January from November on, and next year's
+        // flow opens on this year's closing balance — so a dip in the first
+        // week of January is as much this warning's business as one in
+        // December. Reading only the active year used to miss it entirely.
+        let min = null, minEv = null, minYear = null;
+        [[activeYear, activeFlow], [activeYear + 1, viewFlows[activeYear + 1] || []]].forEach(([y, fl]) => {
+          fl.forEach((ev) => {
+            const d = new Date(y, ev.month, ev.day);
+            if (d < today || d > end) return;
+            if (min === null || ev.balance < min) {
+              min = ev.balance;
+              minEv = ev;
+              minYear = y;
+            }
+          });
         });
-        return min !== null && min < alertThresh ? { min, month: minEv.month, day: minEv.day } : null;
+        return min !== null && min < alertThresh ? { min, month: minEv.month, day: minEv.day, year: minYear } : null;
       } catch (err) {
         return null;
       }
-    }, [activeFlow, activeYear, alertThresh]);
+    }, [activeFlow, viewFlows, activeYear, alertThresh]);
     const navLowAlert = !!navLowInfo;
     // Dismissing the low-balance banner used to mean "for today": the stored
     // value was a date, so the same warning about the same dip announced
@@ -21780,8 +21963,10 @@ Fill every field of the response schema. Rules:
     // identity, so a reader who had it snoozed sees the banner once more and
     // then dismisses it for good.
     const [lowBannerDismissed, setLowBannerDismissed] = useLS("cf_lowbal_dismissed", "");
+    // A dip in next year carries its year; one in this year keeps the key it
+    // always had, so a warning already dismissed stays dismissed.
     const lowBannerKey = navLowInfo
-      ? `${navLowInfo.month}-${navLowInfo.day}:${navLowInfo.min < 0 ? "below-zero" : "under-threshold"}`
+      ? `${navLowInfo.year !== activeYear ? navLowInfo.year + "-" : ""}${navLowInfo.month}-${navLowInfo.day}:${navLowInfo.min < 0 ? "below-zero" : "under-threshold"}`
       : "";
     const showLowBanner = navLowInfo && lowBannerDismissed !== lowBannerKey;
     // The calendar day *here*, not in UTC. toISOString() was returning the UTC
@@ -21860,14 +22045,15 @@ Fill every field of the response schema. Rules:
       // page under it, and its "View alerts" action goes nowhere.
       if (showLowBanner && tab !== "alerts") {
         const under = navLowInfo.min < 0
-          ? " \u2014 below zero." : ` \u2014 under your $${centsToDollars(alertThresh)} alert threshold.`;
+          ? " \u2014 below zero." : ` \u2014 under your ${fmt(alertThresh)} alert threshold.`;
         out.push({
           id: "lowbal", tone: navLowInfo.min < 0 ? "critical" : "warn", icon: "alert-triangle",
           plain: `Balance dips to ${fmt(navLowInfo.min)} on ${MONTHS[navLowInfo.month]} ${navLowInfo.day}`,
           msg: React.createElement(React.Fragment, null,
             "Heads-up: your balance is forecast to dip to ",
             React.createElement("strong", { className: "cf-text-mono-13" }, fmt(navLowInfo.min)),
-            " around ", MONTHS[navLowInfo.month], " ", navLowInfo.day, under),
+            " around ", MONTHS[navLowInfo.month], " ", navLowInfo.day,
+            navLowInfo.year !== activeYear ? ", " + navLowInfo.year : "", under),
           actions: [
             { label: "View alerts", onClick: () => setTab("alerts") },
             { label: "Dismiss", ariaLabel: "Dismiss this alert", onClick: () => setLowBannerDismissed(lowBannerKey) }

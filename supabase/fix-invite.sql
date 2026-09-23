@@ -19,6 +19,11 @@ begin
   if hid is null then
     raise exception 'You must belong to a household first.';
   end if;
+  -- A view-only member may not invite: the newcomer is seated as a writer.
+  if not is_household_writer(hid) then
+    raise exception 'View-only members cannot invite people to the household.'
+      using errcode = '42501';
+  end if;
   -- Randomness from gen_random_uuid(): core Postgres, a CSPRNG, and no
   -- extension that has to be installed in the right schema to be reachable.
   -- Byte positions 6 and 8 are skipped — in a v4 UUID they carry the version
